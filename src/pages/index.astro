@@ -6,9 +6,10 @@ import site from '../data/site.json';
 import data from '../data/rosters.json';
 import matches from '../data/matches.json';
 
+// Nombre de joueurs annoncés dans le pôle
 const rosterLabel = (g) => {
-  const n = g.rosters.length;
-  return g.id === 'rocket-league' ? `${n} rosters` : `Pôle ouvert en ${g.since}`;
+  const n = g.rosters.reduce((t, r) => t + r.players.length, 0);
+  return g.id === 'rocket-league' ? `${g.rosters.length} rosters, ${n} joueurs annoncés` : `Depuis ${g.since}, ${n} joueur${n > 1 ? 's' : ''}`;
 };
 ---
 <Base>
