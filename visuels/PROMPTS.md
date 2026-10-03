@@ -72,7 +72,7 @@ Ultra-wide fantasy battle scene: an armored warrior with a glowing red blade sta
 ### Valorant — `pole-valorant.png`
 
 ```
-Ultra-wide tactical shooter scene: a masked agent in a sleek black tactical outfit with red accents crouches on a rooftop in a futuristic Japanese city at night, holding a stylized rifle, red neon reflections on wet concrete, a faint holographic red barrier in the distance. Original character, not a copy of any existing game agent. Red sumi ink brush strokes frame the scene. Action concentrated in the horizontal middle band. No text.
+Ultra-wide tactical shooter scene: a hooded agent in a sleek black tactical outfit with red accents crouches on a rooftop in a futuristic Japanese city at night, holding a stylized rifle, red neon reflections on wet concrete, a faint holographic red barrier in the distance. Original character, not a copy of any existing game agent. Red sumi ink brush strokes frame the scene. Action concentrated in the horizontal middle band. No text.
 ```
 
 ### osu! — `pole-osu.png`
