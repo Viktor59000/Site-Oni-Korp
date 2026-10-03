@@ -35,12 +35,13 @@ npm run build    # génère dist/ à déployer
 
 Le site est publié sur https://viktor59000.github.io/Site-Oni-Korp/
 
-```bash
-npm run deploy
-```
+**Automatique :** chaque push sur `main` lance l'action GitHub `.github/workflows/deploy.yml`,
+qui construit le site et le publie sur la branche `gh-pages` (1 à 2 minutes). Le suivi est
+dans l'onglet **Actions** du dépôt.
 
-Cette commande construit le site pour le sous-dossier `/Site-Oni-Korp/` et pousse le résultat
-sur la branche `gh-pages`. Le code source vit sur la branche `v2`.
+**Manuel (secours) :** `npm run deploy` fait la même chose depuis ton PC.
 
-Pour passer sur un vrai nom de domaine plus tard : modifier `SITE_URL` et retirer `BASE_PATH`
-dans `scripts/deploy.sh`, puis configurer le domaine dans Settings → Pages.
+L'ancien site de 2022 est conservé sur la branche `archive-v1-2022` (tag `v1-2022`).
+
+Pour passer sur un vrai nom de domaine plus tard : changer `SITE_URL` et retirer `BASE_PATH`
+dans le workflow et dans `scripts/deploy.sh`, puis configurer le domaine dans Settings → Pages.
