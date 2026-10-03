@@ -31,8 +31,16 @@ npm run build    # génère dist/ à déployer
 - Titres : Dela Gothic One, texte : Zen Kaku Gothic New (Google Fonts)
 - Kanji en filigrane : 鬼 (oni) sur l'accueil, un kanji par page
 
-## Mise en ligne
+## Mise en ligne (GitHub Pages)
 
-Hébergeable gratuitement sur GitHub Pages, Netlify, Vercel ou Cloudflare Pages
-(commande de build `npm run build`, dossier `dist`). Penser à mettre le vrai domaine
-dans `astro.config.mjs` (`site`).
+Le site est publié sur https://viktor59000.github.io/Site-Oni-Korp/
+
+```bash
+npm run deploy
+```
+
+Cette commande construit le site pour le sous-dossier `/Site-Oni-Korp/` et pousse le résultat
+sur la branche `gh-pages`. Le code source vit sur la branche `v2`.
+
+Pour passer sur un vrai nom de domaine plus tard : modifier `SITE_URL` et retirer `BASE_PATH`
+dans `scripts/deploy.sh`, puis configurer le domaine dans Settings → Pages.

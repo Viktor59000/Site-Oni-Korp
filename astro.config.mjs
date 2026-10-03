@@ -1,8 +1,10 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
-// Remplacer par le domaine final avant la mise en ligne
+// SITE_URL / BASE_PATH sont fournis par le script de déploiement GitHub Pages.
+// En local (npm run dev), le site tourne à la racine.
 export default defineConfig({
-  site: 'https://onikorp.fr',
+  site: process.env.SITE_URL || 'https://viktor59000.github.io',
+  base: process.env.BASE_PATH ? `/${process.env.BASE_PATH}/` : '/',
   integrations: [sitemap()],
 });
