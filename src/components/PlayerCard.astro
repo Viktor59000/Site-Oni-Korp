@@ -8,7 +8,7 @@
 import { existsSync } from 'node:fs';
 import RoleIcon from './RoleIcon.astro';
 
-const { name, photo, role, label, art, num, pole } = Astro.props;
+const { name, photo, role, label, art, num, pole, flip } = Astro.props;
 const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
 const artSrc = photo ?? (art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null);
 const knownRole = role && !role.includes('confirmer');
@@ -18,7 +18,7 @@ const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
-        <img src={artSrc} alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="600" height="840" />
+        <img class={!photo && flip ? 'is-flipped' : undefined} src={artSrc} alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="640" height="960" />
       ) : knownRole ? (
         <RoleIcon role={role} class="sticker__icon" />
       ) : (
