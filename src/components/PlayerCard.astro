@@ -1,0 +1,27 @@
+---
+// Carte joueur : art du jeu en duotone rouge, initiale géante, pseudo en bas.
+// Si `photo` est renseigné dans rosters.json, la photo prend la place de l'art et de l'initiale.
+const { name, photo, roster, art } = Astro.props;
+const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
+// Cadrage stable par pseudo, pour que deux coéquipiers ne montrent pas le même morceau d'image
+let h = 0;
+for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+const focus = 15 + (h % 70);
+// Taille du pseudo adaptée à sa longueur pour tenir sur une ligne
+const nameSize = `min(11cqi, ${(84 / (name.length * 0.74)).toFixed(2)}cqi)`;
+---
+<article class={`pcard${photo ? ' pcard--photo' : ''}`}>
+  {photo ? (
+    <img class="pcard__photo" src={photo} alt={`Photo de ${name}`} loading="lazy" width="600" height="800" />
+  ) : (
+    <>
+      <img class="pcard__art" src={art} alt="" loading="lazy" style={`object-position:${focus}% 50%`} />
+      <span class="pcard__initial" aria-hidden="true">{initial}</span>
+    </>
+  )}
+  <img class="pcard__logo" src="/img/oni-logo-dark.svg" alt="" />
+  <div class="pcard__foot">
+    {roster && <span class="pcard__roster">{roster}</span>}
+    <h4 class="pcard__name" style={`font-size:${nameSize}`}>{name}</h4>
+  </div>
+</article>

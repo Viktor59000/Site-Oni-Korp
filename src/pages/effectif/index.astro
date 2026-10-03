@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Avatar from '../../components/Avatar.astro';
+import PlayerCard from '../../components/PlayerCard.astro';
 import data from '../../data/rosters.json';
 
 // Un joueur peut être un simple pseudo ou un objet { name, photo }
@@ -27,19 +28,37 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
           <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1983" height="793" /></div>
         </div>
         <div class="rosters">
-          {g.rosters.map((r) => (
+          {g.rosters.filter((r) => r.players.length).map((r) => (
             <div class="roster">
               <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
-              {r.players.length ? (
-                <ul class="players">
-                  {r.players.map(norm).map((p) => (
-                    <li><Avatar name={p.name} photo={p.photo} /><span>{p.name}</span></li>
-                  ))}
-                </ul>
-              ) : <p class="tba">Line-up à annoncer</p>}
+              <ul class="players">
+                {r.players.map(norm).map((p) => (
+                  <li><PlayerCard name={p.name} photo={p.photo} art={g.banner} roster={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
+                ))}
+              </ul>
             </div>
           ))}
+          {!g.rosters.some((r) => r.players.length) && (
+            <div class="roster">
+              <h3>{g.rosters[0].name}</h3>
+              <ul class="players">
+                <li>
+                  <a class="pcard pcard--open" href="/recrutement/">
+                    <img class="pcard__art" src={g.banner} alt="" loading="lazy" />
+                    <span class="pcard__plus" aria-hidden="true">+</span>
+                    <span class="pcard__foot"><span class="pcard__roster">{g.name}</span><span class="pcard__name" style="font-size:9cqi">Ta place est ici</span></span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
+        {g.rosters.some((r) => r.players.length) && (() => {
+          const tba = g.rosters.filter((r) => !r.players.length);
+          if (!tba.length) return null;
+          const label = g.rosters.length > 1 ? tba.map((r) => `Roster ${r.name}`).join(', ') : 'Line-up';
+          return <p class="rosters-tba"><strong>{label}</strong> : à annoncer. <a href="/recrutement/">Les places sont ouvertes</a>.</p>;
+        })()}
       </section>
     ))}
 

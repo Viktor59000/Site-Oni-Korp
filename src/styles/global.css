@@ -257,7 +257,7 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .roster-game__head { display: grid; grid-template-columns: 1fr minmax(0, 42%); gap: 2rem; align-items: end; margin-bottom: 2.5rem; }
 .roster-game__head h2 { font-size: var(--step-3); }
 .roster-game__head p { color: var(--ash); margin: .75rem 0 0; }
-.rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem 2rem; }
+.rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 2rem; }
 .roster { padding-block: 1.25rem; border-top: 2px solid var(--lacquer); }
 .roster h3 { font-family: var(--font-body); font-weight: 700; font-size: 1.15rem; margin-bottom: .5rem; }
 .roster .tba { color: var(--ash); font-style: italic; margin: .5rem 0 0; }
@@ -332,7 +332,7 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 @media (hover: none) { .game__img img { filter: none; } }
 
 /* ---------- Avatars par défaut ---------- */
-.players { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1rem; margin-top: .75rem; }
+.players { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
 .players li { display: grid; gap: .5rem; }
 .players span { font-weight: 700; overflow-wrap: anywhere; }
 .avatar { position: relative; display: block; overflow: hidden; background: #141414; aspect-ratio: 4 / 5; width: 100%; object-fit: cover; container-type: inline-size; }
@@ -359,3 +359,49 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .values4--stack div { grid-template-columns: 1fr; gap: .3rem; }
 
 .notfound__kanji { position: absolute; z-index: -1; right: 0; top: 50%; translate: 0 -50%; width: min(640px, 70vw); mix-blend-mode: screen; opacity: .8; }
+
+/* ---------- Cartes joueurs ---------- */
+.pcard {
+  position: relative; isolation: isolate; overflow: hidden;
+  aspect-ratio: 3 / 4; background: #0d0d0d;
+  clip-path: polygon(0 0, 100% 0, 100% 88%, 84% 100%, 0 100%);
+}
+.pcard__art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -3; filter: grayscale(1) contrast(1.2) brightness(.55); transition: filter .4s ease, scale .6s ease; }
+.pcard::before { content: ""; position: absolute; inset: 0; z-index: -2; background: var(--lacquer); mix-blend-mode: multiply; transition: opacity .4s ease; }
+.pcard::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 35%, rgb(0 0 0 / .92) 100%); }
+.pcard__initial {
+  position: absolute; left: -.06em; bottom: -.18em; z-index: -1;
+  font-family: var(--font-display); font-size: 150cqi; line-height: 1;
+  color: transparent; -webkit-text-stroke: 2px rgb(237 235 231 / .85);
+}
+.pcard { container-type: inline-size; }
+.pcard__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -3; }
+.pcard--photo::before { opacity: 0; }
+.pcard__logo { position: absolute; top: 8%; right: 8%; width: 18%; }
+.pcard__foot { position: absolute; left: 8%; right: 8%; bottom: 7%; }
+.pcard__roster { display: block; font-size: max(.72rem, 7cqi); color: var(--lacquer-hi); font-weight: 700; }
+.pcard__name { margin: .15em 0 0; font-family: var(--font-display); font-weight: 400; line-height: 1.05; white-space: nowrap; }
+.pcard:hover .pcard__art { filter: none; scale: 1.06; }
+.pcard:hover::before { opacity: .35; }
+@media (hover: none) { .pcard::before { opacity: .55; } .pcard__art { filter: contrast(1.1) brightness(.7); } }
+
+/* Textures pinceau sur les blocs rouges */
+.section--brush { position: relative; isolation: isolate; overflow: hidden; }
+.section--brush::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: url(/img/hero-fond.webp) right center / cover no-repeat;
+  mix-blend-mode: multiply; opacity: .55;
+}
+
+/* Miniatures des matchs ramenées dans la charte, couleur au survol */
+.ledger img { filter: grayscale(1) contrast(1.15) brightness(.8) sepia(1) hue-rotate(-50deg) saturate(3); transition: filter .3s ease; }
+.ledger li:hover img { filter: none; }
+
+.rosters-tba { margin-top: 2rem; color: var(--ash); }
+.rosters-tba strong { color: var(--bone); font-weight: 700; }
+
+.pcard--open { display: block; text-decoration: none; outline: 1px dashed var(--lacquer); outline-offset: -1px; }
+.pcard--open .pcard__art { filter: grayscale(1) brightness(.35); }
+.pcard__plus { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 50cqi; color: var(--lacquer-hi); line-height: 1; padding-bottom: 20%; }
+.pcard__foot .pcard__name { display: block; font-family: var(--font-display); }
+.pcard--open:hover .pcard__plus { color: #fff; }
