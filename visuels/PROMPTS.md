@@ -242,3 +242,24 @@ Using the attached hoodie back as the exact product reference (same design, same
 ```
 
 Si les lettres sortent déformées, demande : « same image, the back text must read exactly SHEEP and 777, sharp and correctly spelled ».
+
+---
+
+## 8. Vignettes « édition staff »
+
+Même principe que les joueurs (section 6) : illustration seule, sans texte, le cadre est fait en code. Les vignettes staff sont **noir et rouge Oni avec accents or**. Une image par personne, classée par son rôle principal.
+
+À coller après le bloc « album Panini » de la section 6 (si ce n'est pas déjà fait dans la conversation).
+
+| Fichier | Personne | Prompt |
+|---|---|---|
+| `staff-fondateur-1.png` | Jakpot | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Club founder standing tall, one hand on a large Oni Korp-style shield emblem (no text), a graphic tablet pen tucked in the hoodie pocket.` |
+| `staff-fondateur-2.png` | AlphA | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Club founder with arms crossed, a tactical planning board with arrows glowing behind (no text).` |
+| `staff-fondateur-3.png` | Yasunaii | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Club founder holding a streaming microphone, pink rhythm circles floating behind.` |
+| `staff-fondateur-4.png` | Sheep | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Club founder leaning forward with a gaming controller, a small rocket car with red boost behind.` |
+| `staff-coach-1.png` | Sebla | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Esports coach holding a clipboard with drawn play arrows (no text), whistle around the neck.` |
+| `staff-coach-2.png` | Slazen | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Esports coach pointing at a floating replay screen showing a car trajectory (no text).` |
+| `staff-coach-3.png` | kraskas | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Esports coach studying a glowing fantasy map with lanes, hand on chin.` |
+| `staff-moderateur-1.png` | Daynalox | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Community moderator raising a glowing shield with a check mark, chat bubbles floating around (no text).` |
+| `staff-moderateur-2.png` | Neyzo | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Community moderator holding a gavel, calm confident pose, chat bubbles behind (no text).` |
+| `staff-casteur-1.png` | Soiffeux | `PANINI SERIES. Colors: black #141414 and deep red #7A1714 with gold accents. Esports caster with a headset microphone, mouth open mid-hype, sound waves bursting behind.` |

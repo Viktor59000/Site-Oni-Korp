@@ -1,7 +1,6 @@
 ---
 import { srcset, small } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
-import Avatar from '../../components/Avatar.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
 import data from '../../data/rosters.json';
 
@@ -16,6 +15,33 @@ const slug = (t) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, 
 // Numéro de vignette dans l'album, dans l'ordre de la page
 let stickerNum = 0;
 const nextNum = () => ++stickerNum;
+// Staff : une vignette par personne, avec tous ses rôles (club + managers et coachs des pôles)
+const singular = { Fondateurs: 'Fondateur', Casteurs: 'Casteur', 'Modérateurs': 'Modérateur' };
+const shortName = { 'rocket-league': 'Rocket League', 'league-of-legends': 'LoL', valorant: 'Valorant', osu: 'osu!' };
+const priority = ['Fondateur', 'Coach', 'Modérateur', 'Casteur', 'Graphiste', 'Community manager', 'Manager'];
+const people = new Map();
+const addRole = (name, role, kind) => {
+  if (!people.has(name)) people.set(name, { name, roles: [], kinds: [] });
+  people.get(name).roles.push(role);
+  people.get(name).kinds.push(kind);
+};
+for (const s of data.staff) for (const n of s.names) addRole(n, singular[s.role] ?? s.role, singular[s.role] ?? s.role);
+for (const g of data.games) for (const st of g.staff ?? []) {
+  const kind = st.role.startsWith('Coach') ? 'Coach' : st.role;
+  for (const n of st.name.split(/,\s*/)) addRole(n, `${kind} ${shortName[g.id]}`, kind);
+}
+const staffCards = [...people.values()]
+  .map((p) => ({ ...p, primary: priority.find((k) => p.kinds.includes(k)) ?? p.kinds[0] }))
+  .sort((a, b) => priority.indexOf(a.primary) - priority.indexOf(b.primary));
+// Portrait : staff-<rôle principal>-<n> (ex. staff-fondateur-2, staff-coach-1)
+const staffArtCount = {};
+const staffArt = (p) => {
+  const k = slug(p.primary);
+  staffArtCount[k] = (staffArtCount[k] ?? 0) + 1;
+  return `staff-${k}-${staffArtCount[k]}`;
+};
+const openRoles = data.staff.filter((s) => !s.names.length);
+
 // Variantes disponibles par pôle sans rôle (rl-1…rl-3, osu-1…osu-2).
 // Le roster suivant décale l'ordre (et l'image passe en miroir) pour ne pas répéter le précédent.
 const variants = { rl: 3, osu: 2 };
@@ -88,16 +114,20 @@ const artKey = (g, p, i, ri = 0) => {
     <section class="roster-game roster-game--last" id="staff" aria-labelledby="staff-title">
       <div class="section__head">
         <h2 id="staff-title">Staff</h2>
-        <p>Les managers et coachs sont présentés avec leur pôle. Les postes sans nom sont ouverts : <a href="/recrutement/#staff">candidater au staff</a>.</p>
+        <p>Ceux qui font tourner le club, avec tous leurs rôles. Les emplacements vides sont des postes ouverts.</p>
       </div>
-      <ul class="staff">
-        {data.staff.map((s) => (
-          <li class="staff__item">
-            {s.names.length ? <Avatar name={s.names[0]} size="sm" /> : <a class="avatar avatar--sm avatar--open" href="/recrutement/#staff" aria-label={`Candidater au poste ${s.role}`}>+</a>}
-            <div>
-              <span class="staff__role">{s.role}</span>
-              {s.names.length ? <span class="staff__name">{s.names.join(', ')}</span> : <span class="staff__name open">Poste ouvert</span>}
-            </div>
+      <ul class="players players--staff">
+        {staffCards.map((p) => (
+          <li><PlayerCard name={p.name} role={p.roles.join(', ')} icon={p.primary} art={staffArt(p)} num={nextNum()} pole="staff" /></li>
+        ))}
+        {openRoles.map((s) => (
+          <li>
+            <a class="slot" href="/recrutement/#staff">
+              <span class="slot__num">{String(nextNum()).padStart(2, '0')}</span>
+              <span class="slot__plus" aria-hidden="true">+</span>
+              <span class="slot__role">{s.role}</span>
+              <span class="slot__cta">Emplacement libre : postuler</span>
+            </a>
           </li>
         ))}
       </ul>

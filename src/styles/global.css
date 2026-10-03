@@ -503,3 +503,25 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .sticker__band::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18%; background: var(--lacquer); clip-path: polygon(0 100%, 100% 0, 100% 35%, 0 135%); }
 .sticker__name { margin: 0; font-family: var(--font-display); font-weight: 400; line-height: 1.05; color: #fff; white-space: nowrap; }
 .sticker__role { display: block; margin-top: .2em; font-size: max(.7rem, 6.5cqi); font-weight: 700; color: var(--ink); }
+
+/* Édition staff : noir et rouge Oni, accents or */
+.sticker[data-pole="staff"] { --c1: #141414; --c2: #7a1714; --ink: #e2bd62; --dot: rgb(226 189 98 / .18); background: linear-gradient(135deg, #f4f1ea, #e7d6a8 50%, #f4f1ea); }
+.sticker[data-pole="staff"] .sticker__role { font-size: max(.66rem, 5.6cqi); line-height: 1.25; }
+.players--staff { grid-template-columns: repeat(auto-fill, minmax(160px, 200px)); }
+
+/* Emplacement vide de l'album : poste ouvert */
+.slot {
+  container-type: inline-size;
+  aspect-ratio: 5 / 7; position: relative;
+  display: grid; place-items: center; align-content: center; gap: .3rem; text-align: center;
+  padding: 10%; text-decoration: none;
+  border: 2px dashed rgb(237 235 231 / .35); border-radius: 4px;
+  background: repeating-linear-gradient(135deg, transparent 0 10px, rgb(255 255 255 / .025) 10px 20px);
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.slot:hover { border-color: var(--lacquer-hi); background-color: rgb(194 46 40 / .12); }
+.slot:focus-visible { outline-offset: 3px; }
+.slot__num { position: absolute; top: 5%; right: 7%; font-family: var(--font-display); font-size: 11cqi; color: rgb(237 235 231 / .35); }
+.slot__plus { font-family: var(--font-display); font-size: 34cqi; line-height: 1; color: var(--lacquer-hi); }
+.slot__role { font-family: var(--font-display); font-size: 10cqi; color: var(--bone); }
+.slot__cta { font-size: max(.7rem, 6.5cqi); color: var(--ash); }

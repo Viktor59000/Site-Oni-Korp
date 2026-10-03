@@ -1,6 +1,6 @@
 ---
 // Pictogrammes de rôle maison (traits, viewBox 100×100), dessinés pour le site :
-// rôles League of Legends et Valorant. Retourne rien si le rôle est inconnu.
+// rôles League of Legends, Valorant et rôles du staff. Retourne rien si le rôle est inconnu.
 const { role, class: className } = Astro.props;
 
 const icons = {
@@ -16,6 +16,16 @@ const icons = {
   'contrôleur': 'M35 58m-20 0a20 20 0 1 0 40 0a20 20 0 1 0-40 0 M65 58m-20 0a20 20 0 1 0 40 0a20 20 0 1 0-40 0 M50 34m-20 0a20 20 0 1 0 40 0a20 20 0 1 0-40 0',
   sentinelle: 'M20 86V36h12V24h12v12h12V24h12v12h12v50z M42 86V64h16v22',
   flex: 'M18 36h58 M62 22l14 14-14 14 M82 64H24 M38 50L24 64l14 14',
+  // Staff du club
+  fondateur: 'M16 74V30l18 18 16-28 16 28 18-18v44z M16 84h68',
+  coach: 'M24 18h52v66H24z M38 12h24v12H38z M36 40h28 M36 54h28 M36 68h16',
+  manager: 'M18 24h64v58H18z M18 40h64 M34 14v18 M66 14v18 M32 56h10v10H32z',
+  casteur: 'M38 14h24v40H38z M26 44c0 16 10 24 24 24s24-8 24-24 M50 68v16 M36 86h28',
+  graphiste: 'M72 14L42 54 M42 54c-8-2-16 2-18 12-2 8-8 12-10 14 10 2 24 0 30-8 4-6 4-12-2-18z',
+  'community manager': 'M18 42h14l34-20v56L32 58H18z M32 58l6 22h10l-4-20 M78 38c6 6 6 18 0 24',
+  'modérateur': 'M50 12l32 12v26c0 20-16 32-32 38-16-6-32-18-32-38V24z M36 50l10 10 20-22',
+  recruteur: 'M44 44m-26 0a26 26 0 1 0 52 0a26 26 0 1 0-52 0 M63 63l22 22',
+  'content creator': 'M14 24h72v52H14z M42 38v24l20-12z',
 };
 
 const key = (role ?? '').toLowerCase().split('/')[0].trim();
