@@ -1,31 +1,35 @@
 ---
-// Carte joueur.
-// 1. `photo` renseignée dans rosters.json → la photo du joueur.
-// 2. Sinon, un portrait de rôle déposé dans public/img/cartes/<art>.webp
-//    (ex. lol-mid, valo-duelliste, rl-2) → ce portrait.
-// 3. Sinon, une carte sobre : halo rouge et pictogramme du rôle (ou initiale).
+// Vignette joueur façon album Panini : bord blanc d'autocollant, numéro, écusson,
+// bandeau du pseudo. Le cadre et les textes sont en code (toujours nets) ;
+// l'illustration au centre vient, dans l'ordre :
+// 1. `photo` renseignée dans rosters.json ;
+// 2. un portrait déposé dans public/img/cartes/<art>.webp (ex. lol-mid, rl-2) ;
+// 3. sinon un fond graphique (trame de points aux couleurs du pôle) + pictogramme du rôle.
 import { existsSync } from 'node:fs';
 import RoleIcon from './RoleIcon.astro';
 
-const { name, photo, role, label, art } = Astro.props;
+const { name, photo, role, label, art, num, pole } = Astro.props;
 const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
-const artSrc = art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null;
+const artSrc = photo ?? (art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null);
 const knownRole = role && !role.includes('confirmer');
-const nameSize = `min(11cqi, ${(84 / (name.length * 0.74)).toFixed(2)}cqi)`;
+const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
 ---
-<article class={`pcard${photo || artSrc ? ' pcard--photo' : ' pcard--plain'}`}>
-  {photo ? (
-    <img class="pcard__photo" src={photo} alt={`Photo de ${name}`} loading="lazy" width="600" height="800" />
-  ) : artSrc ? (
-    <img class="pcard__photo" src={artSrc} alt="" loading="lazy" width="600" height="800" />
-  ) : knownRole ? (
-    <RoleIcon role={role} class="pcard__role-icon" />
-  ) : (
-    <span class="pcard__initial" aria-hidden="true">{initial}</span>
-  )}
-  <img class="pcard__logo" src="/img/oni-logo-dark.svg" alt="" />
-  <div class="pcard__foot">
-    {(role || label) && <span class="pcard__roster">{role ?? label}</span>}
-    <h4 class="pcard__name" style={`font-size:${nameSize}`}>{name}</h4>
+<article class="sticker" data-pole={pole}>
+  <div class="sticker__frame">
+    <div class="sticker__art">
+      {artSrc ? (
+        <img src={artSrc} alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="600" height="840" />
+      ) : knownRole ? (
+        <RoleIcon role={role} class="sticker__icon" />
+      ) : (
+        <span class="sticker__initial" aria-hidden="true">{initial}</span>
+      )}
+    </div>
+    <img class="sticker__crest" src="/img/oni-logo-dark.svg" alt="" />
+    <span class="sticker__num" aria-label={`Vignette numéro ${num}`}>{String(num).padStart(2, '0')}</span>
+    <div class="sticker__band">
+      <h4 class="sticker__name" style={`font-size:${nameSize}`}>{name}</h4>
+      <span class="sticker__role">{role ?? label}</span>
+    </div>
   </div>
 </article>

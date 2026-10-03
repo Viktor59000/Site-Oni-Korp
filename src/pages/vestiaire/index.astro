@@ -2,10 +2,7 @@
 import { srcset, small } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
-import { existsSync } from 'node:fs';
 
-// Photo du dos générée si elle a été déposée, sinon le rendu 3D d'origine
-const backPhoto = existsSync('public/img/sweat-dos.webp');
 
 const decals = [
   {
@@ -58,17 +55,18 @@ const decals = [
 
     <section class="section" aria-labelledby="merch-title">
       <div class="merch">
-        <img class="merch__main" src="/img/sweat-porte-face.webp" alt="Joueur portant le sweat Oni Korp noir et blanc, logo rouge sur la poitrine" loading="lazy" width="900" height="1131" />
-        <img class="merch__flat" src="/img/sweat-a-plat.webp" alt="Sweat Oni Korp plié à côté d'un casque et d'une manette" loading="lazy" width="1100" height="875" />
+        <figure class="merch__shot">
+          <img src="/img/sweat-porte-face.webp" alt="Joueur portant le sweat Oni Korp noir et blanc, logo rouge sur la poitrine" loading="lazy" width="900" height="1131" />
+          <figcaption>Face</figcaption>
+        </figure>
+        <figure class="merch__shot">
+          <img src="/img/sweat-dos.webp" alt="Dos du sweat personnalisé avec le pseudo SHEEP et le numéro 777" loading="lazy" width="600" height="900" />
+          <figcaption>Dos personnalisé</figcaption>
+        </figure>
         <div class="merch__text">
           <h2 id="merch-title">Le sweat du club</h2>
           <p>Corps noir, capuche et manches blanches, logo rouge sur la poitrine et devise sur la manche. Au dos, ton pseudo et ton numéro.</p>
-          <figure class={`merch__back${backPhoto ? ' merch__back--photo' : ''}`}>
-            {backPhoto
-              ? <img src="/img/sweat-dos.webp" alt="Dos du sweat personnalisé avec le pseudo SHEEP et le numéro 777" loading="lazy" width="600" height="900" />
-              : <img src="/img/sweat-back.webp" alt="Dos du sweat personnalisé avec le pseudo SHEEP et le numéro 777" loading="lazy" width="471" height="535" />}
-            <figcaption>Dos personnalisé</figcaption>
-          </figure>
+          <img class="merch__flat" src="/img/sweat-a-plat.webp" alt="Sweat Oni Korp plié à côté d'un casque et d'une manette" loading="lazy" width="1100" height="875" />
           <p>Un nouveau drop est en préparation. Les précommandes seront annoncées en premier sur le Discord.</p>
           <a class="btn btn--ghost" href={site.discord} rel="noopener">Être prévenu sur Discord</a>
         </div>

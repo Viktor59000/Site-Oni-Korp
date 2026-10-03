@@ -296,19 +296,19 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .decal .btn { margin-top: 1.5rem; }
 @media (max-width: 860px) { .decal { grid-template-columns: 1fr; } }
 
-.merch { display: grid; grid-template-columns: 1fr 1.25fr; grid-template-rows: auto 1fr; gap: 1.5rem clamp(1.5rem, 4vw, 3rem); }
-.merch__main { grid-row: 1 / span 2; width: 100%; height: 100%; object-fit: cover; }
-.merch__flat { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.merch { display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: clamp(1rem, 3vw, 2rem); align-items: start; }
+.merch__shot { margin: 0; }
+.merch__shot img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
+.merch__shot figcaption { margin-top: .5rem; color: var(--ash); font-size: var(--step--1); }
+.merch__flat { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; margin: 1.25rem 0 .25rem; }
 .merch__text h2 { font-size: var(--step-2); }
 .merch__text p { color: var(--ash); margin-top: .75rem; }
-.merch__back { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; }
-.merch__back img { width: 84px; background: var(--bone); padding: .4rem; }
-.merch__back figcaption { font-weight: 700; }
-.merch__back--photo img { width: 140px; aspect-ratio: 2 / 3; object-fit: cover; background: none; padding: 0; }
-@media (max-width: 720px) {
-  .merch { grid-template-columns: 1fr; grid-template-rows: none; }
-  .merch__main { grid-row: auto; aspect-ratio: 4 / 5; }
+.merch__text .btn { margin-top: 1rem; }
+@media (max-width: 860px) {
+  .merch { grid-template-columns: 1fr 1fr; }
+  .merch__text { grid-column: 1 / -1; }
 }
+
 
 .prose { max-width: 70ch; }
 .prose h2 { font-size: var(--step-1); margin: 2.5rem 0 .75rem; }
@@ -442,3 +442,63 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .pole-staff { display: flex; flex-wrap: wrap; gap: .5rem 2rem; margin: 1.25rem 0 0; }
 .pole-staff dt { color: var(--ash); font-size: var(--step--1); }
 .pole-staff dd { margin: 0; font-weight: 700; }
+
+/* ---------- Vignettes façon album Panini ---------- */
+.sticker {
+  --c1: #1d1d1d; --c2: #3a0d0c; --ink: var(--lacquer); --dot: rgb(255 255 255 / .16);
+  container-type: inline-size;
+  aspect-ratio: 5 / 7;
+  padding: 4.5%;
+  background: #f4f1ea;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 rgb(255 255 255 / .6) inset, 0 10px 24px rgb(0 0 0 / .55);
+  rotate: -1.2deg;
+  transition: rotate .25s ease, translate .25s ease, box-shadow .25s ease;
+}
+.players li:nth-child(even) .sticker { rotate: .9deg; }
+.players li:nth-child(3n) .sticker { rotate: -.4deg; }
+.sticker:hover { rotate: 0deg; translate: 0 -6px; box-shadow: 0 1px 0 rgb(255 255 255 / .6) inset, 0 18px 34px rgb(0 0 0 / .6); }
+@media (prefers-reduced-motion: reduce) { .sticker, .players li .sticker { rotate: 0deg; transition: none; } }
+
+/* Couleurs propres à chaque pôle (l'âme du jeu), le rouge Oni en accent */
+.sticker[data-pole="rl"]   { --c1: #1450d6; --c2: #ff7a18; --ink: #ffb347; }
+.sticker[data-pole="lol"]  { --c1: #0a2b36; --c2: #0f5f6b; --ink: #d8b25a; }
+.sticker[data-pole="valo"] { --c1: #ff4655; --c2: #0f1923; --ink: #ece8e1; }
+.sticker[data-pole="osu"]  { --c1: #ff66aa; --c2: #5b1a4a; --ink: #ffffff; }
+
+.sticker__frame {
+  position: relative; isolation: isolate; overflow: hidden; height: 100%;
+  background: linear-gradient(155deg, var(--c1) 0 52%, var(--c2) 52% 100%);
+}
+/* Trame de points façon impression, et bande diagonale rouge Oni */
+.sticker__frame::before {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(var(--dot) 1.1px, transparent 1.4px) 0 0 / 7px 7px;
+  mask-image: linear-gradient(200deg, #000 10%, transparent 75%);
+}
+.sticker__frame::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / .28) 45%, transparent 58%) -120% 0 / 250% 100% no-repeat;
+  transition: background-position .7s ease;
+}
+.sticker:hover .sticker__frame::after { background-position: 120% 0; }
+.sticker__art { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; }
+.sticker__art img { width: 100%; height: 100%; object-fit: cover; }
+.sticker__icon { width: 52%; margin-bottom: 22%; color: #fff; filter: drop-shadow(3px 3px 0 rgb(0 0 0 / .45)); }
+.sticker__initial { font-family: var(--font-display); font-size: 78cqi; line-height: 1; margin-bottom: 18%; color: #fff; -webkit-text-stroke: 3px #000; paint-order: stroke; text-shadow: 5px 5px 0 rgb(0 0 0 / .35); }
+.sticker__crest { position: absolute; z-index: 2; top: 5%; left: 6%; width: 17%; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .5)); }
+.sticker__num {
+  position: absolute; z-index: 2; top: 4%; right: 5%;
+  font-family: var(--font-display); font-size: 11cqi; line-height: 1;
+  color: #fff; -webkit-text-stroke: 2px #000; paint-order: stroke;
+}
+.sticker__band {
+  position: absolute; z-index: 2; left: 0; right: 0; bottom: 0;
+  padding: 7% 7% 6%;
+  background: #000;
+  clip-path: polygon(0 18%, 100% 0, 100% 100%, 0 100%);
+  border-top: 0;
+}
+.sticker__band::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18%; background: var(--lacquer); clip-path: polygon(0 100%, 100% 0, 100% 35%, 0 135%); }
+.sticker__name { margin: 0; font-family: var(--font-display); font-weight: 400; line-height: 1.05; color: #fff; white-space: nowrap; }
+.sticker__role { display: block; margin-top: .2em; font-size: max(.7rem, 6.5cqi); font-weight: 700; color: var(--ink); }

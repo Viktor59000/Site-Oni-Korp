@@ -13,6 +13,9 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
 const prefix = { 'league-of-legends': 'lol', valorant: 'valo', 'rocket-league': 'rl', osu: 'osu' };
 // Retire les accents : « Contrôleur » → « controleur »
 const slug = (t) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').split('/')[0].trim();
+// Numéro de vignette dans l'album, dans l'ordre de la page
+let stickerNum = 0;
+const nextNum = () => ++stickerNum;
 const artKey = (g, p, i) => `${prefix[g.id]}-${p.role && !p.role.includes('confirmer') ? slug(p.role) : i + 1}`;
 ---
 <Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
@@ -46,7 +49,7 @@ const artKey = (g, p, i) => `${prefix[g.id]}-${p.role && !p.role.includes('confi
               <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
               <ul class="players">
                 {r.players.map(norm).map((p, i) => (
-                  <li><PlayerCard name={p.name} photo={p.photo} role={p.role} art={artKey(g, p, i)} label={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
+                  <li><PlayerCard name={p.name} photo={p.photo} role={p.role} art={artKey(g, p, i)} num={nextNum()} pole={prefix[g.id]} label={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
                 ))}
               </ul>
             </div>

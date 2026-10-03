@@ -166,63 +166,67 @@ Very dark atmospheric image: an esports team locker room, black jerseys with red
 
 ---
 
-## 6. Portraits des cartes joueurs (Effectif)
+## 6. Vignettes Panini de l'Effectif
 
-Un portrait par **rôle** (LoL, Valorant) ou par **place dans le roster** (Rocket League, osu!). Dans une même équipe, aucune image ne se répète. Le site les utilise automatiquement dès qu'ils sont déposés.
+La page Effectif est un **album de vignettes à collectionner**. Le cadre (bord blanc, numéro, écusson, bandeau du pseudo, reflet) est fait en code : les textes restent nets. **4o ne fournit que l'illustration au centre**, sans aucun texte.
 
-- **Format :** portrait (1024 × 1536)
-- **Dépôt :** `site/visuels/a-integrer/` avec le nom indiqué, je convertis et je range dans `public/img/cartes/`
-- **Cadrage commun (important pour que les 15 cartes forment une série) :** personnage cadré à mi-corps, centré, **visage jamais visible** (capuche, contre-jour, ombre), le quart du haut sombre et vide (logo), le quart du bas sombre et vide (pseudo).
+Une illustration par **rôle** (LoL, Valorant) ou par **place dans le roster** (Rocket League, osu!) : dans une même équipe, aucune image ne se répète. Le site les affiche automatiquement dès qu'elles sont déposées.
 
-### Bloc « série de cartes » (à coller une fois, après le style commun)
+- **Format :** portrait (1024 × 1536). Le site recadre en 5:7.
+- **Dépôt :** `site/visuels/a-integrer/` avec le nom indiqué. Je convertis et je range dans `public/img/cartes/`.
+- **Zones réservées :** le **tiers du bas** est caché par le bandeau du pseudo, et les **deux coins du haut** portent l'écusson et le numéro. Le personnage doit donc tenir dans la zone centrale, tête dans le tiers haut.
+
+### Bloc « album Panini » (à coller une fois, après le style commun)
 
 ```
-CARD SERIES. For the next images, keep exactly the same framing and lighting so they look like one set of esports roster cards:
-- Portrait 2:3. One anonymous character, waist-up, centered, slightly low angle.
-- The face is never visible: hidden by a hood, a cap shadow or strong backlight. No masks, no helmets covering a face with features.
-- Lighting: pure black background, strong red rim light (#C22E28) from behind, a thin red neon line or brush stroke somewhere behind the character.
-- The top 25% and the bottom 25% of the image stay dark and empty (a logo and a name will be placed there).
-- Wardrobe: black esports jersey or hoodie with white sleeves and red details, no readable text, no logos.
-- The game's own universe appears only through the prop and a few background hints.
+PANINI SERIES. For the next images, create the illustration of a collectible esports sticker, all in the same style so they form one album:
+- Portrait 2:3, one character, waist-up, centered, head in the upper third, slightly low hero angle, confident pose.
+- Style: bold graphic illustration, thick black ink outlines, flat cel shading, halftone dot texture, a few red Japanese ink brush splashes and one red neon accent line. Like a modern anime trading card, not a photo.
+- Background: a flat two-color diagonal split using the colors I give in each prompt, with a big halftone gradient. No scenery, no stadium.
+- The bottom third and the two top corners stay simple (only background): a name banner, a crest and a number will be added on top.
+- The character wears a black esports jersey with white sleeves and red details. No readable text, no numbers, no logos anywhere.
+- Keep the face anonymous: in the shadow of a cap or hood, or hidden by the pose. No masks.
 Reply "OK".
 ```
 
-### League of Legends
+### Rocket League — fond bleu `#1450D6` / orange `#FF7A18`
 
 | Fichier | Prompt |
 |---|---|
-| `lol-top.png` | `CARD SERIES. League of Legends top laner: a heavy fantasy greatsword resting on the shoulder, armored gauntlet, sparks of steel, faint rift river behind.` |
-| `lol-jungle.png` | `CARD SERIES. League of Legends jungler: crouched hunter stance, curved claw-like dual blades, glowing jungle camp runes and leaves in the dark behind.` |
-| `lol-mid.png` | `CARD SERIES. League of Legends mid laner: a mage holding an orb of swirling red arcane energy in one hand, runes orbiting, magical light on the hood.` |
-| `lol-adc.png` | `CARD SERIES. League of Legends marksman (ADC): holding a long ornate rifle or bow across the chest, a glowing projectile trail behind.` |
-| `lol-support.png` | `CARD SERIES. League of Legends support: holding a glowing protective shield of light in front of the body, healing particles floating around.` |
+| `rl-1.png` | `PANINI SERIES. Colors: blue #1450D6 and orange #FF7A18. Rocket League player holding a gaming controller up like a trophy, a small rocket car with red boost flames drifting behind them.` |
+| `rl-2.png` | `PANINI SERIES. Colors: blue #1450D6 and orange #FF7A18. Rocket League player with arms crossed, the big round match ball floating over their shoulder.` |
+| `rl-3.png` | `PANINI SERIES. Colors: blue #1450D6 and orange #FF7A18. Rocket League player pointing forward, speed lines and a red boost trail crossing the background.` |
 
-### Valorant
+### League of Legends — fond bleu-vert `#0A2B36` / `#0F5F6B`, accents or
 
 | Fichier | Prompt |
 |---|---|
-| `valo-duelliste.png` | `CARD SERIES. Valorant duelist: aggressive forward lean, a blade of red energy dashing from the hand, motion streaks, stylized painterly-flat Valorant look.` |
-| `valo-initiateur.png` | `CARD SERIES. Valorant initiator: holding a recon drone or a glowing scanning dart, radar rings of red light expanding behind, stylized Valorant look.` |
-| `valo-controleur.png` | `CARD SERIES. Valorant controller: hands surrounded by rising spheres of dark smoke edged with red light, stylized Valorant look.` |
-| `valo-sentinelle.png` | `CARD SERIES. Valorant sentinel: defensive stance next to a glowing tripwire and a deployable turret, a translucent red barrier wall behind, stylized Valorant look.` |
-| `valo-flex.png` | `CARD SERIES. Valorant flex player: rifle held low, two different ability effects in each hand (smoke and red energy), stylized Valorant look.` |
+| `lol-top.png` | `PANINI SERIES. Colors: dark teal #0A2B36 and teal #0F5F6B with gold accents. League of Legends top laner with a heavy fantasy greatsword on the shoulder.` |
+| `lol-jungle.png` | `PANINI SERIES. Colors: dark teal #0A2B36 and teal #0F5F6B with gold accents. League of Legends jungler in a crouched hunter pose with curved dual claw blades.` |
+| `lol-mid.png` | `PANINI SERIES. Colors: dark teal #0A2B36 and teal #0F5F6B with gold accents. League of Legends mid laner, a mage holding an orb of swirling arcane energy.` |
+| `lol-adc.png` | `PANINI SERIES. Colors: dark teal #0A2B36 and teal #0F5F6B with gold accents. League of Legends marksman holding an ornate rifle across the chest.` |
+| `lol-support.png` | `PANINI SERIES. Colors: dark teal #0A2B36 and teal #0F5F6B with gold accents. League of Legends support raising a glowing protective shield of light.` |
 
-### Rocket League (une variante par place dans le roster)
-
-| Fichier | Prompt |
-|---|---|
-| `rl-1.png` | `CARD SERIES. Rocket League player: holding a gaming controller, a rocket-powered battle car with red boost flames behind them in a dark arena.` |
-| `rl-2.png` | `CARD SERIES. Rocket League player: arms crossed, the giant glowing match ball floating behind their shoulder, arena lights in the dark.` |
-| `rl-3.png` | `CARD SERIES. Rocket League player: sitting on the hood of a battle car, goal net glowing orange and red in the background.` |
-
-### osu!
+### Valorant — fond rouge `#FF4655` / marine `#0F1923`
 
 | Fichier | Prompt |
 |---|---|
-| `osu-1.png` | `CARD SERIES. osu! rhythm player: holding a pen tablet stylus, pink and red hit circles and a glowing cursor trail floating around.` |
-| `osu-2.png` | `CARD SERIES. osu! rhythm player: headphones on, hand raised mid-tap, slider tracks of pink and red light curving behind.` |
+| `valo-duelliste.png` | `PANINI SERIES. Colors: red #FF4655 and navy #0F1923. Valorant duelist dashing forward with a blade of energy, motion streaks.` |
+| `valo-initiateur.png` | `PANINI SERIES. Colors: red #FF4655 and navy #0F1923. Valorant initiator launching a recon drone, radar rings expanding.` |
+| `valo-controleur.png` | `PANINI SERIES. Colors: red #FF4655 and navy #0F1923. Valorant controller with spheres of smoke rising from the hands.` |
+| `valo-sentinelle.png` | `PANINI SERIES. Colors: red #FF4655 and navy #0F1923. Valorant sentinel in a defensive stance next to a deployable turret and a tripwire.` |
+| `valo-flex.png` | `PANINI SERIES. Colors: red #FF4655 and navy #0F1923. Valorant flex player, rifle held low, a different ability glowing in each hand.` |
 
-**Astuce :** si un portrait sort avec un visage visible ou du texte, demande « same image, face hidden in the hood shadow, no text ».
+### osu! — fond rose `#FF66AA` / prune `#5B1A4A`
+
+| Fichier | Prompt |
+|---|---|
+| `osu-1.png` | `PANINI SERIES. Colors: pink #FF66AA and plum #5B1A4A. osu! rhythm player holding a pen tablet stylus, round hit circles popping around.` |
+| `osu-2.png` | `PANINI SERIES. Colors: pink #FF66AA and plum #5B1A4A. osu! rhythm player with headphones on, mid-tap, curved slider tracks behind.` |
+
+**Astuces :**
+- Si une image sort avec du texte, un numéro ou un cadre : « same image, remove all text, numbers and borders ».
+- Si tu préfères des visages visibles (plus fidèle aux vraies vignettes Panini), retire la dernière ligne du bloc. Les visages seront inventés : ce ne seront pas ceux des joueurs.
 
 ---
 
