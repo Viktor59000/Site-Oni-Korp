@@ -97,7 +97,7 @@
           "name": "Principal",
           "players": [
             {
-              "name": "Aze",
+              "name": "Any",
               "role": "Duelliste"
             },
             {
@@ -109,7 +109,7 @@
               "role": "Contrôleur"
             },
             {
-              "name": "Any",
+              "name": "Aze",
               "role": "Sentinelle"
             },
             {

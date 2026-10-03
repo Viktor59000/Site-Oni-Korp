@@ -1,0 +1,28 @@
+---
+// Pictogrammes de rôle maison (traits, viewBox 100×100), dessinés pour le site :
+// rôles League of Legends et Valorant. Retourne rien si le rôle est inconnu.
+const { role, class: className } = Astro.props;
+
+const icons = {
+  // League of Legends : position sur la carte
+  top: 'M20 82V20h62 M20 20h26v26H20z',
+  jungle: 'M30 14q-12 36 6 72 M50 14q-12 36 6 72 M70 14q-12 36 6 72',
+  mid: 'M22 78L78 22 M20 38V20h18 M80 62v18H62',
+  adc: 'M18 80h62V18 M54 54h26v26H54z',
+  support: 'M50 12l32 12v26c0 20-16 32-32 38-16-6-32-18-32-38V24z M50 34v32 M34 50h32',
+  // Valorant : fonction dans l'équipe
+  duelliste: 'M16 84L74 26 M52 16h32v32 M30 84L84 30',
+  initiateur: 'M50 50m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0 M22 52a28 28 0 0 1 56 0 M8 54a42 42 0 0 1 84 0',
+  'contrôleur': 'M35 58m-20 0a20 20 0 1 0 40 0a20 20 0 1 0-40 0 M65 58m-20 0a20 20 0 1 0 40 0a20 20 0 1 0-40 0 M50 34m-20 0a20 20 0 1 0 40 0a20 20 0 1 0-40 0',
+  sentinelle: 'M20 86V36h12V24h12v12h12V24h12v12h12v50z M42 86V64h16v22',
+  flex: 'M18 36h58 M62 22l14 14-14 14 M82 64H24 M38 50L24 64l14 14',
+};
+
+const key = (role ?? '').toLowerCase().split('/')[0].trim();
+const d = icons[key];
+---
+{d && (
+  <svg class={className} viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+    <path d={d} />
+  </svg>
+)}

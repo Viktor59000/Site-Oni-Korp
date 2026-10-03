@@ -39,7 +39,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
               <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
               <ul class="players">
                 {r.players.map(norm).map((p) => (
-                  <li><PlayerCard name={p.name} photo={p.photo} art={small(g.banner)} roster={p.role ?? (g.rosters.length > 1 ? `Roster ${r.name}` : g.name)} /></li>
+                  <li><PlayerCard name={p.name} photo={p.photo} role={p.role} label={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
                 ))}
               </ul>
             </div>
