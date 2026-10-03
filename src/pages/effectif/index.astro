@@ -8,6 +8,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
 ---
 <Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
   <header class="page-head">
+    <img class="page-head__bg" src="/img/entete-effectif.webp" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">隊</span>
     <div class="wrap">
       <h1>Effectif</h1>
@@ -23,7 +24,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
             <h2 id={`${g.id}-title`}>{g.name}</h2>
             <p>{g.pitch}</p>
           </div>
-          <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1500" height="500" /></div>
+          <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1983" height="793" /></div>
         </div>
         <div class="rosters">
           {g.rosters.map((r) => (

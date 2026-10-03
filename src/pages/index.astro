@@ -12,9 +12,9 @@ const rosterLabel = (g) => {
 ---
 <Base>
   <section class="hero" aria-labelledby="hero-title">
-    <div class="hero__glow"></div>
-    <span class="hero__kanji" aria-hidden="true">鬼</span>
-    <img class="hero__car" src="/img/decal-octane-domicile.webp" alt="" width="1600" height="900" fetchpriority="high" />
+    <img class="hero__bg" src="/img/hero-fond.webp" alt="" width="1983" height="793" fetchpriority="high" />
+    <img class="hero__kanji" src="/img/kanji-oni-neon.webp" alt="" width="1402" height="1122" />
+    <img class="hero__car" src="/img/decal-octane-domicile.webp" alt="" width="1600" height="900" />
     <span class="hero__motto" aria-hidden="true">Oni's never on knees</span>
     <div class="wrap hero__inner">
       <img class="hero__logo" src="/img/oni-logo-dark.svg" alt="Logo Oni Korp" width="110" height="112" />
@@ -30,7 +30,7 @@ const rosterLabel = (g) => {
   <section class="section" aria-labelledby="poles-title">
     <div class="wrap">
       <div class="section__head">
-        <h2 id="poles-title">Quatre jeux, un seul masque.</h2>
+        <h2 id="poles-title">Quatre jeux, un seul blason.</h2>
         <p>Chaque pôle a son staff, ses entraînements et ses objectifs de compétition.</p>
       </div>
       <ul class="games">
@@ -42,7 +42,7 @@ const rosterLabel = (g) => {
                 <div class="game__meta">{rosterLabel(g)}</div>
                 <p class="game__pitch">{g.pitch}</p>
               </div>
-              <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1500" height="500" /></div>
+              <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1983" height="793" /></div>
             </a>
           </li>
         ))}
