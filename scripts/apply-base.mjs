@@ -24,6 +24,7 @@ for await (const file of walk('dist')) {
   const src = await readFile(file, 'utf8');
   const out = src
     .replace(/(\s(?:href|src|content)=["'])(\/[^"']*)/g, (_, a, p) => a + fix(p))
+    .replace(/(\ssrcset=["'])([^"']*)/g, (_, a, list) => a + list.replace(/(^|,\s*)(\/[^\s,]+)/g, (__, sep, p) => sep + fix(p)))
     .replace(/url\((["']?)(\/[^)"']*)/g, (_, q, p) => `url(${q}${fix(p)}`);
   if (out !== src) await writeFile(file, out);
 }

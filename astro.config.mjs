@@ -7,4 +7,6 @@ export default defineConfig({
   site: process.env.SITE_URL || 'https://viktor59000.github.io',
   base: process.env.BASE_PATH ? `/${process.env.BASE_PATH}/` : '/',
   integrations: [sitemap()],
+  // CSS du site (~15 Ko) intégré dans chaque page : supprime la requête bloquante
+  build: { inlineStylesheets: 'always' },
 });

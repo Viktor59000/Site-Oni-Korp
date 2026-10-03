@@ -1,4 +1,5 @@
 ---
+import { srcset, small } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
 
@@ -21,7 +22,7 @@ const decals = [
 ---
 <Base title="Vestiaire" description="Decals Rocket League Oni Korp × Carl à télécharger gratuitement (Octane, Fennec) et merch du club.">
   <header class="page-head">
-    <img class="page-head__bg" src="/img/entete-vestiaire.webp" alt="" width="1983" height="793" />
+    <img class="page-head__bg" src="/img/entete-vestiaire.webp" srcset={srcset("/img/entete-vestiaire.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">装</span>
     <div class="wrap">
       <h1>Vestiaire</h1>
@@ -33,8 +34,8 @@ const decals = [
     {decals.map((d) => (
       <section class="decal" aria-labelledby={`${d.id}-title`} data-decal>
         <div class="decal__stage">
-          <img src={`/img/decal-${d.id}-domicile.webp`} alt={`${d.car} Oni Korp × Carl, version domicile`} loading="lazy" width="1600" height="900" data-side="domicile" />
-          <img src={`/img/decal-${d.id}-visiteur.webp`} alt={`${d.car} Oni Korp × Carl, version visiteur`} loading="lazy" width="1600" height="900" data-side="visiteur" hidden />
+          <img src={`/img/decal-${d.id}-domicile.webp`} srcset={srcset(`/img/decal-${d.id}-domicile.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl, version domicile`} loading="lazy" width="1600" height="900" data-side="domicile" />
+          <img src={`/img/decal-${d.id}-visiteur.webp`} srcset={srcset(`/img/decal-${d.id}-visiteur.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl, version visiteur`} loading="lazy" width="1600" height="900" data-side="visiteur" hidden />
         </div>
         <div>
           <h2 id={`${d.id}-title`}>{d.car} Oni Korp × Carl</h2>

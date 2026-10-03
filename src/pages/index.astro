@@ -1,4 +1,5 @@
 ---
+import { srcset, small } from '../lib/img.js';
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import site from '../data/site.json';
@@ -12,9 +13,9 @@ const rosterLabel = (g) => {
 ---
 <Base>
   <section class="hero" aria-labelledby="hero-title">
-    <img class="hero__bg" src="/img/hero-fond.webp" alt="" width="1983" height="793" fetchpriority="high" />
-    <img class="hero__kanji" src="/img/kanji-oni-neon.webp" alt="" width="1402" height="1122" />
-    <img class="hero__car" src="/img/decal-octane-domicile.webp" alt="" width="1600" height="900" />
+    <img class="hero__bg" src="/img/hero-fond.webp" srcset={srcset("/img/hero-fond.webp")} sizes="100vw" alt="" width="1983" height="793" fetchpriority="high" />
+    <img class="hero__kanji" src="/img/kanji-oni-neon.webp" srcset={srcset("/img/kanji-oni-neon.webp")} sizes="(max-width: 860px) 95vw, 50vw" alt="" width="1402" height="1122" />
+    <img class="hero__car" src="/img/decal-octane-domicile.webp" srcset={srcset("/img/decal-octane-domicile.webp")} sizes="(max-width: 860px) 125vw, 52vw" alt="" width="1600" height="900" />
     <span class="hero__motto" aria-hidden="true">Oni's never on knees</span>
     <div class="wrap hero__inner">
       <img class="hero__logo" src="/img/oni-logo-dark.svg" alt="Logo Oni Korp" width="110" height="112" />
@@ -42,7 +43,7 @@ const rosterLabel = (g) => {
                 <div class="game__meta">{rosterLabel(g)}</div>
                 <p class="game__pitch">{g.pitch}</p>
               </div>
-              <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1983" height="793" /></div>
+              <div class="game__img"><img src={g.banner} srcset={srcset(g.banner)} sizes="(max-width: 720px) 100vw, 46vw" alt="" loading="lazy" width="1200" height="480" /></div>
             </a>
           </li>
         ))}
@@ -123,7 +124,7 @@ const rosterLabel = (g) => {
         <p style="margin-top:1rem;color:var(--ash)">Notre partenaire Carl signe avec nous les decals Octane et Fennec 2023, domicile et visiteur. Les textures sont téléchargeables gratuitement.</p>
         <a class="btn" href="/vestiaire/">Voir les decals</a>
       </div>
-      <img src="/img/decal-fennec-domicile.webp" alt="Fennec aux couleurs Oni Korp × Carl, version domicile" loading="lazy" width="1600" height="900" />
+      <img src="/img/decal-fennec-domicile.webp" srcset={srcset("/img/decal-fennec-domicile.webp")} sizes="(max-width: 860px) 100vw, 55vw" alt="Fennec aux couleurs Oni Korp × Carl, version domicile" loading="lazy" width="1600" height="900" />
     </div>
   </section>
 </Base>

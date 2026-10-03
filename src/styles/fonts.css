@@ -1,0 +1,47 @@
+/* Dela Gothic One : latin + uniquement les tranches contenant les kanji utilisés (鬼 志 隊 挑 装).
+   Ajouter une tranche ici si un nouveau kanji est utilisé dans le site. */
+/* dela-gothic-one-[93]-400-normal */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-93-400-normal.woff2) format('woff2'), url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-93-400-normal.woff) format('woff');
+  unicode-range: U+21d2,U+25ce,U+300a-300b,U+4e89,U+4e9c,U+4ea1,U+5263,U+53cc,U+5426,U+5869,U+5947,U+598a,U+5999,U+5e55,U+5e72,U+5e79,U+5fae,U+5fb9,U+602a,U+6163,U+624d,U+6749,U+6c5a,U+6cbf,U+6d45,U+6dfb,U+6e7e,U+708e,U+725b,U+7763,U+79c0,U+7bc4,U+7c89,U+7e01,U+7e2e,U+8010,U+8033,U+8c6a,U+8cc3,U+8f1d,U+8f9b,U+8fb2,U+907f,U+90f7,U+9707,U+9818,U+9b3c,U+ff0a,U+ff4d;
+}
+/* dela-gothic-one-[95]-400-normal */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-95-400-normal.woff2) format('woff2'), url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-95-400-normal.woff) format('woff');
+  unicode-range: U+2193,U+25b2,U+4e4b,U+516d,U+51c4,U+529f,U+52c9,U+5360,U+5442,U+5857,U+5915,U+59eb,U+5a9b,U+5c3b,U+6012,U+61b6,U+62b1,U+6311,U+6577,U+65e2,U+65ec,U+6613,U+6790,U+6cb9,U+7372,U+76ae,U+7d5e,U+7fcc,U+88ab,U+88d5,U+8caf,U+8ddd,U+8ecd,U+8f38,U+8f9e,U+8feb,U+9063,U+90f5,U+93e1,U+968a,U+968f,U+98fe,U+9ec4,U+ff1d,U+ff27,U+ff2a,U+ff36,U+ff3b,U+ff3d,U+ffe5;
+}
+/* dela-gothic-one-[100]-400-normal */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-100-400-normal.woff2) format('woff2'), url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-100-400-normal.woff) format('woff');
+  unicode-range: U+4e08,U+4f9d,U+5012,U+514d,U+51b7,U+5275,U+53ca,U+53f8,U+5584,U+57fc,U+5b9d,U+5bfa,U+5c3e,U+5f01,U+5fb4,U+5fd7,U+606f,U+62e1,U+6563,U+6674,U+6cb3,U+6d3e,U+6d74,U+6e1b,U+6e2f,U+718a,U+7247,U+79d8,U+7d14,U+7d66,U+7d71,U+7df4,U+7e41,U+80cc,U+8155,U+83d3,U+8a95,U+8ab2,U+8ad6,U+8ca1,U+9000,U+9006,U+9678,U+97d3,U+9808,U+98ef,U+9a5a,U+9b45,U+ff23,U+ff30;
+}
+/* dela-gothic-one-[109]-400-normal */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-109-400-normal.woff2) format('woff2'), url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-109-400-normal.woff) format('woff');
+  unicode-range: U+266a,U+4f11,U+533a,U+5343,U+534a,U+53cd,U+5404,U+56f3,U+5b57-5b58,U+5bae,U+5c4a,U+5e0c,U+5e2f,U+5eab,U+5f35,U+5f79,U+614b,U+6226,U+629e,U+65c5,U+6625,U+6751,U+6821,U+6b69,U+6b8b,U+6bce,U+6c42,U+706b,U+7c21,U+7cfb,U+805e,U+80b2,U+82b8,U+843d,U+8853,U+88c5,U+8a3c,U+8a66,U+8d8a,U+8fba,U+9069,U+91cf,U+9752,U+975e,U+9999,U+ff0f-ff10,U+ff14-ff15;
+}
+/* dela-gothic-one-latin-400-normal */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-latin-400-normal.woff2) format('woff2'), url(../../node_modules/@fontsource/dela-gothic-one/files/dela-gothic-one-latin-400-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}

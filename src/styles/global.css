@@ -31,7 +31,14 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html {
+  -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
+  /* La barre de navigation collante ne doit pas masquer l'élément ciblé ou focalisé */
+  scroll-padding-top: 84px;
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+a, button { touch-action: manipulation; }
 body {
   margin: 0;
   background: var(--black);
@@ -44,7 +51,7 @@ body {
 }
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
-h1, h2, h3 { font-family: var(--font-display); font-weight: 400; line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
 p { margin: 0 0 1em; max-width: 62ch; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 
@@ -105,7 +112,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 
 /* ---------- Hero ---------- */
-.hero { position: relative; overflow: hidden; min-height: min(92vh, 860px); display: grid; isolation: isolate; }
+.hero { position: relative; overflow: hidden; min-height: min(92vh, 860px); min-height: min(92dvh, 860px); display: grid; isolation: isolate; }
 .hero__bg {
   position: absolute; z-index: -4; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: right center;
   opacity: .5;
@@ -136,9 +143,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   font-size: var(--step--1); letter-spacing: .08em; color: var(--ash);
 }
 @media (max-width: 860px) {
-  .hero__car { width: 125vw; right: -40vw; bottom: 0; opacity: .5; }
-  .hero__kanji { width: 95vw; right: -25vw; opacity: .45; }
-  .hero__bg { opacity: .35; }
+  .hero__car { width: 92vw; right: -22vw; bottom: -2%; opacity: .85; }
+  .hero__kanji { width: 72vw; right: -14vw; top: 30%; opacity: .55; }
+  .hero__bg { opacity: .3; }
   .hero__motto { display: none; }
 }
 
@@ -284,7 +291,7 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .decal h2 { font-size: var(--step-2); }
 .decal p { color: var(--ash); margin-top: .75rem; }
 .switch { display: inline-flex; border: 2px solid var(--bone); margin-top: 1.25rem; }
-.switch button { background: none; border: 0; color: var(--bone); font: inherit; font-weight: 700; padding: .55rem 1.1rem; cursor: pointer; }
+.switch button { background: none; border: 0; color: var(--bone); font: inherit; font-weight: 700; padding: .55rem 1.1rem; min-height: 44px; cursor: pointer; }
 .switch button[aria-pressed="true"] { background: var(--bone); color: var(--black); }
 .decal .btn { margin-top: 1.5rem; }
 @media (max-width: 860px) { .decal { grid-template-columns: 1fr; } }
@@ -332,7 +339,7 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 @media (hover: none) { .game__img img { filter: none; } }
 
 /* ---------- Avatars par défaut ---------- */
-.players { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.players { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 1rem; margin-top: 1rem; }
 .players li { display: grid; gap: .5rem; }
 .players span { font-weight: 700; overflow-wrap: anywhere; }
 .avatar { position: relative; display: block; overflow: hidden; background: #141414; aspect-ratio: 4 / 5; width: 100%; object-fit: cover; container-type: inline-size; }
@@ -405,3 +412,14 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .pcard__plus { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 50cqi; color: var(--lacquer-hi); line-height: 1; padding-bottom: 20%; }
 .pcard__foot .pcard__name { display: block; font-family: var(--font-display); }
 .pcard--open:hover .pcard__plus { color: #fff; }
+
+/* Cibles tactiles confortables (44 px) pour les liens en liste sur mobile */
+@media (max-width: 720px) {
+  .footer li a, .footer__bottom a { display: inline-block; padding-block: .6rem; }
+}
+
+/* Le clip-path rogne aussi le contour de focus : on le retire le temps du focus clavier */
+.btn:focus-visible, .pcard--open:focus-visible { clip-path: none; outline-offset: 3px; }
+.footer__bottom a { display: inline-block; padding-block: .35rem; }
+
+@media (max-width: 860px) { .section--brush::before { opacity: .3; } }

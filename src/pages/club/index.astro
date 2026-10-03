@@ -1,10 +1,11 @@
 ---
+import { srcset, small } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
 ---
 <Base title="Le club" description="L'histoire d'Oni Korp depuis 2021, nos valeurs et nos ambitions.">
   <header class="page-head">
-    <img class="page-head__bg" src="/img/entete-club.webp" alt="" width="1983" height="793" />
+    <img class="page-head__bg" src="/img/entete-club.webp" srcset={srcset("/img/entete-club.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">志</span>
     <div class="wrap">
       <h1>Le club</h1>

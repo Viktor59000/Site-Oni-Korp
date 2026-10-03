@@ -1,4 +1,5 @@
 ---
+import { srcset, small } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import Avatar from '../../components/Avatar.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
@@ -9,7 +10,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
 ---
 <Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
   <header class="page-head">
-    <img class="page-head__bg" src="/img/entete-effectif.webp" alt="" width="1983" height="793" />
+    <img class="page-head__bg" src="/img/entete-effectif.webp" srcset={srcset("/img/entete-effectif.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">隊</span>
     <div class="wrap">
       <h1>Effectif</h1>
@@ -25,7 +26,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
             <h2 id={`${g.id}-title`}>{g.name}</h2>
             <p>{g.pitch}</p>
           </div>
-          <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1983" height="793" /></div>
+          <div class="game__img"><img src={g.banner} srcset={srcset(g.banner)} sizes="(max-width: 720px) 100vw, 42vw" alt="" loading="lazy" width="1200" height="480" /></div>
         </div>
         <div class="rosters">
           {g.rosters.filter((r) => r.players.length).map((r) => (
@@ -33,7 +34,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
               <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
               <ul class="players">
                 {r.players.map(norm).map((p) => (
-                  <li><PlayerCard name={p.name} photo={p.photo} art={g.banner} roster={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
+                  <li><PlayerCard name={p.name} photo={p.photo} art={small(g.banner)} roster={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
                 ))}
               </ul>
             </div>
@@ -44,7 +45,7 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
               <ul class="players">
                 <li>
                   <a class="pcard pcard--open" href="/recrutement/">
-                    <img class="pcard__art" src={g.banner} alt="" loading="lazy" />
+                    <img class="pcard__art" src={small(g.banner)} alt="" loading="lazy" />
                     <span class="pcard__plus" aria-hidden="true">+</span>
                     <span class="pcard__foot"><span class="pcard__roster">{g.name}</span><span class="pcard__name" style="font-size:9cqi">Ta place est ici</span></span>
                   </a>
