@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+const { title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert.", image = '/og.jpg' } = Astro.props;
+const fullTitle = title ? `${title} | Oni Korp` : "Oni Korp | Club esport, jamais à genoux";
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="Oni Korp" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(image, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'SportsOrganization', name: 'Oni Korp',
+      sport: 'Esport', foundingDate: '2021-07-12', url: Astro.site?.href, logo: new URL('/img/oni-logo.webp', Astro.site).href,
+      sameAs: ['https://www.twitch.tv/oni_korp', 'https://x.com/OniKorpPro', 'https://www.tiktok.com/@onikorp.officiel', 'https://youtube.com/channel/UCbjfbZaMnTJBZkIXrjQGsNQ'],
+    })} />
+  </head>
+  <body>
+    <a class="skip" href="#contenu">Aller au contenu</a>
+    <Nav />
+    <main id="contenu">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

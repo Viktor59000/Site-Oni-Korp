@@ -1,0 +1,57 @@
+---
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+---
+<Base title="Le club" description="L'histoire d'Oni Korp depuis 2021, nos valeurs et nos ambitions.">
+  <header class="page-head">
+    <span class="page-head__kanji" aria-hidden="true">志</span>
+    <div class="wrap">
+      <h1>Le club</h1>
+      <p>Une structure née entre amis, devenue un club multi-jeux qui ne lâche rien.</p>
+    </div>
+  </header>
+
+  <section class="section section--bone" aria-labelledby="histoire">
+    <div class="wrap club">
+      <div class="club__story">
+        <h2 id="histoire" style="font-size:var(--step-3);margin-bottom:1.5rem">Notre histoire</h2>
+        <p>Oni Korp rassemble depuis 2021 des joueurs qui ont l'ambition des plus grands. Chaque joueur est choisi avec soin, après une présentation en ticket sur notre Discord, puis intégré à un roster adapté à son niveau.</p>
+        <p>Le club a connu des succès, des défaites et des périodes difficiles. En 2024, une refonte complète a remis à plat l'organisation : nouveaux outils, procédures plus claires et quatre valeurs écrites noir sur blanc.</p>
+        <p>Notre devise n'a pas changé : <em>Oni's never on knees</em>.</p>
+      </div>
+      <ol class="timeline" aria-label="Dates clés">
+        <li><time datetime="2021-07-12">12 juillet 2021</time><p>Création d'Oni Korp sur Rocket League.</p></li>
+        <li><time datetime="2022">2022</time><p>Showmatchs castés sur Twitch face à Dream Team, Passione, K-Othic ou Imperial.</p></li>
+        <li><time datetime="2023">2023</time><p>Partenariat avec Carl et sortie des decals Octane et Fennec.</p></li>
+        <li><time datetime="2024-01">Janvier 2024</time><p>Ouverture des pôles League of Legends, Valorant et osu!.</p></li>
+        <li><time datetime="2024">2024</time><p>Refonte de la structure et des méthodes de travail.</p></li>
+        <li><time>Prochaine étape</time><p>Statut d'association loi 1901 et locaux.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="valeurs">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="valeurs">Nos quatre valeurs</h2>
+        <p>Elles guident le recrutement, la vie des rosters et chaque décision du staff.</p>
+      </div>
+      <dl class="values values--dark">
+        <div><dt aria-hidden="true">C</dt><dd><strong>Communication</strong><span>Un dialogue ouvert et transparent avec tous les membres. Les décisions importantes sont expliquées, pas imposées.</span></dd></div>
+        <div><dt aria-hidden="true">C</dt><dd><strong>Compétitivité</strong><span>Une recherche constante de performance : entraînements planifiés, reviews de matchs, objectifs par roster.</span></dd></div>
+        <div><dt aria-hidden="true">C</dt><dd><strong>Compréhension</strong><span>Une écoute attentive des joueurs et du staff, pour collaborer sans tension.</span></dd></div>
+        <div><dt aria-hidden="true">C</dt><dd><strong>Convivialité</strong><span>Un esprit de camaraderie et de solidarité. On gagne ensemble, on perd ensemble.</span></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section section--red">
+    <div class="wrap recruit" style="align-items:center">
+      <h2>Envie d’écrire la suite avec nous&nbsp;?</h2>
+      <div class="recruit__actions" style="margin-top:0">
+        <a class="btn btn--ink" href="/recrutement/">Postuler</a>
+        <a class="btn btn--ghost" href={site.discord} rel="noopener">Rejoindre le Discord</a>
+      </div>
+    </div>
+  </section>
+</Base>

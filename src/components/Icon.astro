@@ -1,0 +1,7 @@
+---
+import { siTwitch, siYoutube, siTiktok, siX, siDiscord } from 'simple-icons';
+const icons = { twitch: siTwitch, youtube: siYoutube, tiktok: siTiktok, x: siX, discord: siDiscord };
+const { name } = Astro.props;
+const icon = icons[name];
+---
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={icon.path} /></svg>

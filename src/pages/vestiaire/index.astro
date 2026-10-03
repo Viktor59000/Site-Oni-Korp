@@ -1,0 +1,80 @@
+---
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+
+const decals = [
+  {
+    id: 'octane',
+    car: 'Octane',
+    text: 'Le decal officiel Oni Korp × Carl sur la voiture la plus jouée du jeu. Deux variantes : domicile en noir et rouge, visiteur en blanc.',
+    file: '/downloads/oni-korp-x-carl-octane-2023.zip',
+    size: '12,6 Mo',
+  },
+  {
+    id: 'fennec',
+    car: 'Fennec',
+    text: 'La même identité sur la Fennec, pour celles et ceux qui préfèrent sa hitbox.',
+    file: '/downloads/oni-korp-x-carl-fennec-2023.zip',
+    size: '9,1 Mo',
+  },
+];
+---
+<Base title="Vestiaire" description="Decals Rocket League Oni Korp × Carl à télécharger gratuitement (Octane, Fennec) et merch du club.">
+  <header class="page-head">
+    <span class="page-head__kanji" aria-hidden="true">装</span>
+    <div class="wrap">
+      <h1>Vestiaire</h1>
+      <p>Porte les couleurs du club, en jeu comme dans la vraie vie.</p>
+    </div>
+  </header>
+
+  <div class="wrap">
+    {decals.map((d) => (
+      <section class="decal" aria-labelledby={`${d.id}-title`} data-decal>
+        <div class="decal__stage">
+          <img src={`/img/decal-${d.id}-domicile.webp`} alt={`${d.car} Oni Korp × Carl, version domicile`} loading="lazy" width="1600" height="900" data-side="domicile" />
+          <img src={`/img/decal-${d.id}-visiteur.webp`} alt={`${d.car} Oni Korp × Carl, version visiteur`} loading="lazy" width="1600" height="900" data-side="visiteur" hidden />
+        </div>
+        <div>
+          <h2 id={`${d.id}-title`}>{d.car} Oni Korp × Carl</h2>
+          <p>{d.text}</p>
+          <div class="switch" role="group" aria-label="Variante affichée">
+            <button type="button" aria-pressed="true" data-show="domicile">Domicile</button>
+            <button type="button" aria-pressed="false" data-show="visiteur">Visiteur</button>
+          </div>
+          <div>
+            <a class="btn" href={d.file} download>Télécharger les textures ({d.size})</a>
+          </div>
+          <p class="decal__note">Textures PNG et presets JSON, à utiliser avec BakkesMod (AlphaConsole).</p>
+        </div>
+      </section>
+    ))}
+
+    <section class="section" aria-labelledby="merch-title">
+      <div class="merch">
+        <img src="/img/sweat-front.webp" alt="Sweat Oni Korp, face avant" loading="lazy" width="411" height="516" />
+        <img src="/img/sweat-back.webp" alt="Sweat Oni Korp, dos" loading="lazy" width="471" height="535" />
+        <div>
+          <h2 id="merch-title" style="font-size:var(--step-2)">Le sweat du club</h2>
+          <p style="color:var(--ash);margin-top:.75rem">Un nouveau drop est en préparation. Les précommandes seront annoncées en premier sur le Discord.</p>
+          <a class="btn btn--ghost" href={site.discord} rel="noopener">Être prévenu sur Discord</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<script>
+  document.querySelectorAll('[data-decal]').forEach((block) => {
+    const buttons = block.querySelectorAll('[data-show]');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const side = btn.getAttribute('data-show');
+        buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        block.querySelectorAll('img[data-side]').forEach((img) => {
+          img.toggleAttribute('hidden', img.getAttribute('data-side') !== side);
+        });
+      });
+    });
+  });
+</script>

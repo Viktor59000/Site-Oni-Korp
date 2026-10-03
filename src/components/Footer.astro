@@ -1,0 +1,39 @@
+---
+import site from '../data/site.json';
+import Icon from './Icon.astro';
+---
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__top">
+      <div>
+        <div class="footer__brand"><img src="/img/oni-logo-dark.webp" alt="" width="52" height="53" />Oni Korp</div>
+        <p style="margin-top:1rem">Club esport français fondé le 12 juillet 2021. Rocket League, League of Legends, Valorant et osu!.</p>
+        <div class="socials">
+          {site.socials.map((s) => (
+            <a href={s.url} rel="noopener" aria-label={`Oni Korp sur ${s.label}`}><Icon name={s.icon} /></a>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h2>Le club</h2>
+        <ul>
+          <li><a href="/club/">Histoire et valeurs</a></li>
+          <li><a href="/effectif/">Effectif</a></li>
+          <li><a href="/vestiaire/">Vestiaire et decals</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Nous rejoindre</h2>
+        <ul>
+          <li><a href="/recrutement/#joueurs">Candidature joueur</a></li>
+          <li><a href="/recrutement/#staff">Candidature staff</a></li>
+          <li><a href={site.discord} rel="noopener">Serveur Discord</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© {new Date().getFullYear()} Oni Korp. #Oni'sNeverOnKnees</span>
+      <a href="/mentions-legales/">Mentions légales</a>
+    </div>
+  </div>
+</footer>

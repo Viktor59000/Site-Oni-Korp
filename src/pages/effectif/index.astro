@@ -1,0 +1,54 @@
+---
+import Base from '../../layouts/Base.astro';
+import data from '../../data/rosters.json';
+---
+<Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
+  <header class="page-head">
+    <span class="page-head__kanji" aria-hidden="true">隊</span>
+    <div class="wrap">
+      <h1>Effectif</h1>
+      <p>Les rosters par jeu et le staff qui les fait tourner.</p>
+    </div>
+  </header>
+
+  <div class="wrap">
+    {data.games.map((g) => (
+      <section class="roster-game" id={g.id} aria-labelledby={`${g.id}-title`}>
+        <div class="roster-game__head">
+          <div>
+            <h2 id={`${g.id}-title`}>{g.name}</h2>
+            <p>{g.pitch}</p>
+          </div>
+          <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1500" height="500" /></div>
+        </div>
+        <div class="rosters">
+          {g.rosters.map((r) => (
+            <div class="roster">
+              <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
+              <ul>
+                {r.players.length
+                  ? r.players.map((p) => <li>{p}</li>)
+                  : <li class="tba">Line-up à annoncer</li>}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="roster-game roster-game--last" id="staff" aria-labelledby="staff-title">
+      <div class="section__head">
+        <h2 id="staff-title">Staff</h2>
+        <p>Les postes sans nom sont ouverts. <a href="/recrutement/#staff">Candidater au staff</a></p>
+      </div>
+      <dl class="staff">
+        {data.staff.map((s) => (
+          <div>
+            <dt>{s.role}</dt>
+            {s.name ? <dd>{s.name}</dd> : <dd class="open">Poste ouvert</dd>}
+          </div>
+        ))}
+      </dl>
+    </section>
+  </div>
+</Base>

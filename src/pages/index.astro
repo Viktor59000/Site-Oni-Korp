@@ -1,0 +1,129 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import site from '../data/site.json';
+import data from '../data/rosters.json';
+import matches from '../data/matches.json';
+
+const rosterLabel = (g) => {
+  const n = g.rosters.length;
+  return g.id === 'rocket-league' ? `${n} rosters` : `Pôle ouvert en ${g.since}`;
+};
+---
+<Base>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__glow"></div>
+    <span class="hero__kanji" aria-hidden="true">鬼</span>
+    <img class="hero__car" src="/img/decal-octane-domicile.webp" alt="" width="1600" height="900" fetchpriority="high" />
+    <span class="hero__motto" aria-hidden="true">Oni's never on knees</span>
+    <div class="wrap hero__inner">
+      <img class="hero__logo" src="/img/oni-logo-dark.webp" alt="Logo Oni Korp" width="110" height="112" />
+      <h1 id="hero-title">Jamais à genoux.</h1>
+      <p class="hero__lead">Club esport français né sur Rocket League en 2021, aujourd'hui sur quatre jeux.</p>
+      <div class="hero__actions">
+        <a class="btn" href="/recrutement/">Postuler</a>
+        <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Rejoindre le Discord</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="poles-title">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="poles-title">Quatre jeux, un seul masque.</h2>
+        <p>Chaque pôle a son staff, ses entraînements et ses objectifs de compétition.</p>
+      </div>
+      <ul class="games">
+        {data.games.map((g) => (
+          <li>
+            <a class="game" href={`/effectif/#${g.id}`}>
+              <div>
+                <h3>{g.name}</h3>
+                <div class="game__meta">{rosterLabel(g)}</div>
+                <p class="game__pitch">{g.pitch}</p>
+              </div>
+              <div class="game__img"><img src={g.banner} alt="" loading="lazy" width="1500" height="500" /></div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="club-title">
+    <div class="wrap club">
+      <div class="club__story">
+        <h2 id="club-title" class="sr-only">Le club</h2>
+        <p class="big">Des amis, un Discord et l'envie de se surpasser chaque jour.</p>
+        <p>Oni Korp est né le 12 juillet 2021 pour rassembler des joueurs Rocket League qui visent plus haut. Des victoires, des défaites, des saisons difficiles : la volonté de progresser n'a jamais bougé.</p>
+        <p>En janvier 2024, le club a ouvert des rosters League of Legends, Valorant et osu!. Prochaine étape : le statut d'association loi 1901.</p>
+        <a class="btn btn--ink" href="/club/">Lire notre histoire</a>
+      </div>
+      <dl class="values" aria-label="Nos valeurs">
+        <div><dt aria-hidden="true">C</dt><dd><strong>Communication</strong><span>Un dialogue ouvert entre joueurs, staff et communauté.</span></dd></div>
+        <div><dt aria-hidden="true">C</dt><dd><strong>Compétitivité</strong><span>Chaque entraînement compte, chaque match se prépare.</span></dd></div>
+        <div><dt aria-hidden="true">C</dt><dd><strong>Compréhension</strong><span>On écoute avant de juger, on progresse ensemble.</span></dd></div>
+        <div><dt aria-hidden="true">C</dt><dd><strong>Convivialité</strong><span>Une structure sérieuse où il fait bon vivre.</span></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="matchs-title">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="matchs-title">Sur le terrain.</h2>
+        <p>Showmatchs castés en direct sur Twitch et coupes communautaires.</p>
+      </div>
+      <ul class="ledger">
+        {matches.map((m) => (
+          <li>
+            <span class="ledger__date">{m.date}</span>
+            <span class="ledger__opp">
+              {m.event === 'Showmatch' ? `Oni Korp contre ${m.opponent}` : m.event}
+              <small>{m.event === 'Showmatch' ? 'Showmatch Rocket League' : m.opponent}</small>
+            </span>
+            <span class="ledger__fmt">{m.format}</span>
+            <img src={m.image} alt="" loading="lazy" width="1200" height="675" />
+          </li>
+        ))}
+      </ul>
+      <p style="margin-top:2rem"><a class="btn btn--ghost" href="https://www.twitch.tv/oni_korp" rel="noopener"><Icon name="twitch" />Suivre les matchs sur Twitch</a></p>
+    </div>
+  </section>
+
+  <section class="section section--red" aria-labelledby="recrut-title">
+    <div class="wrap recruit">
+      <div>
+        <h2 id="recrut-title">On recrute.</h2>
+        <p style="margin-top:1rem;font-size:1.15rem">Tu veux jouer dans une dynamique plus pro, avec des coéquipiers qui ont le même niveau d'exigence ? Ta place est peut-être ici.</p>
+        <ul class="reqs">
+          <li>Rang Champion 1 minimum sur Rocket League</li>
+          <li>15 ans minimum</li>
+          <li>Actif, mature et disponible pour les entraînements</li>
+        </ul>
+      </div>
+      <div>
+        <ol class="steps">
+          <li><div><strong>Remplis le formulaire</strong><p>Joueur ou staff, quelques minutes suffisent.</p></div></li>
+          <li><div><strong>Ouvre un ticket sur le Discord</strong><p>C'est ce qui officialise ta candidature.</p></div></li>
+          <li><div><strong>Présente-toi au staff</strong><p>Un recruteur te répond et organise la suite avec toi.</p></div></li>
+        </ol>
+        <div class="recruit__actions">
+          <a class="btn btn--ink" href="/recrutement/">Voir les postes ouverts</a>
+          <a class="btn btn--ghost" href={site.discord} rel="noopener">Ouvrir un ticket</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="partner-title">
+    <div class="wrap partner">
+      <div>
+        <h2 id="partner-title" style="font-size:var(--step-3)">Oni Korp × Carl</h2>
+        <p style="margin-top:1rem;color:var(--ash)">Notre partenaire Carl signe avec nous les decals Octane et Fennec 2023, domicile et visiteur. Les textures sont téléchargeables gratuitement.</p>
+        <a class="btn" href="/vestiaire/">Voir les decals</a>
+      </div>
+      <img src="/img/decal-fennec-visiteur.webp" alt="Fennec aux couleurs Oni Korp × Carl, version visiteur" loading="lazy" width="1600" height="900" />
+    </div>
+  </section>
+</Base>

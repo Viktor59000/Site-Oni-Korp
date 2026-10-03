@@ -1,0 +1,53 @@
+{
+  "_note": "Mettre à jour les line-ups ici. Un roster sans joueurs s'affiche « Line-up à annoncer ».",
+  "games": [
+    {
+      "id": "rocket-league",
+      "name": "Rocket League",
+      "since": "2021",
+      "banner": "/img/pole-rocket-league.webp",
+      "pitch": "Le jeu qui a fait naître le club. Cinq rosters, du haut niveau à la formation.",
+      "rosters": [
+        { "name": "Alpha", "players": [] },
+        { "name": "Bêta", "players": [] },
+        { "name": "Gamma", "players": ["AlphA_Argrin7", "Jakpot"] },
+        { "name": "Epsilon", "players": ["UniSheep777", "kagaho42"] },
+        { "name": "Oméga", "players": [] }
+      ]
+    },
+    {
+      "id": "league-of-legends",
+      "name": "League of Legends",
+      "since": "2024",
+      "banner": "/img/pole-lol.webp",
+      "pitch": "Ouvert en janvier 2024, en plein recrutement.",
+      "rosters": [{ "name": "Principal", "players": [] }]
+    },
+    {
+      "id": "valorant",
+      "name": "Valorant",
+      "since": "2024",
+      "banner": "/img/pole-valorant.webp",
+      "pitch": "Ouvert en janvier 2024, avec un planning d’entraînement partagé chaque semaine.",
+      "rosters": [{ "name": "Principal", "players": [] }]
+    },
+    {
+      "id": "osu",
+      "name": "osu!",
+      "since": "2024",
+      "banner": "/img/pole-osu.webp",
+      "pitch": "Le pôle rythme, porté par Yasunaii et son guide de progression.",
+      "rosters": [{ "name": "Joueurs", "players": ["Yasunaii"] }]
+    }
+  ],
+  "staff": [
+    { "role": "Fondateur", "name": "Jakpot" },
+    { "role": "Co-fondateur", "name": "" },
+    { "role": "Manager roster", "name": "" },
+    { "role": "Coach", "name": "" },
+    { "role": "Casteur", "name": "Yasunaii" },
+    { "role": "Graphiste", "name": "" },
+    { "role": "Community manager", "name": "" },
+    { "role": "Modérateur", "name": "" }
+  ]
+}
