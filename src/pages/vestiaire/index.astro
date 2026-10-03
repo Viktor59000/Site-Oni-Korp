@@ -54,11 +54,16 @@ const decals = [
 
     <section class="section" aria-labelledby="merch-title">
       <div class="merch">
-        <img src="/img/sweat-front.webp" alt="Sweat Oni Korp, face avant" loading="lazy" width="411" height="516" />
-        <img src="/img/sweat-back.webp" alt="Sweat Oni Korp, dos" loading="lazy" width="471" height="535" />
-        <div>
-          <h2 id="merch-title" style="font-size:var(--step-2)">Le sweat du club</h2>
-          <p style="color:var(--ash);margin-top:.75rem">Un nouveau drop est en préparation. Les précommandes seront annoncées en premier sur le Discord.</p>
+        <img class="merch__main" src="/img/sweat-porte-face.webp" alt="Joueur portant le sweat Oni Korp noir et blanc, logo rouge sur la poitrine" loading="lazy" width="900" height="1131" />
+        <img class="merch__flat" src="/img/sweat-a-plat.webp" alt="Sweat Oni Korp plié à côté d'un casque et d'une manette" loading="lazy" width="1100" height="875" />
+        <div class="merch__text">
+          <h2 id="merch-title">Le sweat du club</h2>
+          <p>Corps noir, capuche et manches blanches, logo rouge sur la poitrine et devise sur la manche. Au dos, ton pseudo et ton numéro.</p>
+          <figure class="merch__back">
+            <img src="/img/sweat-back.webp" alt="Dos du sweat personnalisé avec le pseudo SHEEP et le numéro 777" loading="lazy" width="471" height="535" />
+            <figcaption>Dos personnalisé</figcaption>
+          </figure>
+          <p>Un nouveau drop est en préparation. Les précommandes seront annoncées en premier sur le Discord.</p>
           <a class="btn btn--ghost" href={site.discord} rel="noopener">Être prévenu sur Discord</a>
         </div>
       </div>

@@ -296,9 +296,18 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .decal .btn { margin-top: 1.5rem; }
 @media (max-width: 860px) { .decal { grid-template-columns: 1fr; } }
 
-.merch { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)) 1fr; gap: 2rem; align-items: center; }
-.merch img { background: #fff; padding: 1rem; }
-@media (max-width: 720px) { .merch { grid-template-columns: 1fr 1fr; } .merch > div { grid-column: 1 / -1; } }
+.merch { display: grid; grid-template-columns: 1fr 1.25fr; grid-template-rows: auto 1fr; gap: 1.5rem clamp(1.5rem, 4vw, 3rem); }
+.merch__main { grid-row: 1 / span 2; width: 100%; height: 100%; object-fit: cover; }
+.merch__flat { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.merch__text h2 { font-size: var(--step-2); }
+.merch__text p { color: var(--ash); margin-top: .75rem; }
+.merch__back { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; }
+.merch__back img { width: 84px; background: var(--bone); padding: .4rem; }
+.merch__back figcaption { font-weight: 700; }
+@media (max-width: 720px) {
+  .merch { grid-template-columns: 1fr; grid-template-rows: none; }
+  .merch__main { grid-row: auto; aspect-ratio: 4 / 5; }
+}
 
 .prose { max-width: 70ch; }
 .prose h2 { font-size: var(--step-1); margin: 2.5rem 0 .75rem; }
