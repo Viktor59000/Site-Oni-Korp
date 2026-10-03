@@ -223,3 +223,18 @@ Reply "OK".
 | `osu-2.png` | `CARD SERIES. osu! rhythm player: headphones on, hand raised mid-tap, slider tracks of pink and red light curving behind.` |
 
 **Astuce :** si un portrait sort avec un visage visible ou du texte, demande « same image, face hidden in the hood shadow, no text ».
+
+---
+
+## 7. Dos personnalisé du sweat
+
+- **Fichier :** `sweat-dos.png`
+- **Format :** portrait (1024 × 1536)
+- **Joindre l'image de référence :** `site/public/img/sweat-back.webp` (le dos du sweat avec SHEEP et 777)
+- **Utilisation :** remplace la petite vignette blanche « Dos personnalisé » du Vestiaire, dans le même style que les deux autres photos du sweat.
+
+```
+Using the attached hoodie back as the exact product reference (same design, same colors, same placement), create a studio photo of a young gamer seen from behind wearing this hoodie, hood down, head slightly turned so the face stays hidden in shadow. The back clearly shows the name "SHEEP" and the number "777" exactly as on the reference, in the same red brush lettering. Dark studio, single red rim light, black background, fashion lookbook style. Keep the letters sharp and correctly spelled. No other added text or logos.
+```
+
+Si les lettres sortent déformées, demande : « same image, the back text must read exactly SHEEP and 777, sharp and correctly spelled ».

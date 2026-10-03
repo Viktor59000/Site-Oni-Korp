@@ -304,6 +304,7 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .merch__back { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; }
 .merch__back img { width: 84px; background: var(--bone); padding: .4rem; }
 .merch__back figcaption { font-weight: 700; }
+.merch__back--photo img { width: 140px; aspect-ratio: 2 / 3; object-fit: cover; background: none; padding: 0; }
 @media (max-width: 720px) {
   .merch { grid-template-columns: 1fr; grid-template-rows: none; }
   .merch__main { grid-row: auto; aspect-ratio: 4 / 5; }
