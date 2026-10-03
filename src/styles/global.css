@@ -494,3 +494,5 @@ a.game:hover h3 { color: var(--lacquer-hi); }
   .album-fan li:nth-child(n+4) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .album-fan li .sticker { translate: none; } }
+
+.roles__note { color: var(--ash); margin: -1rem 0 2rem; }

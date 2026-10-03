@@ -154,10 +154,9 @@
       ]
     },
     {
-      "role": "Casteurs",
+      "role": "Casteur",
       "names": [
-        "Yasunaii",
-        "Soiffeux"
+        "Yasunaii"
       ]
     },
     {
@@ -178,14 +177,6 @@
         "Daynalox",
         "Neyzo"
       ]
-    },
-    {
-      "role": "Recruteur",
-      "names": []
-    },
-    {
-      "role": "Content creator",
-      "names": []
     }
   ]
 }

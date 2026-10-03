@@ -7,10 +7,8 @@ import site from '../../data/site.json';
 const staffRoles = [
   ['Coach', 'Prépare les entraînements, analyse les matchs et fait progresser un roster.'],
   ['Manager roster', 'Organise le planning, les inscriptions en tournoi et la vie du roster.'],
-  ['Casteur', 'Commente nos showmatchs et nos compétitions en direct sur Twitch.'],
-  ['Recruteur', 'Repère les talents, suit les tickets de candidature et les essais.'],
+  ['Casteur', 'Commente nos showmatchs en direct sur Twitch et produit le contenu de l’équipe.'],
   ['Graphiste', 'Bannières, miniatures, decals : donne un visage au club.'],
-  ['Content creator', 'Clips, TikTok et vidéos YouTube autour des rosters.'],
   ['Community manager', 'Anime nos réseaux et le serveur Discord.'],
   ['Modérateur', 'Veille à une ambiance saine sur le Discord.'],
   ['Responsable marketing', 'Développe la visibilité du club et les partenariats.'],
@@ -48,7 +46,7 @@ const staffRoles = [
         <ol class="steps">
           <li><div><strong>Remplis le formulaire joueur</strong><p>Rang, jeu, disponibilités. Tu peux joindre un replay.</p></div></li>
           <li><div><strong>Ouvre un ticket sur le Discord</strong><p>Clique sur « Create ticket » dans le salon recrutement. Sans ticket, la candidature n'est pas prise en compte.</p></div></li>
-          <li><div><strong>Présente-toi au staff</strong><p>Un recruteur te répond dans le ticket et organise la suite.</p></div></li>
+          <li><div><strong>Présente-toi au staff</strong><p>Le manager ou le coach du pôle te répond dans le ticket et organise la suite.</p></div></li>
         </ol>
         <div class="recruit__actions">
           <a class="btn btn--ink" href={site.forms.joueurs} rel="noopener">Remplir le formulaire joueur</a>
@@ -69,6 +67,7 @@ const staffRoles = [
           <li><strong>{role}</strong><span>{desc}</span></li>
         ))}
       </ul>
+      <p class="roles__note">Le recrutement est géré par les managers et les coachs de chaque pôle. Côté contenu, les casteurs portent la voix de l'équipe, et chaque joueur est libre de proposer des clips ou des vidéos.</p>
       <div class="recruit__actions">
         <a class="btn" href={site.forms.staff} rel="noopener">Remplir le formulaire staff</a>
         <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Ouvrir un ticket</a>
