@@ -163,3 +163,63 @@ Very dark atmospheric image: an esports team locker room, black jerseys with red
 | `sweat-a-plat.png` | ★ |
 | `kanji-club.png`, `kanji-effectif.png`, `kanji-recrutement.png`, `kanji-vestiaire.png` | ★★ |
 | `entete-club.png`, `entete-effectif.png`, `entete-recrutement.png`, `entete-vestiaire.png` | ★ (optionnel) |
+
+---
+
+## 6. Portraits des cartes joueurs (Effectif)
+
+Un portrait par **rôle** (LoL, Valorant) ou par **place dans le roster** (Rocket League, osu!). Dans une même équipe, aucune image ne se répète. Le site les utilise automatiquement dès qu'ils sont déposés.
+
+- **Format :** portrait (1024 × 1536)
+- **Dépôt :** `site/visuels/a-integrer/` avec le nom indiqué, je convertis et je range dans `public/img/cartes/`
+- **Cadrage commun (important pour que les 15 cartes forment une série) :** personnage cadré à mi-corps, centré, **visage jamais visible** (capuche, contre-jour, ombre), le quart du haut sombre et vide (logo), le quart du bas sombre et vide (pseudo).
+
+### Bloc « série de cartes » (à coller une fois, après le style commun)
+
+```
+CARD SERIES. For the next images, keep exactly the same framing and lighting so they look like one set of esports roster cards:
+- Portrait 2:3. One anonymous character, waist-up, centered, slightly low angle.
+- The face is never visible: hidden by a hood, a cap shadow or strong backlight. No masks, no helmets covering a face with features.
+- Lighting: pure black background, strong red rim light (#C22E28) from behind, a thin red neon line or brush stroke somewhere behind the character.
+- The top 25% and the bottom 25% of the image stay dark and empty (a logo and a name will be placed there).
+- Wardrobe: black esports jersey or hoodie with white sleeves and red details, no readable text, no logos.
+- The game's own universe appears only through the prop and a few background hints.
+Reply "OK".
+```
+
+### League of Legends
+
+| Fichier | Prompt |
+|---|---|
+| `lol-top.png` | `CARD SERIES. League of Legends top laner: a heavy fantasy greatsword resting on the shoulder, armored gauntlet, sparks of steel, faint rift river behind.` |
+| `lol-jungle.png` | `CARD SERIES. League of Legends jungler: crouched hunter stance, curved claw-like dual blades, glowing jungle camp runes and leaves in the dark behind.` |
+| `lol-mid.png` | `CARD SERIES. League of Legends mid laner: a mage holding an orb of swirling red arcane energy in one hand, runes orbiting, magical light on the hood.` |
+| `lol-adc.png` | `CARD SERIES. League of Legends marksman (ADC): holding a long ornate rifle or bow across the chest, a glowing projectile trail behind.` |
+| `lol-support.png` | `CARD SERIES. League of Legends support: holding a glowing protective shield of light in front of the body, healing particles floating around.` |
+
+### Valorant
+
+| Fichier | Prompt |
+|---|---|
+| `valo-duelliste.png` | `CARD SERIES. Valorant duelist: aggressive forward lean, a blade of red energy dashing from the hand, motion streaks, stylized painterly-flat Valorant look.` |
+| `valo-initiateur.png` | `CARD SERIES. Valorant initiator: holding a recon drone or a glowing scanning dart, radar rings of red light expanding behind, stylized Valorant look.` |
+| `valo-controleur.png` | `CARD SERIES. Valorant controller: hands surrounded by rising spheres of dark smoke edged with red light, stylized Valorant look.` |
+| `valo-sentinelle.png` | `CARD SERIES. Valorant sentinel: defensive stance next to a glowing tripwire and a deployable turret, a translucent red barrier wall behind, stylized Valorant look.` |
+| `valo-flex.png` | `CARD SERIES. Valorant flex player: rifle held low, two different ability effects in each hand (smoke and red energy), stylized Valorant look.` |
+
+### Rocket League (une variante par place dans le roster)
+
+| Fichier | Prompt |
+|---|---|
+| `rl-1.png` | `CARD SERIES. Rocket League player: holding a gaming controller, a rocket-powered battle car with red boost flames behind them in a dark arena.` |
+| `rl-2.png` | `CARD SERIES. Rocket League player: arms crossed, the giant glowing match ball floating behind their shoulder, arena lights in the dark.` |
+| `rl-3.png` | `CARD SERIES. Rocket League player: sitting on the hood of a battle car, goal net glowing orange and red in the background.` |
+
+### osu!
+
+| Fichier | Prompt |
+|---|---|
+| `osu-1.png` | `CARD SERIES. osu! rhythm player: holding a pen tablet stylus, pink and red hit circles and a glowing cursor trail floating around.` |
+| `osu-2.png` | `CARD SERIES. osu! rhythm player: headphones on, hand raised mid-tap, slider tracks of pink and red light curving behind.` |
+
+**Astuce :** si un portrait sort avec un visage visible ou du texte, demande « same image, face hidden in the hood shadow, no text ».

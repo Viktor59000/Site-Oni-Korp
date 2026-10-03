@@ -7,6 +7,13 @@ import data from '../../data/rosters.json';
 
 // Un joueur peut être un simple pseudo ou un objet { name, role, photo }
 const norm = (p) => (typeof p === 'string' ? { name: p } : p);
+
+// Nom du portrait de carte (public/img/cartes/<nom>.webp) : par rôle pour LoL et Valorant,
+// par place dans le roster pour Rocket League et osu!
+const prefix = { 'league-of-legends': 'lol', valorant: 'valo', 'rocket-league': 'rl', osu: 'osu' };
+// Retire les accents : « Contrôleur » → « controleur »
+const slug = (t) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').split('/')[0].trim();
+const artKey = (g, p, i) => `${prefix[g.id]}-${p.role && !p.role.includes('confirmer') ? slug(p.role) : i + 1}`;
 ---
 <Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
   <header class="page-head">
@@ -38,8 +45,8 @@ const norm = (p) => (typeof p === 'string' ? { name: p } : p);
             <div class={`roster${g.rosters.length === 1 ? ' roster--wide' : ''}`}>
               <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
               <ul class="players">
-                {r.players.map(norm).map((p) => (
-                  <li><PlayerCard name={p.name} photo={p.photo} role={p.role} label={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
+                {r.players.map(norm).map((p, i) => (
+                  <li><PlayerCard name={p.name} photo={p.photo} role={p.role} art={artKey(g, p, i)} label={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
                 ))}
               </ul>
             </div>

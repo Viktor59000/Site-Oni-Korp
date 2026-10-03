@@ -1,78 +1,27 @@
 ---
-// Carte joueur. Fond généré à partir du pseudo (coup de pinceau, trait néon,
-// éclaboussures) : chaque joueur a le sien, sans répéter l'image du jeu.
-// Au centre, le pictogramme du rôle s'il est connu, sinon l'initiale.
-// Si `photo` est renseigné dans rosters.json, la photo remplace le tout.
+// Carte joueur.
+// 1. `photo` renseignée dans rosters.json → la photo du joueur.
+// 2. Sinon, un portrait de rôle déposé dans public/img/cartes/<art>.webp
+//    (ex. lol-mid, valo-duelliste, rl-2) → ce portrait.
+// 3. Sinon, une carte sobre : halo rouge et pictogramme du rôle (ou initiale).
+import { existsSync } from 'node:fs';
 import RoleIcon from './RoleIcon.astro';
 
-const { name, photo, role, label } = Astro.props;
+const { name, photo, role, label, art } = Astro.props;
 const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
-
-// Générateur pseudo-aléatoire déterministe (mulberry32) initialisé par le pseudo
-let seed = 0;
-for (const c of name) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
-const rand = () => {
-  seed = (seed + 0x6d2b79f5) >>> 0;
-  let t = seed;
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-const r = (a, b) => a + rand() * (b - a);
-
-// Composition propre au joueur : sens de la diagonale, une ou deux bandes,
-// largeurs, trait néon et éclaboussures
-const flip = rand() < 0.5;
-const bandOf = (wMin, wMax) => {
-  const top = r(20, 260), bottom = top - r(60, 240), w = r(wMin, wMax);
-  const path = `M${top} -10 L${top + w} -10 L${bottom + w * r(0.6, 1.2)} 410 L${bottom} 410 Z`;
-  // Stries de pinceau sec le long de la bande
-  const streaks = Array.from({ length: 6 }, () => {
-    const o = r(0, w), len = r(0.3, 1);
-    return { x1: top + o, x2: top + o + (bottom - top) * len, y2: 410 * len, op: r(0.15, 0.55).toFixed(2), sw: r(1, 4).toFixed(1) };
-  });
-  return { path, streaks };
-};
-const bands = [bandOf(60, 140), ...(rand() < 0.55 ? [bandOf(14, 40)] : [])];
-const ny = r(90, 320);
-const neon = `M-10 ${ny} C ${r(40, 140)} ${ny - r(-80, 140)}, ${r(160, 260)} ${ny + r(-100, 100)}, 310 ${ny - r(-60, 180)}`;
-const dots = Array.from({ length: Math.round(r(3, 9)) }, () => ({ cx: r(10, 290), cy: r(10, 390), rr: r(1.5, 6).toFixed(1) }));
-// Identifiant SVG unique même si un joueur apparaît dans deux pôles
-let idh = 0;
-for (const c of `${name}|${role}|${label}`) idh = (idh * 33 + c.charCodeAt(0)) >>> 0;
-const gid = `g${idh.toString(36)}`;
+const artSrc = art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null;
+const knownRole = role && !role.includes('confirmer');
 const nameSize = `min(11cqi, ${(84 / (name.length * 0.74)).toFixed(2)}cqi)`;
 ---
-<article class={`pcard${photo ? ' pcard--photo' : ''}`}>
+<article class={`pcard${photo || artSrc ? ' pcard--photo' : ' pcard--plain'}`}>
   {photo ? (
     <img class="pcard__photo" src={photo} alt={`Photo de ${name}`} loading="lazy" width="600" height="800" />
+  ) : artSrc ? (
+    <img class="pcard__photo" src={artSrc} alt="" loading="lazy" width="600" height="800" />
+  ) : knownRole ? (
+    <RoleIcon role={role} class="pcard__role-icon" />
   ) : (
-    <>
-      <svg class="pcard__bg" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#4a1210" />
-            <stop offset=".55" stop-color="#c22e28" />
-            <stop offset="1" stop-color="#2a0807" />
-          </linearGradient>
-          <filter id={`${gid}n`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" /></filter>
-        </defs>
-        <g transform={flip ? 'translate(300 0) scale(-1 1)' : undefined}>
-          {bands.map((b, i) => (
-            <>
-              <path d={b.path} fill={`url(#${gid})`} opacity={i ? '.6' : '.85'} />
-              {b.streaks.map((s) => <line x1={s.x1} y1="-10" x2={s.x2} y2={s.y2} stroke="#000" stroke-width={s.sw} opacity={s.op} />)}
-            </>
-          ))}
-          {dots.map((p) => <circle cx={p.cx} cy={p.cy} r={p.rr} fill="#c22e28" />)}
-          <path d={neon} stroke="#ff3b30" stroke-width="5" fill="none" filter={`url(#${gid}n)`} opacity=".9" />
-          <path d={neon} stroke="#ffd2cc" stroke-width="1.2" fill="none" />
-        </g>
-      </svg>
-      {role && !role.includes('confirmer')
-        ? <RoleIcon role={role} class="pcard__role-icon" />
-        : <span class="pcard__initial" aria-hidden="true">{initial}</span>}
-    </>
+    <span class="pcard__initial" aria-hidden="true">{initial}</span>
   )}
   <img class="pcard__logo" src="/img/oni-logo-dark.svg" alt="" />
   <div class="pcard__foot">
