@@ -8,15 +8,32 @@
       "banner": "/img/pole-rocket-league.webp",
       "pitch": "Le jeu qui a fait naître le club. Des rosters en 3v3, du haut niveau à la formation.",
       "staff": [
-        { "role": "Manager", "name": "Jakpot" },
-        { "role": "Coach", "name": "Sebla" }
+        {
+          "role": "Manager",
+          "name": "Jakpot"
+        },
+        {
+          "role": "Coachs",
+          "name": "Sebla, Slazen"
+        }
       ],
       "rosters": [
-        { "name": "Alpha", "players": [] },
-        { "name": "Bêta", "players": [] },
-        { "name": "Gamma", "players": ["AlphA_Argrin7", "Jakpot", "Pablito"] },
-        { "name": "Epsilon", "players": ["UniSheep777", "kagaho42", "Godlezz"] },
-        { "name": "Oméga", "players": [] }
+        {
+          "name": "Gamma",
+          "players": [
+            "AlphA",
+            "Jakpot",
+            "Pablito"
+          ]
+        },
+        {
+          "name": "Epsilon",
+          "players": [
+            "Sheep",
+            "kagaho42",
+            "Godlezz"
+          ]
+        }
       ]
     },
     {
@@ -26,18 +43,39 @@
       "banner": "/img/pole-lol.webp",
       "pitch": "Ouvert en janvier 2024 : un cinq complet, un rôle par joueur.",
       "staff": [
-        { "role": "Manager", "name": "Daynalox" },
-        { "role": "Coach", "name": "kraskas" }
+        {
+          "role": "Manager",
+          "name": "Daynalox"
+        },
+        {
+          "role": "Coach",
+          "name": "kraskas"
+        }
       ],
       "rosters": [
         {
           "name": "Principal",
           "players": [
-            { "name": "SaulPleureur", "role": "Top" },
-            { "name": "Nephione", "role": "Jungle" },
-            { "name": "Daynalox", "role": "Mid" },
-            { "name": "Lokleyy", "role": "ADC" },
-            { "name": "KON aurel1003", "role": "Support" }
+            {
+              "name": "SaulPleureur",
+              "role": "Top"
+            },
+            {
+              "name": "Nephione",
+              "role": "Jungle"
+            },
+            {
+              "name": "Daynalox",
+              "role": "Mid"
+            },
+            {
+              "name": "Lokleyy",
+              "role": "ADC"
+            },
+            {
+              "name": "KON aurel1003",
+              "role": "Support"
+            }
           ]
         }
       ]
@@ -47,21 +85,37 @@
       "name": "Valorant",
       "since": "2024",
       "banner": "/img/pole-valorant.webp",
-      "pitch": "Ouvert en janvier 2024, avec un planning d’entraînement partagé chaque semaine.",
+      "pitch": "Ouvert en janvier 2024 : un cinq complet, un rôle par joueur, un planning d’entraînement partagé chaque semaine.",
       "staff": [
-        { "role": "Manager", "name": "AlphA" }
+        {
+          "role": "Manager",
+          "name": "AlphA"
+        }
       ],
       "rosters": [
         {
           "name": "Principal",
           "players": [
-            { "name": "mwara", "role": "Duelliste / Flex" },
-            { "name": "nyto", "role": "Initiateur" },
-            { "name": "Wazeerx7", "role": "Sentinelle / Contrôleur" },
-            { "name": "AlphA", "role": "Flex" },
-            { "name": "Any", "role": "Rôle à confirmer" },
-            { "name": "Aze", "role": "Rôle à confirmer" },
-            { "name": "slth", "role": "Rôle à confirmer" }
+            {
+              "name": "Aze",
+              "role": "Duelliste"
+            },
+            {
+              "name": "slth",
+              "role": "Initiateur"
+            },
+            {
+              "name": "Wazeerx7",
+              "role": "Contrôleur"
+            },
+            {
+              "name": "Any",
+              "role": "Sentinelle"
+            },
+            {
+              "name": "AlphA",
+              "role": "Flex"
+            }
           ]
         }
       ]
@@ -73,21 +127,65 @@
       "banner": "/img/pole-osu.webp",
       "pitch": "Le pôle rythme, porté par Yasunaii et son guide de progression.",
       "staff": [
-        { "role": "Manager", "name": "Yasunaii" }
+        {
+          "role": "Manager",
+          "name": "Yasunaii"
+        }
       ],
       "rosters": [
-        { "name": "Joueurs", "players": ["Yasunaii", "Sheep"] }
+        {
+          "name": "Joueurs",
+          "players": [
+            "Yasunaii",
+            "Sheep"
+          ]
+        }
       ]
     }
   ],
   "staff": [
-    { "role": "Fondateur", "names": ["Jakpot"] },
-    { "role": "Co-fondateurs", "names": ["AlphA", "Yasunaii", "Sheep"] },
-    { "role": "Casteurs", "names": ["Yasunaii", "Soiffeux"] },
-    { "role": "Graphiste", "names": ["Jakpot"] },
-    { "role": "Community manager", "names": ["Yasunaii"] },
-    { "role": "Modérateurs", "names": ["Daynalox", "Neyzo"] },
-    { "role": "Recruteur", "names": [] },
-    { "role": "Content creator", "names": [] }
+    {
+      "role": "Fondateurs",
+      "names": [
+        "Jakpot",
+        "AlphA",
+        "Yasunaii",
+        "Sheep"
+      ]
+    },
+    {
+      "role": "Casteurs",
+      "names": [
+        "Yasunaii",
+        "Soiffeux"
+      ]
+    },
+    {
+      "role": "Graphiste",
+      "names": [
+        "Jakpot"
+      ]
+    },
+    {
+      "role": "Community manager",
+      "names": [
+        "Yasunaii"
+      ]
+    },
+    {
+      "role": "Modérateurs",
+      "names": [
+        "Daynalox",
+        "Neyzo"
+      ]
+    },
+    {
+      "role": "Recruteur",
+      "names": []
+    },
+    {
+      "role": "Content creator",
+      "names": []
+    }
   ]
 }
