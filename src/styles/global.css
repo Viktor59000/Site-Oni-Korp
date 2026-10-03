@@ -434,7 +434,7 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 .sticker__art img.is-flipped { scale: -1 1; }
 .sticker__icon { width: 52%; margin-bottom: 22%; color: #fff; filter: drop-shadow(3px 3px 0 rgb(0 0 0 / .45)); }
 .sticker__initial { font-family: var(--font-display); font-size: 78cqi; line-height: 1; margin-bottom: 18%; color: #fff; -webkit-text-stroke: 3px #000; paint-order: stroke; text-shadow: 5px 5px 0 rgb(0 0 0 / .35); }
-.sticker__crest { position: absolute; z-index: 2; top: 4%; left: 5%; width: 20%; padding: 3.5%; background: rgb(0 0 0 / .7); border-radius: 50%; box-shadow: 0 0 0 2px rgb(255 255 255 / .85); }
+.sticker__crest { position: absolute; z-index: 2; top: 5%; left: 6%; width: 15%; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .8)) drop-shadow(0 0 6px rgb(0 0 0 / .5)); }
 .sticker__num {
   position: absolute; z-index: 2; top: 4%; right: 5%;
   font-family: var(--font-display); font-size: 11cqi; line-height: 1;
@@ -496,3 +496,6 @@ a.game:hover h3 { color: var(--lacquer-hi); }
 @media (prefers-reduced-motion: reduce) { .album-fan li .sticker { translate: none; } }
 
 .roles__note { color: var(--ash); margin: -1rem 0 2rem; }
+
+/* Rendu différé des sections sous la ligne de flottaison (moins de calcul au chargement) */
+main > .section:not(.hero):not(:first-child):not([id]) { content-visibility: auto; contain-intrinsic-size: auto 900px; }

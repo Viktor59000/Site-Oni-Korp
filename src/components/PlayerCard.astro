@@ -26,10 +26,10 @@ const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
         <span class="sticker__initial" aria-hidden="true">{initial}</span>
       )}
     </div>
-    <img class="sticker__crest" src="/img/oni-logo-dark.svg" alt="" />
+    <img class="sticker__crest" src="/img/oni-logo-blanc.png" alt="" width="256" height="256" />
     <span class="sticker__num" aria-label={`Vignette numéro ${num}`}>{String(num).padStart(2, '0')}</span>
     <div class="sticker__band">
-      <h4 class="sticker__name" style={`font-size:${nameSize}`}>{name}</h4>
+      <p class="sticker__name" style={`font-size:${nameSize}`}>{name}</p>
       <span class="sticker__role">{role ?? label}</span>
     </div>
   </div>
