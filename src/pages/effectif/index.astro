@@ -1,6 +1,10 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Avatar from '../../components/Avatar.astro';
 import data from '../../data/rosters.json';
+
+// Un joueur peut être un simple pseudo ou un objet { name, photo }
+const norm = (p) => (typeof p === 'string' ? { name: p } : p);
 ---
 <Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
   <header class="page-head">
@@ -25,11 +29,13 @@ import data from '../../data/rosters.json';
           {g.rosters.map((r) => (
             <div class="roster">
               <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
-              <ul>
-                {r.players.length
-                  ? r.players.map((p) => <li>{p}</li>)
-                  : <li class="tba">Line-up à annoncer</li>}
-              </ul>
+              {r.players.length ? (
+                <ul class="players">
+                  {r.players.map(norm).map((p) => (
+                    <li><Avatar name={p.name} photo={p.photo} /><span>{p.name}</span></li>
+                  ))}
+                </ul>
+              ) : <p class="tba">Line-up à annoncer</p>}
             </div>
           ))}
         </div>
@@ -41,14 +47,17 @@ import data from '../../data/rosters.json';
         <h2 id="staff-title">Staff</h2>
         <p>Les postes sans nom sont ouverts. <a href="/recrutement/#staff">Candidater au staff</a></p>
       </div>
-      <dl class="staff">
+      <ul class="staff">
         {data.staff.map((s) => (
-          <div>
-            <dt>{s.role}</dt>
-            {s.name ? <dd>{s.name}</dd> : <dd class="open">Poste ouvert</dd>}
-          </div>
+          <li class="staff__item">
+            {s.name ? <Avatar name={s.name} photo={s.photo} size="sm" /> : <a class="avatar avatar--sm avatar--open" href="/recrutement/#staff" aria-label={`Candidater au poste ${s.role}`}>+</a>}
+            <div>
+              <span class="staff__role">{s.role}</span>
+              {s.name ? <span class="staff__name">{s.name}</span> : <span class="staff__name open">Poste ouvert</span>}
+            </div>
+          </li>
         ))}
-      </dl>
+      </ul>
     </section>
   </div>
 </Base>

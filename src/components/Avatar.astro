@@ -1,0 +1,19 @@
+---
+// Avatar par défaut : initiale du pseudo sur bande laquée, masque Oni en filigrane.
+// Si `photo` est renseigné dans rosters.json, la photo remplace l'avatar.
+const { name, photo, size = 'md' } = Astro.props;
+const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
+// Variante stable par pseudo : inclinaison et teinte de la bande changent d'un joueur à l'autre
+let h = 0;
+for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+const variant = h % 4;
+---
+{photo ? (
+  <img class={`avatar avatar--${size}`} src={photo} alt={`Photo de ${name}`} loading="lazy" width="400" height="500" />
+) : (
+  <div class={`avatar avatar--${size} avatar--v${variant}`} role="img" aria-label={`Avatar de ${name}`}>
+    <span class="avatar__band" aria-hidden="true"></span>
+    <img class="avatar__mask" src="/img/oni-logo-dark.svg" alt="" aria-hidden="true" />
+    <span class="avatar__initial" aria-hidden="true">{initial}</span>
+  </div>
+)}
