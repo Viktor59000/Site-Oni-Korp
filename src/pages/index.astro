@@ -1,15 +1,20 @@
 ---
-import { srcset, small } from '../lib/img.js';
+import { srcset } from '../lib/img.js';
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import site from '../data/site.json';
 import data from '../data/rosters.json';
 import matches from '../data/matches.json';
+import PlayerCard from '../components/PlayerCard.astro';
+import { album } from '../lib/album.js';
+
+// Extrait de l'album : la première vignette de chaque pôle, puis le premier fondateur
+const teaser = [...album.games.map((g) => g.rosters[0]?.cards[0]).filter(Boolean), album.staff[0]].filter(Boolean);
 
 // Nombre de joueurs annoncés dans le pôle
 const rosterLabel = (g) => {
   const n = g.rosters.reduce((t, r) => t + r.players.length, 0);
-  return g.id === 'rocket-league' ? `${g.rosters.length} rosters, ${n} joueurs annoncés` : `Depuis ${g.since}, ${n} joueur${n > 1 ? 's' : ''}`;
+  return g.id === 'rocket-league' ? `${g.rosters.length} rosters, ${n} joueurs` : `Depuis ${g.since}, ${n} joueur${n > 1 ? 's' : ''}`;
 };
 ---
 <Base>
@@ -48,6 +53,19 @@ const rosterLabel = (g) => {
             </a>
           </li>
         ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section album-teaser" aria-labelledby="album-title">
+    <div class="wrap album-teaser__inner">
+      <div class="section__head">
+        <h2 id="album-title">L'album du club.</h2>
+        <p>{album.total} vignettes à collectionner : chaque joueur et chaque membre du staff a la sienne. Il reste des emplacements vides.</p>
+        <p><a class="btn" href="/effectif/">Ouvrir l'album</a></p>
+      </div>
+      <ul class="album-fan" aria-label="Extrait de l'album">
+        {teaser.map((c) => <li><PlayerCard {...c} /></li>)}
       </ul>
     </div>
   </section>

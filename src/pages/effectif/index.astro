@@ -1,68 +1,21 @@
 ---
-import { srcset, small } from '../../lib/img.js';
+import { srcset } from '../../lib/img.js';
+import { album } from '../../lib/album.js';
 import Base from '../../layouts/Base.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
-import data from '../../data/rosters.json';
-
-// Un joueur peut être un simple pseudo ou un objet { name, role, photo }
-const norm = (p) => (typeof p === 'string' ? { name: p } : p);
-
-// Nom du portrait de carte (public/img/cartes/<nom>.webp) : par rôle pour LoL et Valorant,
-// par place dans le roster pour Rocket League et osu!
-const prefix = { 'league-of-legends': 'lol', valorant: 'valo', 'rocket-league': 'rl', osu: 'osu' };
-// Retire les accents : « Contrôleur » → « controleur »
-const slug = (t) => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').split('/')[0].trim();
-// Numéro de vignette dans l'album, dans l'ordre de la page
-let stickerNum = 0;
-const nextNum = () => ++stickerNum;
-// Staff : une vignette par personne, avec tous ses rôles (club + managers et coachs des pôles)
-const singular = { Fondateurs: 'Fondateur', Casteurs: 'Casteur', 'Modérateurs': 'Modérateur' };
-const shortName = { 'rocket-league': 'Rocket League', 'league-of-legends': 'LoL', valorant: 'Valorant', osu: 'osu!' };
-const priority = ['Fondateur', 'Coach', 'Modérateur', 'Casteur', 'Graphiste', 'Community manager', 'Manager'];
-const people = new Map();
-const addRole = (name, role, kind) => {
-  if (!people.has(name)) people.set(name, { name, roles: [], kinds: [] });
-  people.get(name).roles.push(role);
-  people.get(name).kinds.push(kind);
-};
-for (const s of data.staff) for (const n of s.names) addRole(n, singular[s.role] ?? s.role, singular[s.role] ?? s.role);
-for (const g of data.games) for (const st of g.staff ?? []) {
-  const kind = st.role.startsWith('Coach') ? 'Coach' : st.role;
-  for (const n of st.name.split(/,\s*/)) addRole(n, `${kind} ${shortName[g.id]}`, kind);
-}
-const staffCards = [...people.values()]
-  .map((p) => ({ ...p, primary: priority.find((k) => p.kinds.includes(k)) ?? p.kinds[0] }))
-  .sort((a, b) => priority.indexOf(a.primary) - priority.indexOf(b.primary));
-// Portrait : staff-<rôle principal>-<n> (ex. staff-fondateur-2, staff-coach-1)
-const staffArtCount = {};
-const staffArt = (p) => {
-  const k = slug(p.primary);
-  staffArtCount[k] = (staffArtCount[k] ?? 0) + 1;
-  return `staff-${k}-${staffArtCount[k]}`;
-};
-const openRoles = data.staff.filter((s) => !s.names.length);
-
-// Variantes disponibles par pôle sans rôle (rl-1…rl-3, osu-1…osu-2).
-// Le roster suivant décale l'ordre (et l'image passe en miroir) pour ne pas répéter le précédent.
-const variants = { rl: 3, osu: 2 };
-const artKey = (g, p, i, ri = 0) => {
-  if (p.role && !p.role.includes('confirmer')) return `${prefix[g.id]}-${slug(p.role)}`;
-  const n = variants[prefix[g.id]] ?? 3;
-  return `${prefix[g.id]}-${((i + ri) % n) + 1}`;
-};
 ---
-<Base title="Effectif" description="Les rosters Oni Korp sur Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
+<Base title="Effectif" description="L'album Oni Korp : les rosters Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
   <header class="page-head">
     <img class="page-head__bg" src="/img/entete-effectif.webp" srcset={srcset("/img/entete-effectif.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">隊</span>
     <div class="wrap">
       <h1>Effectif</h1>
-      <p>Les rosters par jeu et le staff qui les fait tourner.</p>
+      <p>L'album du club : {album.total} vignettes, les rosters par jeu et le staff qui les fait tourner.</p>
     </div>
   </header>
 
   <div class="wrap">
-    {data.games.map((g) => (
+    {album.games.map(({ game: g, rosters, tba }) => (
       <section class="roster-game" id={g.id} aria-labelledby={`${g.id}-title`}>
         <div class="roster-game__head">
           <div>
@@ -77,37 +30,18 @@ const artKey = (g, p, i, ri = 0) => {
           <div class="game__img"><img src={g.banner} srcset={srcset(g.banner)} sizes="(max-width: 720px) 100vw, 42vw" alt="" loading="lazy" width="1200" height="480" /></div>
         </div>
         <div class="rosters">
-          {g.rosters.filter((r) => r.players.length).map((r, ri) => (
-            <div class={`roster${g.rosters.length === 1 ? ' roster--wide' : ''}`}>
-              <h3>{g.rosters.length > 1 ? `Roster ${r.name}` : r.name}</h3>
+          {rosters.map((r) => (
+            <div class={`roster${rosters.length === 1 ? ' roster--wide' : ''}`}>
+              <h3>{r.title}</h3>
               <ul class="players">
-                {r.players.map(norm).map((p, i) => (
-                  <li><PlayerCard name={p.name} photo={p.photo} role={p.role} art={artKey(g, p, i, ri)} flip={ri % 2 === 1} num={nextNum()} pole={prefix[g.id]} label={g.rosters.length > 1 ? `Roster ${r.name}` : g.name} /></li>
-                ))}
+                {r.cards.map((c) => <li><PlayerCard {...c} /></li>)}
               </ul>
             </div>
           ))}
-          {!g.rosters.some((r) => r.players.length) && (
-            <div class="roster">
-              <h3>{g.rosters[0].name}</h3>
-              <ul class="players">
-                <li>
-                  <a class="pcard pcard--open" href="/recrutement/">
-                    <img class="pcard__art" src={small(g.banner)} alt="" loading="lazy" />
-                    <span class="pcard__plus" aria-hidden="true">+</span>
-                    <span class="pcard__foot"><span class="pcard__roster">{g.name}</span><span class="pcard__name" style="font-size:9cqi">Ta place est ici</span></span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          )}
         </div>
-        {g.rosters.some((r) => r.players.length) && (() => {
-          const tba = g.rosters.filter((r) => !r.players.length);
-          if (!tba.length) return null;
-          const label = g.rosters.length > 1 ? tba.map((r) => `Roster ${r.name}`).join(', ') : 'Line-up';
-          return <p class="rosters-tba"><strong>{label}</strong> : à annoncer. <a href="/recrutement/">Les places sont ouvertes</a>.</p>;
-        })()}
+        {tba.length > 0 && (
+          <p class="rosters-tba"><strong>{tba.join(', ')}</strong> : à annoncer. <a href="/recrutement/">Les places sont ouvertes</a>.</p>
+        )}
       </section>
     ))}
 
@@ -117,13 +51,11 @@ const artKey = (g, p, i, ri = 0) => {
         <p>Ceux qui font tourner le club, avec tous leurs rôles. Les emplacements vides sont des postes ouverts.</p>
       </div>
       <ul class="players players--staff">
-        {staffCards.map((p) => (
-          <li><PlayerCard name={p.name} role={p.roles.join(', ')} icon={p.primary} art={staffArt(p)} num={nextNum()} pole="staff" /></li>
-        ))}
-        {openRoles.map((s) => (
+        {album.staff.map((c) => <li><PlayerCard {...c} /></li>)}
+        {album.open.map((s) => (
           <li>
             <a class="slot" href="/recrutement/#staff">
-              <span class="slot__num">{String(nextNum()).padStart(2, '0')}</span>
+              <span class="slot__num">{String(s.num).padStart(2, '0')}</span>
               <span class="slot__plus" aria-hidden="true">+</span>
               <span class="slot__role">{s.role}</span>
               <span class="slot__cta">Emplacement libre : postuler</span>
