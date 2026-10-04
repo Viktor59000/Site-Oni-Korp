@@ -6,11 +6,21 @@ import vercel from '@astrojs/vercel';
 // seules les routes /api/* tournent à la demande (lecture de la base Turso partagée avec Oni Bot).
 // Sans Vercel (local, ancien déploiement GitHub Pages), le site est 100 % statique et l'API est absente.
 const onVercel = !!process.env.VERCEL;
+// En local, ONI_API=1 active aussi les routes serveur (test de l'espace équipe avec npm run dev)
+const withApi = onVercel || !!process.env.ONI_API;
 const api = {
   name: 'oni-api',
   hooks: {
     'astro:config:setup': ({ injectRoute }) => {
-      if (onVercel) injectRoute({ pattern: '/api/agenda', entrypoint: './src/server/agenda.ts', prerender: false });
+      if (!withApi) return;
+      const route = (pattern, entrypoint) => injectRoute({ pattern, entrypoint, prerender: false });
+      route('/api/agenda', './src/server/agenda.ts');
+      route('/api/auth/login', './src/server/auth/login.ts');
+      route('/api/auth/callback', './src/server/auth/callback.ts');
+      route('/api/auth/logout', './src/server/auth/logout.ts');
+      route('/api/equipe/presence', './src/server/equipe/presence.ts');
+      route('/api/equipe/dispos', './src/server/equipe/dispos.ts');
+      route('/equipe', './src/server/equipe.astro');
     },
   },
 };

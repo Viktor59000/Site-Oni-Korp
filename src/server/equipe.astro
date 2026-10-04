@@ -1,0 +1,203 @@
+---
+// Espace équipe (connexion Discord) : séances à venir avec réponse en un clic, disponibilités, et pour l'encadrement le bilan de présence.
+// Les données viennent de la base partagée avec Oni Bot ; une réponse ici met à jour le message Discord dans la minute.
+import Base from '../layouts/Base.astro';
+import { getSession } from './session';
+import { rows, weekKey } from './db';
+import { access } from './equipe/access';
+import { SLOTS } from './equipe/dispos';
+
+export const prerender = false;
+
+const user = getSession(Astro.cookies);
+const erreur = Astro.url.searchParams.get('erreur');
+const me = user ? await access(user.id) : null;
+
+const GAME: Record<string, { label: string; color: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#72d3a8' },
+};
+const DAYS: [string, string][] = [['lun', 'Lun'], ['mar', 'Mar'], ['mer', 'Mer'], ['jeu', 'Jeu'], ['ven', 'Ven'], ['sam', 'Sam'], ['dim', 'Dim']];
+const when = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const week = weekKey(true);
+const weekLabel = week.split('-').reverse().join('/');
+
+type T = { id: number; roster_id: number; at: number; duration: number; kind: string; note: string | null };
+type A = { training_id: number; user_id: string; status: string; reason: string | null };
+
+const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
+  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const names = new Map(members.map((m) => [m.id, m.name]));
+  const trainings = await rows<T>('SELECT * FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 8', r.id, Date.now() - 3 * 3600_000);
+  const answers = trainings.length ? await rows<A>(`SELECT * FROM attendance WHERE training_id IN (${trainings.map(() => '?').join(',')})`, ...trainings.map((t) => t.id)) : [];
+  const dispo = await rows<{ user_id: string; slots: string }>('SELECT user_id, slots FROM availability WHERE roster_id = ? AND week = ?', r.id, week);
+  const mySlots: string[] = JSON.parse(dispo.find((d) => d.user_id === user!.id)?.slots ?? '[]');
+  const counts = new Map(SLOTS.map((s) => [s, dispo.filter((d) => (JSON.parse(d.slots) as string[]).includes(s)).length]));
+  // Bilan 30 jours (encadrement)
+  let bilan: { name: string; rate: number; p: number; a: number; m: number; n: number }[] = [];
+  let past = 0;
+  if (me.staff) {
+    const done = await rows<{ id: number }>('SELECT id FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at BETWEEN ? AND ?', r.id, Date.now() - 30 * 86400_000, Date.now());
+    past = done.length;
+    const ans = past ? await rows<A>(`SELECT * FROM attendance WHERE training_id IN (${done.map(() => '?').join(',')})`, ...done.map((t) => t.id)) : [];
+    bilan = members.map((m) => {
+      const mine = ans.filter((x) => x.user_id === m.id);
+      const p = mine.filter((x) => x.status === 'present').length;
+      return { name: m.name, p, a: mine.filter((x) => x.status === 'absent').length, m: mine.filter((x) => x.status === 'peut-etre').length, n: past - mine.length, rate: past ? Math.round((p / past) * 100) : 0 };
+    }).sort((x, y) => y.rate - x.rate);
+  }
+  return {
+    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f' }, members, past, bilan, mySlots, counts, total: members.length || 1,
+    trainings: trainings.map((t) => {
+      const list = answers.filter((a) => a.training_id === t.id);
+      const by = (s: string) => list.filter((a) => a.status === s).map((a) => (names.get(a.user_id) ?? 'Membre') + (a.reason ? ` (${a.reason})` : ''));
+      return { ...t, mine: list.find((a) => a.user_id === user!.id)?.status ?? null, present: by('present'), maybe: by('peut-etre'), absent: by('absent'), waiting: members.filter((m) => !list.some((a) => a.user_id === m.id)).map((m) => m.name) };
+    }),
+  };
+})) : [];
+---
+<Base title="Espace équipe" description="Espace réservé aux joueurs et au staff d'Oni Korp.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Espace équipe</h1>
+      {user && me?.member
+        ? <p class="eq-who">{user.avatar && <img src={user.avatar} alt="" width="40" height="40" />}Connecté en tant que <strong>{me.member.name}</strong>{me.staff && <span class="eq-tag">Encadrement</span>} · <a href="/api/auth/logout">Se déconnecter</a></p>
+        : <p>Séances, présences et disponibilités de ton roster, reliées au Discord du club.</p>}
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="wrap eq">
+      {!user && (
+        <div class="eq-login">
+          {erreur === 'membre' && <p class="eq-alert">Ce compte Discord n'est pas membre du serveur Oni Korp.</p>}
+          {erreur === 'connexion' && <p class="eq-alert">La connexion a échoué, réessaie.</p>}
+          <p>Connecte-toi avec ton compte Discord : tes rosters sont reconnus automatiquement grâce à tes rôles sur le serveur.</p>
+          <a class="btn" href="/api/auth/login">Se connecter avec Discord</a>
+          <p class="eq-note">Aucun mot de passe. Le site ne lit que ton pseudo, ton avatar et tes rôles sur le serveur Oni Korp.</p>
+        </div>
+      )}
+
+      {user && me && !me.rosters.length && (
+        <div class="eq-login">
+          <p>Cet espace est réservé aux joueurs des rosters et au staff du club.</p>
+          <a class="btn" href="/recrutement/">Rejoindre un roster</a>
+        </div>
+      )}
+
+      {spaces.map((s) => (
+        <article class="eq-roster" style={`--team:${s.g.color}`} id={`roster-${s.r.slug}`}>
+          <h2>{s.r.name} <span>{s.g.label} · {s.members.length} joueur{s.members.length > 1 ? 's' : ''}</span></h2>
+
+          <h3>Prochaines séances</h3>
+          {s.trainings.length ? (
+            <ol class="eq-list">
+              {s.trainings.map((t) => (
+                <li class="eq-seance" id={`seance-${t.id}`}>
+                  <div class="eq-seance__head">
+                    <strong>{t.kind}</strong>
+                    <time datetime={new Date(Number(t.at)).toISOString()}>{when.format(new Date(Number(t.at)))}</time>
+                    <span>{t.duration} min</span>
+                  </div>
+                  {t.note && <p class="eq-seance__note">{t.note}</p>}
+                  <form method="post" action="/api/equipe/presence" class="eq-answer">
+                    <input type="hidden" name="training" value={t.id} />
+                    <button name="status" value="present" class:list={['eq-btn', 'is-ok', { 'is-on': t.mine === 'present' }]}>Présent</button>
+                    <button name="status" value="peut-etre" class:list={['eq-btn', { 'is-on': t.mine === 'peut-etre' }]}>Peut-être</button>
+                    <input name="reason" type="text" maxlength="100" placeholder="Raison si absent" aria-label="Raison de l'absence" />
+                    <button name="status" value="absent" class:list={['eq-btn', 'is-ko', { 'is-on': t.mine === 'absent' }]}>Absent</button>
+                  </form>
+                  <p class="eq-seance__who">
+                    <span>✅ {t.present.join(', ') || '—'}</span>
+                    <span>❔ {t.maybe.join(', ') || '—'}</span>
+                    <span>❌ {t.absent.join(', ') || '—'}</span>
+                    <span>⏳ {t.waiting.join(', ') || 'tout le monde a répondu'}</span>
+                  </p>
+                </li>
+              ))}
+            </ol>
+          ) : <p class="eq-empty">Aucune séance prévue. L'encadrement les planifie avec <code>/entrainement</code> sur Discord.</p>}
+
+          <h3 id={`dispos-${s.r.id}`}>Mes disponibilités · semaine du {weekLabel}</h3>
+          <form method="post" action="/api/equipe/dispos" class="eq-dispos">
+            <input type="hidden" name="roster" value={s.r.id} />
+            <input type="hidden" name="week" value={week} />
+            <table>
+              <thead><tr><th></th>{DAYS.map(([, l]) => <th scope="col">{l}</th>)}</tr></thead>
+              <tbody>
+                {[['aprem', 'Après-midi'], ['soir', 'Soir']].map(([k, label]) => (
+                  <tr>
+                    <th scope="row">{label}</th>
+                    {DAYS.map(([d]) => {
+                      const slot = `${d}-${k}`;
+                      return (
+                        <td>
+                          <label class="eq-slot" style={`--fill:${(s.counts.get(slot) ?? 0) / s.total}`}>
+                            <input type="checkbox" name="slot" value={slot} checked={s.mySlots.includes(slot)} />
+                            <span>{s.counts.get(slot) ?? 0}</span>
+                          </label>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p class="eq-note">Coche tes créneaux ; le chiffre indique combien de joueurs du roster sont disponibles.</p>
+            <button class="btn btn--ghost">Enregistrer</button>
+          </form>
+
+          {me!.staff && (
+            <>
+              <h3>Présences · 30 derniers jours ({s.past} séance{s.past > 1 ? 's' : ''})</h3>
+              {s.past ? (
+                <table class="eq-bilan">
+                  <thead><tr><th scope="col">Joueur</th><th scope="col">Taux</th><th scope="col">✅</th><th scope="col">❔</th><th scope="col">❌</th><th scope="col">⏳</th></tr></thead>
+                  <tbody>{s.bilan.map((b) => <tr><td>{b.name}</td><td><strong>{b.rate} %</strong></td><td>{b.p}</td><td>{b.m}</td><td>{b.a}</td><td>{b.n}</td></tr>)}</tbody>
+                </table>
+              ) : <p class="eq-empty">Pas encore de séance passée sur cette période.</p>}
+            </>
+          )}
+        </article>
+      ))}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .eq { display: grid; gap: clamp(2.5rem, 5vw, 4rem); }
+  .eq-who { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .eq-who img { border-radius: 50%; }
+  .eq-tag { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--lacquer); color: #fff; padding: .15rem .5rem; }
+  .eq-login { max-width: 42rem; display: grid; gap: 1.25rem; justify-items: start; }
+  .eq-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: color-mix(in srgb, var(--lacquer) 10%, transparent); }
+  .eq-note, .eq-empty { color: var(--muted); font-size: var(--step--1); }
+  .eq-roster { border-top: 4px solid var(--team); padding-top: 1.25rem; }
+  .eq-roster h2 { font-size: var(--step-2); display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  .eq-roster h2 span { font-family: var(--font-body); font-size: var(--step--1); color: var(--muted); font-weight: 400; }
+  .eq-roster h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; margin: 2rem 0 .8rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+  .eq-list { display: grid; gap: .75rem; }
+  .eq-seance { border: 1px solid var(--line); padding: 1rem; scroll-margin-top: 90px; }
+  .eq-seance__head { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+  .eq-seance__head time { color: var(--red-text); font-weight: 700; }
+  .eq-seance__head span, .eq-seance__note { color: var(--muted); font-size: var(--step--1); }
+  .eq-answer { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0 .4rem; }
+  .eq-answer input { flex: 1 1 10rem; min-width: 0; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
+  .eq-btn { min-height: 44px; padding: 0 1rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .9rem var(--font-body); cursor: pointer; }
+  .eq-btn:hover { border-color: var(--ink); }
+  .eq-btn.is-on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .eq-btn.is-ok.is-on { background: #1f8f55; border-color: #1f8f55; color: #fff; }
+  .eq-btn.is-ko.is-on { background: var(--lacquer); border-color: var(--lacquer); color: #fff; }
+  .eq-seance__who { display: grid; gap: .2rem; font-size: var(--step--1); color: var(--muted); }
+  .eq-dispos table, .eq-bilan { border-collapse: collapse; width: 100%; max-width: 44rem; }
+  .eq-dispos th, .eq-dispos td, .eq-bilan th, .eq-bilan td { padding: .35rem; text-align: center; font-size: var(--step--1); }
+  .eq-dispos th[scope="row"], .eq-bilan td:first-child, .eq-bilan th:first-child { text-align: left; }
+  .eq-slot { display: grid; place-items: center; position: relative; min-height: 44px; border: 1px solid var(--line); cursor: pointer;
+    background: color-mix(in srgb, var(--team) calc(var(--fill) * 45%), transparent); }
+  .eq-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .eq-slot:has(input:checked) { outline: 3px solid var(--ink); outline-offset: -3px; font-weight: 700; }
+  .eq-slot:has(input:focus-visible) { outline: 3px solid var(--lacquer-hi); }
+  .eq-dispos .btn { margin-top: .75rem; }
+  .eq-bilan tr { border-bottom: 1px solid var(--line); }
+  @media (max-width: 560px) { .eq-dispos table { font-size: .75rem; } .eq-dispos th, .eq-dispos td { padding: .15rem; } }
+</style>
