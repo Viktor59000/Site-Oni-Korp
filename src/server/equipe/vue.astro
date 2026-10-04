@@ -87,7 +87,10 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
         {clubAlerts.length || cards.some((c) => c.alerts.length) ? (
           <ul class="ov-alerts">
             {clubAlerts.map(([a]) => <li>{a}</li>)}
-            {cards.flatMap((c) => c.alerts.map((a) => <li><a href={`/equipe/?r=${c.r.slug}`} style={`--g:${c.g.color}`}>{c.r.name}</a> {a}</li>))}
+            {cards.filter((c) => c.alerts.length).map((c) => (
+              <li class="ov-group"><a href={`/equipe/?r=${c.r.slug}`} style={`--g:${c.g.color}`}>{c.r.name}</a>
+                <ul>{c.alerts.map((a) => <li>{a}</li>)}</ul></li>
+            ))}
           </ul>
         ) : <p class="ov-calm">Rien à signaler. Tout roule.</p>}
       </section>
@@ -157,6 +160,9 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
   .ov-calm { color: var(--muted); }
   .ov-alerts { display: grid; gap: .4rem; }
   .ov-alerts li { padding: .6rem .8rem; border-left: 4px solid var(--lacquer); background: color-mix(in srgb, var(--lacquer) 7%, transparent); }
+  .ov-group ul { display: flex; flex-wrap: wrap; gap: .2rem .9rem; margin-top: .25rem; font-size: .9rem; }
+  .ov-alerts .ov-group ul li { padding: 0; border: 0; background: none; }
+  .ov-group ul li + li::before { content: '· '; color: var(--muted); }
   .ov-alerts a { font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--g); text-decoration: none; margin-right: .3rem; }
   .ov-rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
   .ov-card { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--line); border-top: 4px solid var(--g); color: inherit; text-decoration: none; height: 100%; box-sizing: border-box; }
