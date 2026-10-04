@@ -1,5 +1,6 @@
 // Album Panini de l'Effectif : ordre des vignettes, numéros, illustrations.
 // Partagé entre la page Effectif et l'extrait de l'accueil pour garder les mêmes numéros.
+import { existsSync } from 'node:fs';
 import data from '../data/rosters.json';
 
 // Préfixe des illustrations (public/img/cartes/<préfixe>-<…>.webp) et couleurs de vignette
@@ -14,9 +15,16 @@ const hasRole = (p) => p.role && !p.role.includes('confirmer');
 
 // Variantes disponibles pour les pôles sans rôle (rl-1…rl-3, osu-1…osu-2).
 // Le roster suivant décale l'ordre et passe l'image en miroir pour ne pas répéter le précédent.
+// Un roster peut aussi avoir ses propres illustrations : rl-gamma-1…3, rl-epsilon-1…3.
 const variants = { rl: 3, osu: 2 };
-const artKey = (g, p, i, ri) => {
+const ownArt = (g, r, i) => {
+  const key = `${prefix[g.id]}-${slug(r.name)}-${i + 1}`;
+  return existsSync(`public/img/cartes/${key}.webp`) ? key : null;
+};
+const artKey = (g, p, i, ri, r) => {
   if (hasRole(p)) return `${prefix[g.id]}-${slug(p.role)}`;
+  const own = ownArt(g, r, i);
+  if (own) return own;
   const n = variants[prefix[g.id]] ?? 3;
   return `${prefix[g.id]}-${((i + ri) % n) + 1}`;
 };
@@ -41,8 +49,8 @@ const games = data.games.map((g) => {
         photo: p.photo,
         role: p.role,
         label: g.rosters.length > 1 ? `Roster ${r.name}` : g.name,
-        art: artKey(g, p, i, ri),
-        flip: ri % 2 === 1,
+        art: artKey(g, p, i, ri, r),
+        flip: ri % 2 === 1 && !ownArt(g, r, i),
         pole: prefix[g.id],
         lettre: g.rosters.length > 1 ? GREC[r.name] : null,
         equipe: g.id === 'rocket-league' ? EQUIPES[ri % 2] : null,
