@@ -69,8 +69,14 @@ const rosterLabel = (g) => {
         <p>Showmatchs castés en direct sur Twitch et coupes communautaires.</p>
       </div>
       <div class="match-visuals" aria-hidden="true">
-        <figure class="hud"><img src="/img/match-showmatch.webp" srcset={srcset("/img/match-showmatch.webp")} sizes="(max-width: 860px) 100vw, 62vw" alt="" width="1600" height="759" loading="lazy" /><figcaption>Showmatchs</figcaption></figure>
-        <figure class="hud"><img src="/img/match-cup.webp" srcset={srcset("/img/match-cup.webp")} sizes="(max-width: 860px) 100vw, 32vw" alt="" width="1600" height="684" loading="lazy" /><figcaption>Coupes</figcaption></figure>
+        {[
+          ['match-showmatch', 'Rocket League', 759],
+          ['match-lol', 'League of Legends', 534],
+          ['match-valo', 'Valorant', 684],
+          ['match-cup', 'Coupes', 684],
+        ].map(([img, label, h]) => (
+          <figure class="hud"><img src={`/img/${img}.webp`} srcset={srcset(`/img/${img}.webp`)} sizes="(max-width: 720px) 100vw, 48vw" alt="" width="1600" height={h} loading="lazy" /><figcaption>{label}</figcaption></figure>
+        ))}
       </div>
       <ol class="ledger">
         {matches.map((m, i) => (

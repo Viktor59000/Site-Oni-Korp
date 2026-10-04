@@ -14,6 +14,8 @@ const variants = {
   'album-couverture': [800, 1400],
   'match-showmatch': [800, 1600],
   'match-cup': [800, 1600],
+  'match-lol': [800, 1600],
+  'match-valo': [800, 1600],
   'pole-rocket-league': [600, 1200],
   'pole-lol': [600, 1200],
   'pole-valorant': [600, 1200],
