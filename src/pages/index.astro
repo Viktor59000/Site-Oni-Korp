@@ -34,7 +34,7 @@ const rosterLabel = (g) => {
     <div class="wrap">
       <div class="section__head section__head--row">
         <div>
-          <h2 id="poles-title">Quatre jeux, un seul album.</h2>
+          <h2 id="poles-title">Quatre jeux, un seul album.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="300" height="300" loading="lazy" /></h2>
           <p>{album.total} vignettes à collectionner : chaque joueur et chaque membre du staff a la sienne.</p>
         </div>
         <a class="btn" href="/effectif/">Ouvrir l'album</a>
@@ -64,18 +64,22 @@ const rosterLabel = (g) => {
         <h2 id="matchs-title">Sur le terrain.</h2>
         <p>Showmatchs castés en direct sur Twitch et coupes communautaires.</p>
       </div>
-      <ul class="ledger">
-        {matches.map((m) => (
+      <ol class="ledger">
+        {matches.map((m, i) => (
           <li>
-            <span class="ledger__opp">
-              {m.event === 'Showmatch' ? `Oni Korp contre ${m.opponent}` : m.event}
-              <small>{m.event === 'Showmatch' ? 'Showmatch Rocket League' : m.opponent}</small>
+            <span class="ledger__n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            {m.event === 'Showmatch' ? (
+              <span class="ledger__vs"><span translate="no">Oni Korp</span><span class="ledger__x">vs</span><span translate="no">{m.opponent}</span></span>
+            ) : (
+              <span class="ledger__vs"><span translate="no">{m.event}</span></span>
+            )}
+            <span class="ledger__meta">
+              {m.event === 'Showmatch' ? 'Showmatch Rocket League' : m.opponent}
+              {m.format && m.format !== 'Cup' && <b>{m.format}</b>}
             </span>
-            <span class="ledger__fmt">{m.format}</span>
-            <img src={m.image} alt="" loading="lazy" width="1200" height="675" />
           </li>
         ))}
-      </ul>
+      </ol>
       <p style="margin-top:2rem"><a class="btn btn--ghost" href="https://www.twitch.tv/oni_korp" rel="noopener"><Icon name="twitch" />Suivre les matchs sur Twitch</a></p>
     </div>
   </section>
