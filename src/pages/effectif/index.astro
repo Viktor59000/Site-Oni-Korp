@@ -14,9 +14,11 @@ import PlayerCard from '../../components/PlayerCard.astro';
     </div>
   </header>
 
+  <div class="topo">
   <div class="wrap">
     {album.games.map(({ game: g, rosters, tba }) => (
       <section class="roster-game" id={g.id} aria-labelledby={`${g.id}-title`}>
+        <span class="roster-game__vertical" aria-hidden="true" translate="no">{g.name}</span>
         <div class="roster-game__head">
           <div>
             <h2 id={`${g.id}-title`} translate="no">{g.name}</h2>
@@ -27,7 +29,7 @@ import PlayerCard from '../../components/PlayerCard.astro';
               </dl>
             )}
           </div>
-          <div class="game__img"><img src={g.banner} srcset={srcset(g.banner)} sizes="(max-width: 720px) 100vw, 42vw" alt="" loading="lazy" width="1200" height="480" /></div>
+          <div class="hud"><div class="game__img"><img src={g.banner} srcset={srcset(g.banner)} sizes="(max-width: 720px) 100vw, 42vw" alt="" loading="lazy" width="1200" height="480" /></div></div>
         </div>
         <div class="rosters">
           {rosters.map((r) => (
@@ -64,5 +66,6 @@ import PlayerCard from '../../components/PlayerCard.astro';
         ))}
       </ul>
     </section>
+  </div>
   </div>
 </Base>

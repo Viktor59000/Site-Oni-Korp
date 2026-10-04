@@ -521,3 +521,53 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 .roster__equipe { font-weight: 400; font-size: var(--step--1); color: var(--ash); }
 .sticker[data-equipe="bleue"] { background: #2f6bff; }
 .sticker[data-equipe="orange"] { background: #ff7a18; }
+
+/* ---------- Détails HUD (signature des visuels du club) ---------- */
+/* Marqueurs d'angle : 4 équerres dessinées en dégradés, sans élément supplémentaire */
+.hud { position: relative; --hud: var(--lacquer); --hud-l: 22px; --hud-w: 2px; --hud-off: -12px; }
+.hud::after {
+  content: ""; position: absolute; inset: var(--hud-off); pointer-events: none;
+  background:
+    linear-gradient(var(--hud), var(--hud)) left top / var(--hud-l) var(--hud-w),
+    linear-gradient(var(--hud), var(--hud)) left top / var(--hud-w) var(--hud-l),
+    linear-gradient(var(--hud), var(--hud)) right top / var(--hud-l) var(--hud-w),
+    linear-gradient(var(--hud), var(--hud)) right top / var(--hud-w) var(--hud-l),
+    linear-gradient(var(--hud), var(--hud)) left bottom / var(--hud-l) var(--hud-w),
+    linear-gradient(var(--hud), var(--hud)) left bottom / var(--hud-w) var(--hud-l),
+    linear-gradient(var(--hud), var(--hud)) right bottom / var(--hud-l) var(--hud-w),
+    linear-gradient(var(--hud), var(--hud)) right bottom / var(--hud-w) var(--hud-l);
+  background-repeat: no-repeat;
+}
+.hero__hud {
+  position: absolute; z-index: -1; right: 3vw; top: 50%; translate: 0 -54%;
+  width: min(760px, 50vw); aspect-ratio: 1402 / 1122; pointer-events: none;
+  --hud-l: 34px; --hud-off: 6%;
+}
+@media (max-width: 860px) { .hero__hud { display: none; } }
+
+/* Soulignement « trait + carré » sous les grands titres */
+.section__head h2::after, .roster-game__head h2::after {
+  content: ""; display: block; width: min(100%, 13rem); height: 8px; margin-top: .9rem;
+  background:
+    linear-gradient(var(--bone), var(--bone)) left center / calc(100% - 10px) 1.5px no-repeat,
+    linear-gradient(var(--lacquer), var(--lacquer)) right center / 8px 8px no-repeat;
+}
+.section--red .section__head h2::after { background:
+    linear-gradient(#fff, #fff) left center / calc(100% - 10px) 1.5px no-repeat,
+    linear-gradient(#000, #000) right center / 8px 8px no-repeat; }
+
+/* Effectif : fond topographique + quadrillage, très discret */
+.topo { position: relative; isolation: isolate; }
+.topo::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: url(/img/topo.svg) center top / 1600px auto repeat-y; opacity: .07;
+}
+
+/* Effectif : nom du pôle en vertical espacé sur le bord gauche */
+.roster-game { position: relative; }
+.roster-game__vertical {
+  position: absolute; left: calc(-1 * var(--gutter) - .2rem); top: clamp(3rem, 6vw, 5rem);
+  writing-mode: vertical-rl; rotate: 180deg;
+  font-size: .72rem; font-weight: 700; letter-spacing: .45em; text-transform: uppercase; color: var(--ash);
+}
+@media (max-width: 1360px) { .roster-game__vertical { display: none; } }
