@@ -510,7 +510,8 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 @media (max-width: 860px) { .role-groups { grid-template-columns: 1fr; } }
 
 /* Rocket League : un roster = une équipe (bleue / orange), lettre grecque en filigrane */
-.sticker[data-equipe="orange"] { --c1: #ff7a18; --c2: #1450d6; --accent: #8fb4ff; }
+.sticker[data-equipe="orange"] { --c1: #ff7a18; --c2: #1450d6; --accent: #ffb347; }
+.sticker[data-equipe="bleue"] { --accent: #8fb4ff; }
 .sticker[data-equipe="bleue"] .sticker__band::before { background: #2f6bff; }
 .sticker[data-equipe="orange"] .sticker__band::before { background: #ff7a18; }
 .sticker__lettre {
