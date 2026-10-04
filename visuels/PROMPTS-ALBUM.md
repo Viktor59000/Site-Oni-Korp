@@ -22,7 +22,7 @@ Priorité : ★★★ = ça change vraiment le site · ★★ = bonus visible ·
 ```
 For every image in this conversation, follow this art direction:
 - Brand: "Oni Korp", a French esports club. Theme: a Japanese collector's sticker album (like a Panini album) made with traditional materials.
-- Materials: off-white washi paper (#F3F1EC) with visible fibers, black sumi ink, red cinnabar seal ink (#C22E28), a touch of gold foil only when asked.
+- Materials: off-white washi paper (#F3F1EC) with visible fibers, black sumi ink, red cinnabar seal ink (#E5251F), a touch of gold foil only when asked.
 - Look: printed matter, tactile and real, photographed or scanned flat with soft even light. Minimal, lots of empty paper.
 - NEVER draw masks, demon faces, creatures, skulls or characters.
 - Never include text, letters, numbers, logos or watermarks unless the prompt explicitly asks for one specific character.

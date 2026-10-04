@@ -21,7 +21,7 @@ Si une image part en rendu « anime brillant », réponds : « Flatter. Fewer de
 ```
 SCREEN PRINT CARDS. For every image in this conversation, create the illustration of a collectible sticker in ONE strict, minimal style:
 - Look: a 3-color screen print / risograph poster. Thick confident black brush-ink outlines, FLAT color areas only, no gradients, no glow, no lens flares, no 3D lighting, no glossy rendering.
-- Palette: STRICTLY 4 inks: black, off-white paper (#EDEBE7), lacquer red (#C22E28), plus ONE accent color given in each prompt. Nothing else.
+- Palette: STRICTLY 4 inks: black, off-white paper (#EDEBE7), vermilion red (#E5251F), plus ONE accent color given in each prompt. Nothing else.
 - Texture: visible paper grain, slightly misregistered color layers (the red is offset by a few pixels), halftone dots in the shadows only.
 - Composition: one character, simple readable pose, big shapes, lots of flat background. Maximum 2 props. The idea must read in one second, like a sticker seen from 2 meters away.
 - Face: simple stylized face (a few lines), generic, never a realistic portrait.

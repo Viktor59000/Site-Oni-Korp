@@ -18,7 +18,7 @@ Règle d'or : **aucun texte, aucun logo dans les images.** ChatGPT déforme les 
 For every image in this conversation, follow this art direction:
 - Brand: "Oni Korp", a French esports club. Theme: Japanese calligraphy, sumi ink and red lacquer.
 - The identity is carried by bold ink brush strokes, angular slanted shapes (parallelograms, sharp diagonal cuts), red smoke, and graphic neon: glowing neon tube lines and light trails, which can be drawn as if painted with a brush (neon calligraphy). NEVER draw masks, demon faces, creatures or skulls.
-- Palette: pure black backgrounds, deep lacquer red (#C22E28), dark blood red (#4A1210), glowing neon red, touches of bone white (#EDEBE7).
+- Palette: pure black backgrounds, deep vermilion red (#E5251F), dark blood red (#4A1210), glowing neon red, touches of bone white (#EDEBE7).
 - Lighting: dramatic, low-key, red rim light and neon glow, lots of negative space in deep black.
 - Texture: sumi ink brush strokes and fine film grain, cinematic, high detail.
 - Never include any text, letters, numbers, logos, watermarks or UI elements.
@@ -45,7 +45,7 @@ A wide, very dark abstract background for an esports website hero. On the right 
 - **Utilisation :** remplace le kanji typographique de l'accueil par une vraie calligraphie. Si le caractère n'est pas exactement 鬼, relance : il doit être correct.
 
 ```
-Traditional Japanese shodo calligraphy of the single kanji character 鬼 (oni), written with one energetic brush in glossy red lacquer ink (#C22E28) on a pure black background. Dry-brush edges, small ink splatters, strong dynamic strokes. The character must be the correct kanji 鬼, centered, filling about 80% of the frame. Nothing else in the image.
+Traditional Japanese shodo calligraphy of the single kanji character 鬼 (oni), written with one energetic brush in glossy red lacquer ink (#E5251F) on a pure black background. Dry-brush edges, small ink splatters, strong dynamic strokes. The character must be the correct kanji 鬼, centered, filling about 80% of the frame. Nothing else in the image.
 ```
 
 **Variante néon** (à tester aussi, garde celle que tu préfères) :

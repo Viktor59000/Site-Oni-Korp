@@ -23,7 +23,7 @@
 ```
 ONI KORP PERSONAS. For every image in this conversation, invent ONE original character for a collectible esports card, from the written description only. Strict style:
 - Manga illustration, clean confident ink linework, flat cel colors (2 tones per color max), solid black shadows. No gradients, no glow, no lens flare, no glossy 3D rendering, no photo-realism, no halftone dots, no busy cross-hatching.
-- Palette: black, off-white, lacquer red (#C22E28) and ONE accent color given in the prompt. Nothing else.
+- Palette: black, off-white, vermilion red (#E5251F) and ONE accent color given in the prompt. Nothing else.
 - Every character wears a piece of the club outfit: a black jacket or hoodie with lacquer-red details (no logo, no text).
 - The character is an invented manga person: the face is stylized and expressive, NOT a realistic portrait. Respect exactly the hair, facial hair, build and accessories described.
 - Portrait 2:3, full bleed (no white margin, no frame), character in the upper two thirds; the bottom third is simple background, still painted.
