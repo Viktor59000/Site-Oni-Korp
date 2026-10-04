@@ -90,10 +90,48 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(back);
   }
 
+  if (action === 'objectif' && me.staff) {
+    const roster = Number(f.get('roster'));
+    const due = clip(f.get('due'), 10);
+    await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
+    if (clip(f.get('title'), 120)) await exec('INSERT INTO goals (roster_id, user_id, title, detail, due, created_by, at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
+      roster, clip(f.get('user'), 25) || null, clip(f.get('title'), 120), clip(f.get('detail'), 500) || null,
+      /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(`${due}T23:59:00+01:00`) : null, user.id, Date.now(), Date.now());
+    return redirect(back);
+  }
+
+  if (action === 'objectif-maj') {
+    const id = Number(f.get('id'));
+    const [g] = await rows<{ roster_id: number; user_id: string | null }>('SELECT roster_id, user_id FROM goals WHERE id = ?', id);
+    const may = g && (me.staff || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id))));
+    let status = clip(f.get('status'), 12);
+    if (!['en-cours', 'atteint', 'abandonne'].includes(status) || (status === 'abandonne' && !me.staff)) status = 'en-cours';
+    const progress = status === 'atteint' ? 100 : Math.min(100, Math.max(0, Number(f.get('progress')) || 0));
+    if (may) await exec('UPDATE goals SET progress = ?, status = ?, updated_at = ? WHERE id = ?', progress, status, Date.now(), id);
+    return redirect(back);
+  }
+
+  if (action === 'tableau') {
+    const roster = Number(f.get('roster'));
+    const game = clip(f.get('game'), 5) === 'lol' ? 'lol' : 'valo';
+    if (!canRoster(roster)) return redirect(back);
+    await exec(`CREATE TABLE IF NOT EXISTS boards (id INTEGER PRIMARY KEY, roster_id INTEGER, game TEXT, map TEXT, title TEXT, state TEXT, updated_at INTEGER, updated_by TEXT)`).catch(() => {});
+    const [b] = await rows<{ id: number }>('INSERT INTO boards (roster_id, game, map, title, state, updated_at, updated_by) VALUES (?,?,?,?,?,?,?) RETURNING id',
+      roster, game, game === 'lol' ? 'Faille' : clip(f.get('map'), 40) || 'Ascent', clip(f.get('title'), 60) || 'Tableau', '{}', Date.now(), user.id);
+    const r = new URL(back, 'http://x').searchParams.get('r');
+    return redirect(b ? `/equipe/tactique/?b=${b.id}${r ? `&r=${r}` : ''}` : back);
+  }
+
   if (action === 'suppr') {
     // Supprimer un draft ou une lineup : l'auteur ou l'encadrement
-    const table = clip(f.get('table'), 10) === 'lineups' ? 'lineups' : 'drafts';
     const id = Number(f.get('id'));
+    if (clip(f.get('table'), 10) === 'boards') {
+      // Un tableau appartient au roster : n'importe quel membre du roster (ou l'encadrement) peut le supprimer
+      const [b] = await rows<{ roster_id: number }>('SELECT roster_id FROM boards WHERE id = ?', id);
+      if (b && canRoster(Number(b.roster_id))) await exec('DELETE FROM boards WHERE id = ?', id);
+      return redirect(back);
+    }
+    const table = clip(f.get('table'), 10) === 'lineups' ? 'lineups' : 'drafts';
     const [row] = await rows<{ author: string }>(`SELECT author FROM ${table} WHERE id = ?`, id);
     if (row && (row.author === user.id || me.staff)) await exec(`DELETE FROM ${table} WHERE id = ?`, id);
     return redirect(back);

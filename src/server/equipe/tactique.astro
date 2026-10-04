@@ -1,0 +1,281 @@
+---
+// Tableau tactique partagé (Valorant, League of Legends) : on pose les agents ou champions, on dessine les rotations,
+// le roster voit les changements en quasi direct. Plusieurs tableaux par roster (une strat par carte, un plan de jeu…).
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { ensureBoards } from './tableau-api';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+await ensureBoards();
+const sc = scope(me.rosters, Astro.url);
+const usable = sc.list.filter((r) => ['valo', 'lol'].includes(r.game) || (me.staff && !sc.active));
+const boardId = Number(Astro.url.searchParams.get('b')) || null;
+type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null };
+const list = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.map, b.title, b.updated_at, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by
+  WHERE b.roster_id IN (${usable.map(() => '?').join(',')}) ORDER BY b.updated_at DESC`, ...usable.map((r) => r.id)) : [];
+const current = boardId ? list.find((b) => Number(b.id) === boardId) : null;
+const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+const q = sc.active ? `&r=${sc.active}` : '';
+const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 2880 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+---
+<Base title="Tableau tactique · Espace équipe" description="Tableau tactique partagé du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Tableau tactique</h1><p>Pose les agents, dessine les rotations : ton roster voit tout en direct.</p></div></header>
+  <EquipeShell current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    {!current ? (
+      <div class="tb-home">
+        {!usable.length && <p class="eq-note">Le tableau tactique sert aux rosters Valorant et League of Legends. Il s'ouvrira dès qu'un tel roster existe.</p>}
+        {usable.length > 0 && (
+          <form method="post" action="/api/equipe/outils" class="tb-new">
+            <h2>Nouveau tableau</h2>
+            <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={`/equipe/tactique/?${q.slice(1)}`} />
+            <label>Titre<input name="title" required maxlength="60" placeholder="Ex. : Ascent · retake B" /></label>
+            <label>Roster<select name="roster">{usable.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+            <label>Jeu<select name="game" data-game><option value="valo">Valorant</option><option value="lol">League of Legends</option></select></label>
+            <label data-map-field>Carte<select name="map" data-map-select><option value="">Chargement…</option></select></label>
+            <button class="btn">Créer et ouvrir</button>
+          </form>
+        )}
+        {list.length > 0 && (
+          <section class="tb-list">
+            <h2>Tableaux du roster</h2>
+            <ul>
+              {list.map((b) => (
+                <li><a href={`/equipe/tactique/?b=${b.id}${q}`}><strong>{b.title}</strong><span>{b.game === 'lol' ? 'Faille de l\'invocateur' : b.map} · {rosterName.get(Number(b.roster_id))} · modifié {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span></a></li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    ) : (
+      <div class="tb" data-board={current.id} data-game={current.game} data-map={current.map} data-me={user.id}>
+        <div class="tb-bar">
+          <a class="tb-back" href={`/equipe/tactique/${q ? `?${q.slice(1)}` : ''}`}>← Tableaux</a>
+          <h2>{current.title}</h2>
+          <p class="tb-live" data-live><span aria-hidden="true"></span>En direct</p>
+        </div>
+        <div class="tb-tools" role="toolbar" aria-label="Outils">
+          <button type="button" data-tool="move" aria-pressed="true">Déplacer</button>
+          <button type="button" data-tool="draw" aria-pressed="false">Dessiner</button>
+          <button type="button" data-tool="erase" aria-pressed="false">Gomme</button>
+          <span class="tb-colors">{['#ff4655', '#2f6bff', '#ffd23f', '#ffffff'].map((c, i) => <button type="button" data-color={c} aria-pressed={i === 0 ? 'true' : 'false'} style={`--c:${c}`} aria-label={`Couleur ${c}`}></button>)}</span>
+          <button type="button" data-clear>Tout effacer</button>
+        </div>
+        <div class="tb-main">
+          <div class="tb-stage" data-stage>
+            <img data-mapimg alt="" />
+            <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg></svg>
+            <div class="tb-tokens" data-tokens></div>
+            <p class="tb-hint" data-hint hidden></p>
+          </div>
+          <aside class="tb-palette">
+            <p class="tb-pal-h">Repères</p>
+            <div class="tb-markers">
+              {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally">{n}</button>)}
+              {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy">{n}</button>)}
+            </div>
+            <p class="tb-pal-h">{current.game === 'lol' ? 'Champions' : 'Agents'}</p>
+            <input type="search" placeholder="Chercher" data-pal-search aria-label="Chercher" />
+            <div class="tb-pal" data-pal></div>
+            <p class="eq-note">Clique sur un élément puis sur la carte pour le poser. Glisse pour déplacer, gomme pour retirer.</p>
+          </aside>
+        </div>
+        <form method="post" action="/api/equipe/outils" class="tb-del" onsubmit="return confirm('Supprimer ce tableau pour tout le roster ?')">
+          <input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="boards" /><input type="hidden" name="id" value={current.id} />
+          <input type="hidden" name="back" value={`/equipe/tactique/${q ? `?${q.slice(1)}` : ''}`} />
+          <button class="tb-link">Supprimer ce tableau</button>
+        </form>
+      </div>
+    )}
+  </EquipeShell>
+</Base>
+
+<script>
+  const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
+  const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  // ---------- Création : liste des cartes Valorant ----------
+  const newForm = document.querySelector<HTMLFormElement>('.tb-new');
+  if (newForm) {
+    const sel = newForm.querySelector<HTMLSelectElement>('[data-map-select]')!;
+    const field = newForm.querySelector<HTMLElement>('[data-map-field]')!;
+    let valoMaps: string[] = [];
+    const sync = () => {
+      const lol = newForm.querySelector<HTMLSelectElement>('[data-game]')!.value === 'lol';
+      field.hidden = lol;
+      sel.innerHTML = lol ? '<option value="Faille">Faille</option>' : valoMaps.map((m) => `<option>${esc(m)}</option>`).join('');
+    };
+    newForm.querySelector('[data-game]')!.addEventListener('change', sync);
+    fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
+      valoMaps = d.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => m.displayName).sort((a: string, b: string) => a.localeCompare(b, 'fr'));
+      sync();
+    }).catch(() => { sel.innerHTML = '<option>Ascent</option>'; });
+  }
+
+  // ---------- Tableau ----------
+  const root = document.querySelector<HTMLElement>('[data-board]');
+  if (root) {
+    type Tok = { id: string; kind: 'ally' | 'enemy' | 'pic'; ref: string; label?: string; x: number; y: number };
+    type Stroke = { id: string; color: string; pts: [number, number][] };
+    type State = { tokens: Tok[]; strokes: Stroke[] };
+    const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
+    const id = Number(root.dataset.board), game = root.dataset.game!, map = root.dataset.map!;
+    let state: State = { tokens: [], strokes: [] };
+    let at = 0, tool: 'move' | 'draw' | 'erase' = 'move', color = '#ff4655', pending: Omit<Tok, 'id' | 'x' | 'y'> | null = null;
+    let dragging: string | null = null, drawing: Stroke | null = null, dirty = false, saveTimer = 0;
+    const icons = new Map<string, string>();
+    const uid = () => Math.random().toString(36).slice(2, 9);
+    const stage = $('[data-stage]');
+    const pos = (e: PointerEvent): [number, number] => { const r = $('[data-mapimg]').getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
+
+    function render() {
+      $('[data-svg]').innerHTML = state.strokes.map((s) => `<polyline data-stroke="${s.id}" points="${s.pts.map(([x, y]) => `${x * 1000},${y * 1000}`).join(' ')}" stroke="${esc(s.color)}" />`).join('')
+        + (drawing ? `<polyline points="${drawing.pts.map(([x, y]) => `${x * 1000},${y * 1000}`).join(' ')}" stroke="${esc(drawing.color)}" />` : '');
+      $('[data-tokens]').innerHTML = state.tokens.map((t) => `<div class="tb-tok is-${t.kind}" data-tok="${t.id}" style="left:${t.x * 100}%;top:${t.y * 100}%">${t.kind === 'pic' ? `<img src="${esc(icons.get(t.ref) ?? '')}" alt="${esc(t.ref)}" title="${esc(t.ref)}" draggable="false" />` : esc(t.label ?? '')}</div>`).join('');
+    }
+    function changed() { dirty = true; render(); clearTimeout(saveTimer); saveTimer = window.setTimeout(save, 300); }
+    async function save() {
+      const r = await fetch('/api/equipe/tableau', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, state }) }).then((x) => x.json()).catch(() => null);
+      if (r?.at) { at = r.at; dirty = false; }
+    }
+    async function poll() {
+      if (document.hidden || dragging || drawing || dirty) return;
+      const r = await fetch(`/api/equipe/tableau?id=${id}&depuis=${at}`).then((x) => x.json()).catch(() => null);
+      const live = $('[data-live]');
+      live.classList.toggle('is-off', !r);
+      if (r?.changed && !dragging && !drawing && !dirty) {
+        state = { tokens: r.state.tokens ?? [], strokes: r.state.strokes ?? [] }; at = r.at; render();
+        if (r.by !== root!.dataset.me && r.byName) live.lastChild!.textContent = ` ${r.byName} modifie…`;
+        setTimeout(() => { live.lastChild!.textContent = ' En direct'; }, 2500);
+      }
+    }
+    setInterval(poll, 1500); poll();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+
+    // Outils
+    root.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.addEventListener('click', () => {
+      tool = b.dataset.tool as typeof tool; pending = null; hint(null);
+      root.querySelectorAll('[data-tool]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      stage.dataset.tool = tool;
+    }));
+    root.querySelectorAll<HTMLElement>('[data-color]').forEach((b) => b.addEventListener('click', () => {
+      color = b.dataset.color!; root.querySelectorAll('[data-color]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    }));
+    $('[data-clear]').addEventListener('click', () => { if (confirm('Effacer tout le tableau pour tout le roster ?')) { state = { tokens: [], strokes: [] }; changed(); } });
+    const hint = (t: string | null) => { const h = $('[data-hint]'); h.hidden = !t; h.textContent = t ?? ''; };
+    root.addEventListener('click', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b) return;
+      pending = { kind: b.dataset.add as Tok['kind'], ref: b.dataset.ref ?? '', label: b.dataset.label };
+      hint(`Clique sur la carte pour poser ${b.dataset.ref ?? (b.dataset.add === 'ally' ? `l'allié ${b.dataset.label}` : `l'adversaire ${b.dataset.label}`)}`);
+    });
+
+    // Carte : poser, déplacer, dessiner, gommer
+    stage.addEventListener('pointerdown', (e) => {
+      const [x, y] = pos(e);
+      const tok = (e.target as Element).closest<HTMLElement>('[data-tok]');
+      const stroke = (e.target as Element).closest<SVGElement>('[data-stroke]');
+      if (pending) { state.tokens.push({ id: uid(), ...pending, x, y }); pending = null; hint(null); changed(); return; }
+      if (tool === 'erase') {
+        if (tok) state.tokens = state.tokens.filter((t) => t.id !== tok.dataset.tok);
+        else if (stroke) state.strokes = state.strokes.filter((s) => s.id !== stroke.dataset.stroke);
+        else return;
+        changed(); return;
+      }
+      if (tool === 'move' && tok) { dragging = tok.dataset.tok!; stage.setPointerCapture(e.pointerId); return; }
+      if (tool === 'draw') { drawing = { id: uid(), color, pts: [[x, y]] }; stage.setPointerCapture(e.pointerId); }
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (dragging) { const [x, y] = pos(e); const t = state.tokens.find((k) => k.id === dragging); if (t) { t.x = x; t.y = y; render(); } }
+      else if (drawing) { const p = pos(e); const l = drawing.pts[drawing.pts.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 0.004) { drawing.pts.push(p); render(); } }
+    });
+    const end = () => {
+      if (dragging) { dragging = null; changed(); }
+      if (drawing) { if (drawing.pts.length > 1) state.strokes.push(drawing); drawing = null; changed(); }
+    };
+    stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+
+    // Palette (agents ou champions) et fond de carte
+    const pal = $('[data-pal]');
+    const fill = (items: { name: string; icon: string }[]) => {
+      items.forEach((i) => icons.set(i.name, i.icon));
+      const draw = () => {
+        const q = $<HTMLInputElement>('[data-pal-search]').value.toLowerCase();
+        pal.innerHTML = items.filter((i) => !q || i.name.toLowerCase().includes(q)).map((i) => `<button type="button" data-add="pic" data-ref="${esc(i.name)}" title="${esc(i.name)}"><img src="${esc(i.icon)}" alt="${esc(i.name)}" width="36" height="36" loading="lazy" /></button>`).join('');
+      };
+      $('[data-pal-search]').addEventListener('input', draw); draw(); render();
+    };
+    if (game === 'lol') {
+      $<HTMLImageElement>('[data-mapimg]').src = LOL_MAP;
+      fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()).then(async (v) => {
+        const d = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v[0]}/data/fr_FR/champion.json`).then((r) => r.json());
+        fill(Object.values<any>(d.data).map((c) => ({ name: c.name, icon: `https://ddragon.leagueoflegends.com/cdn/${v[0]}/img/champion/${c.id}.png` })).sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+      });
+    } else {
+      Promise.all([fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()), fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=fr-FR').then((r) => r.json())]).then(([m, a]) => {
+        $<HTMLImageElement>('[data-mapimg]').src = m.data.find((x: any) => x.displayName === map)?.displayIcon ?? '';
+        fill(a.data.map((x: any) => ({ name: x.displayName, icon: x.displayIcon })).sort((p: any, q: any) => p.name.localeCompare(q.name, 'fr')));
+      });
+    }
+    stage.dataset.tool = tool;
+  }
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .tb-home { display: grid; gap: 2.5rem; }
+  .tb-new { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 1rem; align-items: end; padding: 1.25rem; border: 1px solid var(--line); }
+  .tb-new h2, .tb-list h2 { grid-column: 1 / -1; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .tb-new label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .tb-new label[hidden] { display: none; }
+  .tb-new :is(input, select) { width: 100%; box-sizing: border-box; min-height: 42px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .tb-new .btn { justify-self: start; }
+  .tb-list ul { display: grid; gap: .5rem; margin-top: .75rem; }
+  .tb-list a { display: grid; gap: .2rem; padding: .8rem 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; }
+  .tb-list a:hover { border-color: var(--ink); }
+  .tb-list span { color: var(--muted); font-size: var(--step--1); }
+  .tb-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem; }
+  .tb-bar h2 { font-size: var(--step-1); }
+  .tb-back { color: var(--muted); font-weight: 700; }
+  .tb-live { margin: 0 0 0 auto; display: flex; align-items: center; gap: .4rem; font-size: .82rem; font-weight: 700; color: #1f8f55; }
+  .tb-live span { width: .55rem; height: .55rem; border-radius: 50%; background: currentColor; }
+  .tb-live.is-off { color: var(--muted); }
+  .tb-tools { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .75rem; }
+  .tb-tools > button { min-height: 40px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
+  .tb-tools > button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .tb-colors { display: flex; gap: .3rem; padding: 0 .5rem; }
+  .tb-colors button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: var(--c); cursor: pointer; }
+  .tb-colors button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 1px; }
+  .tb-main { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: 1rem; align-items: start; }
+  .tb-stage { position: relative; aspect-ratio: 1; max-width: 48rem; background: #0f1923; border: 1px solid var(--line); touch-action: none; user-select: none; overflow: hidden; }
+  .tb-stage[data-tool="draw"] { cursor: crosshair; }
+  .tb-stage[data-tool="erase"] { cursor: not-allowed; }
+  .tb-stage img[data-mapimg] { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+  .tb-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tb-stage :global(polyline) { fill: none; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+  .tb-tokens { position: absolute; inset: 0; pointer-events: none; }
+  .tb-tokens :global(.tb-tok) { position: absolute; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; pointer-events: auto;
+    font: 700 .85rem var(--font-body); color: #fff; border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .5); cursor: grab; background: #0f1923; overflow: hidden; }
+  .tb-tokens :global(.tb-tok img) { width: 100%; height: 100%; object-fit: cover; }
+  .tb-tokens :global(.is-ally) { background: #2f6bff; } .tb-tokens :global(.is-enemy) { background: #e5251f; }
+  .tb-hint { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); margin: 0; padding: .4rem .8rem; background: var(--lacquer); color: #fff; font-weight: 700; font-size: .85rem; white-space: nowrap; }
+  .tb-hint[hidden] { display: none; }
+  .tb-palette { display: grid; gap: .5rem; align-content: start; }
+  .tb-pal-h { font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .5rem 0 0; }
+  .tb-markers { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+  .tb-markers button { aspect-ratio: 1; border-radius: 50%; border: 2px solid #fff; color: #fff; font-weight: 700; cursor: pointer; }
+  .tb-markers .is-ally { background: #2f6bff; } .tb-markers .is-enemy { background: #e5251f; }
+  .tb-palette input { min-height: 38px; padding: 0 .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
+  .tb-pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; max-height: 22rem; overflow-y: auto; }
+  .tb-pal :global(button) { padding: 0; border: 2px solid transparent; background: none; cursor: pointer; }
+  .tb-pal :global(button:hover) { border-color: var(--lacquer); }
+  .tb-pal :global(img) { width: 100%; height: auto; display: block; }
+  .tb-del { margin-top: 1.5rem; }
+  .tb-link { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: var(--step--1); }
+  @media (max-width: 900px) { .tb-main { grid-template-columns: 1fr; } }
+</style>

@@ -32,6 +32,9 @@ const api = {
       route('/equipe/lol', './src/server/equipe/lol.astro');
       route('/equipe/valo', './src/server/equipe/valo.astro');
       route('/api/equipe/outils', './src/server/equipe/outils.ts');
+      route('/equipe/tactique', './src/server/equipe/tactique.astro');
+      route('/equipe/objectifs', './src/server/equipe/objectifs.astro');
+      route('/api/equipe/tableau', './src/server/equipe/tableau-api.ts');
       route('/postuler', './src/server/recrutement/page.astro');
       route('/api/postuler', './src/server/recrutement/postuler.ts');
     },

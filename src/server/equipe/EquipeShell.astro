@@ -14,12 +14,14 @@ const tools = (r: RosterRow) => [
   ['planning', `/equipe/?r=${r.slug}`, 'Planning'],
   ['joueurs', `/equipe/joueurs/?r=${r.slug}`, 'Joueurs'],
   ['notes', `/equipe/notes/?r=${r.slug}`, 'Notes de match'],
+  ['objectifs', `/equipe/objectifs/?r=${r.slug}`, 'Objectifs'],
   ...(r.game === 'lol' ? [['lol', `/equipe/lol/?r=${r.slug}`, 'Drafter']] : []),
   ...(r.game === 'valo' ? [['valo', `/equipe/valo/?r=${r.slug}`, 'Lineups']] : []),
+  ...(['valo', 'lol'].includes(r.game) ? [['tactique', `/equipe/tactique/?r=${r.slug}`, 'Tableau tactique']] : []),
 ];
 const all = [
-  ['planning', '/equipe/', 'Planning'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['notes', '/equipe/notes/', 'Notes de match'],
-  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant']] : []),
+  ['planning', '/equipe/', 'Planning'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['notes', '/equipe/notes/', 'Notes de match'], ['objectifs', '/equipe/objectifs/', 'Objectifs'],
+  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['tactique', '/equipe/tactique/', 'Tableau tactique']] : []),
 ];
 const activeRoster = rosters.find((r) => r.slug === active);
 ---

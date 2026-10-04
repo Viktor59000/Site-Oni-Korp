@@ -1,0 +1,120 @@
+---
+// Objectifs : l'encadrement fixe des objectifs (à un joueur ou à tout le roster), chacun fait avancer les siens.
+// Exemples : « passer Diamant avant décembre », « 3 VOD reviews par semaine », « communication en fin de round ».
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { exec, rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
+const sc = scope(me.rosters, Astro.url);
+const back = `/equipe/objectifs/${sc.active ? `?r=${sc.active}` : ''}`;
+type G = { id: number; roster_id: number; user_id: string | null; title: string; detail: string | null; due: number | null; status: string; progress: number; updated_at: number };
+const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+const STATUS: Record<string, string> = { 'en-cours': 'En cours', atteint: 'Atteint', abandonne: 'Abandonné' };
+
+const blocks = await Promise.all(sc.list.map(async (r) => {
+  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const goals = await rows<G>(`SELECT * FROM goals WHERE roster_id = ? AND (status = 'en-cours' OR updated_at > ?) ORDER BY status = 'en-cours' DESC, due IS NULL, due`, r.id, Date.now() - 30 * 86400_000);
+  const groups = [
+    { key: 'roster', label: 'Tout le roster', avatar: null as string | null, list: goals.filter((g) => !g.user_id) },
+    ...members.map((m) => ({ key: m.id, label: m.name, avatar: m.avatar, list: goals.filter((g) => g.user_id === m.id) })),
+  ].filter((g) => g.list.length || me.staff);
+  return { r, members, groups };
+}));
+const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id)));
+---
+<Base title="Objectifs · Espace équipe" description="Objectifs des joueurs et du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Objectifs</h1><p>Ce qu'on vise, joueur par joueur, et où on en est.</p></div></header>
+  <EquipeShell current="objectifs" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="ob">
+      {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
+      {blocks.map(({ r, members, groups }) => (
+        <section class="ob-roster">
+          <h2 class="ob-h">{r.name}</h2>
+          {me.staff && (
+            <details class="ob-new">
+              <summary>Fixer un objectif</summary>
+              <form method="post" action="/api/equipe/outils">
+                <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={r.id} /><input type="hidden" name="back" value={back} />
+                <label>Pour<select name="user"><option value="">Tout le roster</option>{members.map((m) => <option value={m.id}>{m.name}</option>)}</select></label>
+                <label>Objectif<input name="title" required maxlength="120" placeholder="Ex. : passer Diamant 4" /></label>
+                <label>Échéance <small>(facultatif)</small><input name="due" type="date" /></label>
+                <label class="ob-wide">Comment on le mesure <small>(facultatif)</small><textarea name="detail" rows="2" maxlength="500"></textarea></label>
+                <button class="btn">Ajouter</button>
+              </form>
+            </details>
+          )}
+          {groups.every((g) => !g.list.length) ? <p class="eq-note">Aucun objectif en cours. {me.staff ? 'Fixe le premier ci-dessus.' : 'Ton coach les fixera avec toi.'}</p> : (
+            <div class="ob-groups">
+              {groups.filter((g) => g.list.length).map((g) => (
+                <div class="ob-group">
+                  <p class="ob-who">{g.avatar && <img src={g.avatar} alt="" width="28" height="28" loading="lazy" />}<strong>{g.label}</strong></p>
+                  <ul>
+                    {g.list.map((o) => (
+                      <li class:list={['ob-goal', `is-${o.status}`]}>
+                        <div class="ob-top">
+                          <strong>{o.title}</strong>
+                          <span class="ob-status">{STATUS[o.status] ?? o.status}{o.due && o.status === 'en-cours' ? ` · avant le ${fmt.format(new Date(Number(o.due)))}` : ''}</span>
+                        </div>
+                        {o.detail && <p class="ob-detail">{o.detail}</p>}
+                        <div class="ob-bar" style={`--p:${o.progress}%`}><span></span></div>
+                        {canEdit(o) && o.status === 'en-cours' && (
+                          <form method="post" action="/api/equipe/outils" class="ob-update">
+                            <input type="hidden" name="action" value="objectif-maj" /><input type="hidden" name="id" value={o.id} /><input type="hidden" name="back" value={back} />
+                            <label>Avancement <output>{o.progress}</output> %<input type="range" name="progress" min="0" max="100" step="10" value={o.progress} oninput="this.previousElementSibling.value = this.value" /></label>
+                            <button class="ob-btn" name="status" value="en-cours">Enregistrer</button>
+                            <button class="ob-btn is-ok" name="status" value="atteint">Atteint</button>
+                            {me.staff && <button class="ob-btn" name="status" value="abandonne">Abandonner</button>}
+                          </form>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  </EquipeShell>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .ob { display: grid; gap: 3rem; }
+  .ob-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
+  .ob-new { margin-bottom: 1.25rem; }
+  .ob-new summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
+  .ob-new form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .9rem; align-items: end; margin-top: .9rem; padding: 1rem; border: 1px solid var(--line); }
+  .ob-new label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .ob-new small { font-weight: 400; color: var(--muted); }
+  .ob-new .ob-wide { grid-column: 1 / -1; }
+  .ob-new :is(input, select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .ob-new .btn { justify-self: start; }
+  .ob-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1.5rem; }
+  .ob-who { display: flex; align-items: center; gap: .5rem; margin: 0 0 .6rem; }
+  .ob-who img { border-radius: 50%; background: var(--line); }
+  .ob-group ul { display: grid; gap: .6rem; }
+  .ob-goal { display: grid; gap: .5rem; padding: .9rem 1rem; border: 1px solid var(--line); border-left: 4px solid var(--lacquer); }
+  .ob-goal.is-atteint { border-left-color: #1f8f55; }
+  .ob-goal.is-abandonne { border-left-color: var(--line); opacity: .6; }
+  .ob-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem .75rem; align-items: baseline; }
+  .ob-status { color: var(--muted); font-size: var(--step--1); }
+  .ob-detail { margin: 0; color: var(--muted); font-size: .92rem; }
+  .ob-bar { height: .45rem; background: var(--line); }
+  .ob-bar span { display: block; height: 100%; width: var(--p); background: var(--lacquer); }
+  .is-atteint .ob-bar span { background: #1f8f55; width: 100%; }
+  .ob-update { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .ob-update label { display: flex; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 700; flex: 1 1 12rem; }
+  .ob-update input { flex: 1; accent-color: var(--lacquer); }
+  .ob-btn { min-height: 36px; padding: 0 .75rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .8rem var(--font-body); cursor: pointer; }
+  .ob-btn.is-ok { border-color: #1f8f55; color: #1f8f55; }
+</style>
