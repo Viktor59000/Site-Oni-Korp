@@ -8,14 +8,14 @@
 import { existsSync } from 'node:fs';
 import RoleIcon from './RoleIcon.astro';
 
-const { name, photo, role, label, art, num, pole, flip, icon, lettre, equipe } = Astro.props;
+const { name, photo, role, label, art, num, pole, flip, icon, lettre, equipe, zoom = false } = Astro.props;
 const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
 const artSrc = photo ?? (art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null);
 // Pictogramme : rôle principal (`icon`) pour le staff, sinon le rôle du joueur
 const iconRole = icon ?? (role && !role.includes('confirmer') ? role : null);
 const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
 ---
-<article class="sticker" data-pole={pole} data-equipe={equipe}>
+<article class="sticker" data-pole={pole} data-equipe={equipe} data-name={zoom ? name : undefined} data-role={zoom ? role : undefined} data-label={zoom ? label : undefined} data-num={zoom ? num : undefined}>
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
@@ -34,4 +34,5 @@ const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
       {lettre && <span class="sticker__lettre" aria-hidden="true">{lettre}</span>}
     </div>
   </div>
+  {zoom && <button class="sticker__zoom" type="button" aria-haspopup="dialog" aria-label={`Voir la vignette de ${name} en grand`}></button>}
 </article>

@@ -3,6 +3,7 @@ import { srcset } from '../../lib/img.js';
 import { album } from '../../lib/album.js';
 import Base from '../../layouts/Base.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
+import CardViewer from '../../components/CardViewer.astro';
 ---
 <Base title="Effectif" description="L'album Oni Korp : les rosters Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
   <header class="page-head">
@@ -35,7 +36,7 @@ import PlayerCard from '../../components/PlayerCard.astro';
             <div class={`roster${rosters.length === 1 ? ' roster--wide' : ''}`} data-equipe={r.equipe}>
               <h3>{r.lettre && <span class="roster__lettre" aria-hidden="true">{r.lettre}</span>}{r.title}{r.equipe && <span class="roster__equipe">Équipe {r.equipe}</span>}</h3>
               <ul class="players">
-                {r.cards.map((c) => <li><PlayerCard {...c} /></li>)}
+                {r.cards.map((c) => <li><PlayerCard {...c} zoom /></li>)}
               </ul>
             </div>
           ))}
@@ -52,7 +53,7 @@ import PlayerCard from '../../components/PlayerCard.astro';
         <p>Ceux qui font tourner le club, avec tous leurs rôles. Le recrutement est assuré par les managers et les coachs de chaque pôle.</p>
       </div>
       <ul class="players players--staff">
-        {album.staff.map((c) => <li><PlayerCard {...c} /></li>)}
+        {album.staff.map((c) => <li><PlayerCard {...c} zoom /></li>)}
         {album.open.map((s) => (
           <li>
             <a class="slot" href="/recrutement/#staff">
@@ -67,4 +68,5 @@ import PlayerCard from '../../components/PlayerCard.astro';
     </section>
   </div>
   </div>
+  <CardViewer total={album.total} />
 </Base>

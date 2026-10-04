@@ -1,0 +1,196 @@
+---
+// Visionneuse de vignette : la carte s'envole depuis l'album, se penche sous la souris,
+// se retourne au clic ou en la faisant glisser, et l'on feuillette l'album avec les flèches.
+const { total } = Astro.props;
+---
+<dialog class="cv" aria-label="Vignette en grand" data-total={total}>
+  <div class="cv__stage">
+    <div class="cv__fly">
+      <div class="cv__card">
+        <div class="cv__face cv__front"></div>
+        <div class="cv__face cv__back">
+          <div class="cvb">
+            <div class="cvb__top">
+              <img class="cvb__logo" src="/img/oni-logo-blanc.svg" alt="" width="64" height="64" />
+              <p class="cvb__num"><span class="cvb__n"></span><small> / {total}</small></p>
+            </div>
+            <p class="cvb__name" translate="no"></p>
+            <p class="cvb__role"></p>
+            <dl class="cvb__meta">
+              <div><dt>Pôle</dt><dd class="cvb__pole"></dd></div>
+              <div class="cvb__team-row"><dt>Équipe</dt><dd class="cvb__team"></dd></div>
+            </dl>
+            <p class="cvb__foot"><span translate="no">Oni Korp</span> · Album officiel<br /><em>Oni's never on knees</em></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cv__hint" aria-hidden="true">Glisse pour tourner · clique pour retourner</p>
+  <div class="cv__controls">
+    <button class="cv__btn cv__prev" type="button" aria-label="Vignette précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
+    <button class="cv__btn cv__flip" type="button">Retourner</button>
+    <button class="cv__btn cv__next" type="button" aria-label="Vignette suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
+  </div>
+  <button class="cv__btn cv__close" type="button" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+</dialog>
+
+<script>
+  const dlg = document.querySelector<HTMLDialogElement>('dialog.cv')!;
+  const fly = dlg.querySelector<HTMLElement>('.cv__fly')!;
+  const card = dlg.querySelector<HTMLElement>('.cv__card')!;
+  const front = dlg.querySelector<HTMLElement>('.cv__front')!;
+  const back = dlg.querySelector<HTMLElement>('.cv__back')!;
+  const $ = (sel: string) => dlg.querySelector<HTMLElement>(sel)!;
+  const cards = [...document.querySelectorAll<HTMLElement>('.sticker[data-name]')];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const POLES: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!', staff: 'Staff du club' };
+
+  // Une animation qui ne se termine jamais (onglet en arrière-plan) ne doit pas bloquer la visionneuse
+  const done = (a: Animation, ms: number) => Promise.race([a.finished, new Promise((r) => setTimeout(r, ms + 80))]);
+
+  let index = -1;
+  let face = 0;          // 0, 180, 360… : côté affiché
+  let drag = 0;          // rotation en cours de glisser
+  let tiltX = 0, tiltY = 0;
+
+  const render = (animate = true) => {
+    card.style.transition = animate ? '' : 'none';
+    card.style.transform = `rotateX(${tiltX}deg) rotateY(${face + drag + tiltY}deg)`;
+    const showsBack = Math.round((((face + drag) % 360) + 360) % 360 / 180) % 2 === 1;
+    $('.cv__flip').textContent = showsBack ? 'Voir le recto' : 'Retourner';
+  };
+
+  // Remplit le recto (copie de la vignette) et le verso (fiche du joueur)
+  const fill = (el: HTMLElement) => {
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.querySelector('.sticker__zoom')?.remove();
+    clone.querySelectorAll('img').forEach((img) => (img.loading = 'eager'));
+    const holo = document.createElement('div');
+    holo.className = 'cv__holo';
+    front.replaceChildren(clone, holo);
+    const d = el.dataset;
+    const cs = getComputedStyle(el);
+    for (const v of ['--c1', '--c2', '--accent']) back.style.setProperty(v, cs.getPropertyValue(v));
+    $('.cvb__n').textContent = 'N° ' + String(d.num).padStart(2, '0');
+    $('.cvb__name').textContent = d.name ?? '';
+    $('.cvb__role').textContent = d.role || (d.pole === 'staff' ? '' : 'Joueur');
+    $('.cvb__pole').textContent = POLES[d.pole ?? ''] ?? '';
+    const team = d.label && d.label.startsWith('Roster') ? d.label + (d.equipe ? ` · équipe ${d.equipe}` : '') : '';
+    $('.cvb__team').textContent = team;
+    $('.cvb__team-row').hidden = !team;
+    dlg.setAttribute('aria-label', `Vignette ${d.num} : ${d.name}`);
+  };
+
+  // Vol de la carte entre sa place dans l'album et le centre de l'écran
+  const flight = (el: HTMLElement, reverse: boolean) => {
+    const from = el.getBoundingClientRect();
+    const to = fly.getBoundingClientRect();
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    const k = from.width / to.width;
+    const start = `translate(${dx}px, ${dy}px) scale(${k}) rotate(-2deg)`;
+    const frames = [{ transform: start }, { transform: 'none' }];
+    const ms = reverse ? 360 : 520;
+    return done(fly.animate(reverse ? frames.reverse() : frames, { duration: ms, easing: 'cubic-bezier(.2,.8,.2,1)', fill: reverse ? 'forwards' : 'none' }), ms);
+  };
+
+  const open = async (i: number) => {
+    index = i;
+    face = 0; drag = 0; tiltX = 0; tiltY = 0;
+    fill(cards[i]);
+    render(false);
+    dlg.showModal();
+    if (reduce) return;
+    cards[i].style.visibility = 'hidden';
+    await flight(cards[i], false);
+    cards[i].style.visibility = '';
+  };
+
+  const close = async () => {
+    if (!dlg.open) return;
+    face = Math.round(face / 360) * 360; drag = 0; tiltX = tiltY = 0; render();
+    const src = cards[index];
+    if (!reduce && src) {
+      dlg.classList.add('is-closing');
+      src.scrollIntoView({ block: 'nearest' });
+      src.style.visibility = 'hidden';
+      await flight(src, true);
+      src.style.visibility = '';
+      dlg.classList.remove('is-closing');
+    }
+    dlg.close();
+    fly.getAnimations().forEach((a) => a.cancel());
+  };
+
+  const go = (step: number) => {
+    index = (index + step + cards.length) % cards.length;
+    face = 0; drag = 0; render(false);
+    fill(cards[index]);
+    if (!reduce) fly.animate([{ transform: `translateX(${step * 60}px) rotate(${step * 4}deg)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  };
+
+  const flip = () => { face += 180; render(); };
+
+  // Lumière holographique : position (0..1) et intensité
+  const light = (px: number, py: number, on: number) => {
+    card.style.setProperty('--px', px.toFixed(3));
+    card.style.setProperty('--py', py.toFixed(3));
+    card.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`);
+    card.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
+    card.style.setProperty('--holo', String(on));
+  };
+
+  cards.forEach((el, i) => el.querySelector('.sticker__zoom')?.addEventListener('click', () => open(i)));
+  $('.cv__close').addEventListener('click', close);
+  $('.cv__flip').addEventListener('click', flip);
+  $('.cv__prev').addEventListener('click', () => go(-1));
+  $('.cv__next').addEventListener('click', () => go(1));
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  dlg.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') go(1);
+  });
+  // Clic sur le fond : fermer
+  dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target === $('.cv__stage')) close(); });
+
+  // Glisser pour tourner, clic simple pour retourner, inclinaison au survol
+  let startX = 0, startY = 0, moved = 0, dragging = false;
+  card.addEventListener('pointerdown', (e) => {
+    dragging = true; moved = 0; startX = e.clientX; startY = e.clientY; e_type = e.pointerType;
+    card.setPointerCapture(e.pointerId);
+    card.classList.add('is-dragging');
+  });
+  card.addEventListener('pointermove', (e) => {
+    if (dragging) {
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      moved = Math.max(moved, Math.hypot(dx, dy));
+      drag = dx * 0.6;
+      tiltX = Math.max(-25, Math.min(25, -dy * 0.15));
+      tiltY = 0;
+      const turn = (((face + drag) % 180) + 180) % 180 / 180;
+      light(turn, Math.min(1, Math.max(0, 0.5 + dy / 300)), 1);
+      render(false);
+    } else if (e.pointerType === 'mouse' && !reduce) {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      tiltX = (0.5 - py) * 16; tiltY = (px - 0.5) * 20;
+      light(px, py, 1);
+      render(false);
+    }
+  });
+  let e_type = 'mouse';
+  const release = () => {
+    if (!dragging) return;
+    dragging = false;
+    card.classList.remove('is-dragging');
+    if (moved < 6) { drag = 0; tiltX = 0; flip(); return; }
+    face = Math.round((face + drag) / 180) * 180;
+    drag = 0; tiltX = 0;
+    if (e_type !== 'mouse') light(0.5, 0.5, 0);
+    render();
+  };
+  card.addEventListener('pointerup', release);
+  card.addEventListener('pointercancel', release);
+  card.addEventListener('pointerleave', () => { if (!dragging) { tiltX = tiltY = 0; light(0.5, 0.5, 0); render(); } });
+</script>
