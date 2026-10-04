@@ -8,7 +8,7 @@ const decals = [
   {
     id: 'octane',
     car: 'Octane',
-    text: 'Le decal officiel Oni Korp × Carl sur la voiture la plus jouée du jeu. Deux variantes : domicile en noir et rouge, visiteur en blanc.',
+    text: 'Le decal officiel Oni Korp × Carl & Barl sur la voiture la plus jouée du jeu. Deux variantes : domicile en noir et rouge, visiteur en blanc.',
     file: '/downloads/oni-korp-x-carl-octane-2023.zip',
     size: '12,6 Mo',
   },
@@ -21,7 +21,7 @@ const decals = [
   },
 ];
 ---
-<Base title="Vestiaire" description="Decals Rocket League Oni Korp × Carl à télécharger gratuitement (Octane, Fennec) et merch du club.">
+<Base title="Vestiaire" description="Decals Rocket League Oni Korp × Carl & Barl à télécharger gratuitement (Octane, Fennec) et merch du club.">
   <header class="page-head">
     <img class="page-head__bg" src="/img/entete-vestiaire.webp" srcset={srcset("/img/entete-vestiaire.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">装</span>
@@ -33,17 +33,17 @@ const decals = [
 
   <div class="wrap">
     <section class="partner-intro" aria-labelledby="partner-title">
-      <h2 id="partner-title"><span translate="no">Oni Korp</span> × <span translate="no">Carl</span></h2>
-      <p>Notre partenaire Carl signe avec nous les decals Octane et Fennec 2023, en version domicile et visiteur. Les textures sont gratuites : télécharge-les et roule aux couleurs du club.</p>
+      <h2 id="partner-title"><span translate="no">Oni Korp</span> × <span translate="no">Carl &amp; Barl</span></h2>
+      <p>Notre partenaire Carl & Barl by LNDR signe avec nous les decals Octane et Fennec 2023, en version domicile et visiteur. Les textures sont gratuites : télécharge-les et roule aux couleurs du club.</p>
     </section>
     {decals.map((d) => (
       <section class="decal" aria-labelledby={`${d.id}-title`} data-decal>
         <div class="decal__stage">
-          <img src={`/img/decal-${d.id}-domicile.webp`} srcset={srcset(`/img/decal-${d.id}-domicile.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl, version domicile`} loading="lazy" width="1600" height="900" data-side="domicile" />
-          <img src={`/img/decal-${d.id}-visiteur.webp`} srcset={srcset(`/img/decal-${d.id}-visiteur.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl, version visiteur`} loading="lazy" width="1600" height="900" data-side="visiteur" hidden />
+          <img src={`/img/decal-${d.id}-domicile.webp`} srcset={srcset(`/img/decal-${d.id}-domicile.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl & Barl, version domicile`} loading="lazy" width="1600" height="900" data-side="domicile" />
+          <img src={`/img/decal-${d.id}-visiteur.webp`} srcset={srcset(`/img/decal-${d.id}-visiteur.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl & Barl, version visiteur`} loading="lazy" width="1600" height="900" data-side="visiteur" hidden />
         </div>
         <div>
-          <h2 id={`${d.id}-title`}>{d.car} Oni Korp × Carl</h2>
+          <h2 id={`${d.id}-title`}>{d.car} Oni Korp × Carl & Barl</h2>
           <p>{d.text}</p>
           <div class="switch" role="group" aria-label="Variante affichée">
             <button type="button" aria-pressed="true" data-show="domicile">Domicile</button>
