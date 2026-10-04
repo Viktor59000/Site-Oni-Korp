@@ -1,37 +1,38 @@
-# Construit le site à chaque push sur main et le publie sur GitHub Pages (branche gh-pages).
-name: Déploiement GitHub Pages
+# Le site est hébergé sur Vercel (https://oni-korp.vercel.app), qui se republie seul à chaque push.
+# L'ancienne adresse GitHub Pages ne sert plus qu'à rediriger les anciens liens vers la nouvelle,
+# en conservant le chemin (ex. /Site-Oni-Korp/effectif/ → oni-korp.vercel.app/effectif/).
+name: Redirection GitHub Pages → Vercel
 
 on:
   push:
     branches: [main]
+    paths: ['.github/workflows/deploy.yml']
   workflow_dispatch:
 
 permissions:
   contents: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
-  deploy:
+  redirect:
     runs-on: ubuntu-latest
-    env:
-      SITE_URL: https://viktor59000.github.io
-      BASE_PATH: Site-Oni-Korp
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
-      - run: node scripts/apply-base.mjs
-      - run: touch dist/.nojekyll
+      - name: Pages de redirection
+        run: |
+          mkdir -p out
+          cat > out/index.html <<'HTML'
+          <!doctype html><html lang="fr"><head><meta charset="utf-8">
+          <title>Oni Korp a déménagé</title>
+          <link rel="canonical" href="https://oni-korp.vercel.app/">
+          <meta name="robots" content="noindex">
+          <meta http-equiv="refresh" content="0; url=https://oni-korp.vercel.app/">
+          <script>location.replace('https://oni-korp.vercel.app' + location.pathname.replace(/^\/Site-Oni-Korp/, '') + location.search + location.hash)</script>
+          </head><body><p>Le site Oni Korp est maintenant sur <a href="https://oni-korp.vercel.app/">oni-korp.vercel.app</a>.</p></body></html>
+          HTML
+          cp out/index.html out/404.html
+          touch out/.nojekyll
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          publish_dir: ./out
           publish_branch: gh-pages
-          commit_message: Déploiement automatique
+          commit_message: Redirection vers Vercel
