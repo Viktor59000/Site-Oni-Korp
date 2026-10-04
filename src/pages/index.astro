@@ -5,6 +5,7 @@ import Icon from '../components/Icon.astro';
 import site from '../data/site.json';
 import matches from '../data/matches.json';
 import PlayerCard from '../components/PlayerCard.astro';
+import Agenda from '../components/Agenda.astro';
 import { album } from '../lib/album.js';
 
 // Nombre de joueurs annoncés dans le pôle
@@ -67,6 +68,7 @@ const rosterLabel = (g) => {
         <h2 id="matchs-title">Sur le terrain.</h2>
         <p>Showmatchs castés en direct sur Twitch et coupes communautaires.</p>
       </div>
+      <Agenda />
       <div class="match-visuals" aria-hidden="true">
         {[
           ['match-showmatch', 'Rocket League', 759],

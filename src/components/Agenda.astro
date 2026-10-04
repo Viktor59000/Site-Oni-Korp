@@ -1,0 +1,53 @@
+---
+// Agenda en direct : prochains matchs et derniers résultats, annoncés sur Discord avec /match (Oni Bot).
+// Les données viennent de /api/agenda ; sans données (ou hors Vercel), le bloc reste masqué.
+---
+<div class="agenda" data-agenda hidden>
+  <div class="agenda__col" data-col="aVenir" hidden>
+    <h3 class="agenda__title"><span class="agenda__live" aria-hidden="true"></span>Prochains matchs</h3>
+    <ol class="agenda__list" data-list="aVenir"></ol>
+  </div>
+  <div class="agenda__col" data-col="resultats" hidden>
+    <h3 class="agenda__title">Derniers résultats</h3>
+    <ol class="agenda__list" data-list="resultats"></ol>
+  </div>
+</div>
+
+<script>
+  type Item = { id: number; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  const root = document.querySelector<HTMLElement>('[data-agenda]');
+  const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  const row = (m: Item) => {
+    const when = `<time datetime="${m.date}">${fmt.format(new Date(m.date))}</time>`;
+    const meta = [m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format)].filter(Boolean).join(' · ');
+    const score = m.score ? `<b class="agenda__score ${m.score[0] > m.score[1] ? 'is-win' : ''}">${m.score[0]} – ${m.score[1]}</b>` : '';
+    const live = !m.score && m.lien && /^https?:\/\//.test(m.lien) ? `<a class="agenda__link" href="${esc(m.lien)}" rel="noopener">Regarder</a>` : '';
+    return `<li class="agenda__item">${when}<span class="agenda__vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(m.adversaire)}</span><span class="agenda__meta">${meta}</span>${score}${live}</li>`;
+  };
+
+  // En développement, ?agenda=demo affiche des données d'exemple pour régler la mise en page
+  const demo = import.meta.env.DEV && new URLSearchParams(location.search).get('agenda') === 'demo';
+  const sample = (d: number, h: number) => new Date(Date.now() + d * 86400000).toISOString();
+  (demo
+    ? Promise.resolve({
+        aVenir: [{ id: 1, jeu: 'Rocket League', roster: 'Gamma', adversaire: 'Team Test', format: 'BO5', date: sample(1, 20), lien: 'https://twitch.tv/oni_korp', score: null },
+                 { id: 2, jeu: 'Valorant', roster: null, adversaire: 'Les Rivaux', format: 'BO3', date: sample(6, 21), lien: null, score: null }],
+        resultats: [{ id: 3, jeu: 'League of Legends', roster: 'LoL', adversaire: 'Rivaux', format: 'BO3', date: sample(-1, 20), lien: null, score: [2, 1] },
+                    { id: 4, jeu: 'Rocket League', roster: 'Epsilon', adversaire: 'Dream Team', format: 'BO7', date: sample(-2, 21), lien: null, score: [3, 4] }],
+      })
+    : fetch(`${import.meta.env.BASE_URL}api/agenda`).then((r) => (r.ok ? r.json() : null)))
+    .then((d: { aVenir: Item[]; resultats: Item[] } | null) => {
+      if (!d || !root) return;
+      let any = false;
+      for (const key of ['aVenir', 'resultats'] as const) {
+        if (!d[key]?.length) continue;
+        any = true;
+        root.querySelector<HTMLElement>(`[data-list="${key}"]`)!.innerHTML = d[key].slice(0, 5).map(row).join('');
+        root.querySelector<HTMLElement>(`[data-col="${key}"]`)!.hidden = false;
+      }
+      root.hidden = !any;
+    })
+    .catch(() => {});
+</script>

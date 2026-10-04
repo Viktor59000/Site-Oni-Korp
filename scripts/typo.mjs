@@ -42,7 +42,10 @@ async function* walk(dir) {
 }
 
 let n = 0;
-for await (const f of walk('dist')) {
+// Sur Vercel, les pages compilées sont dans .vercel/output/static
+import { existsSync } from 'node:fs';
+const out = existsSync('.vercel/output/static') ? '.vercel/output/static' : 'dist';
+for await (const f of walk(out)) {
   const src = await readFile(f, 'utf8');
   const out = process(src);
   if (out !== src) { await writeFile(f, out); n++; }
