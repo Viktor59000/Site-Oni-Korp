@@ -10,17 +10,18 @@ const { total } = Astro.props;
         <div class="cv__face cv__front"></div>
         <div class="cv__face cv__back">
           <div class="cvb">
-            <div class="cvb__top">
-              <img class="cvb__logo" src="/img/oni-logo-blanc.svg" alt="" width="64" height="64" />
-              <p class="cvb__num"><span class="cvb__n"></span><small> / {total}</small></p>
+            <img class="cvb__mark" src="/img/oni-logo.svg" alt="" width="200" height="200" />
+            <p class="cvb__head"><span translate="no">Oni Korp</span><span>Album officiel</span></p>
+            <p class="cvb__num"><span class="cvb__n"></span><small>sur {total}</small></p>
+            <div class="cvb__body">
+              <p class="cvb__name" translate="no"></p>
+              <dl class="cvb__meta">
+                <div><dt>Rôle</dt><dd class="cvb__role"></dd></div>
+                <div><dt>Pôle</dt><dd class="cvb__pole"></dd></div>
+                <div class="cvb__team-row"><dt>Équipe</dt><dd class="cvb__team"></dd></div>
+              </dl>
             </div>
-            <p class="cvb__name" translate="no"></p>
-            <p class="cvb__role"></p>
-            <dl class="cvb__meta">
-              <div><dt>Pôle</dt><dd class="cvb__pole"></dd></div>
-              <div class="cvb__team-row"><dt>Équipe</dt><dd class="cvb__team"></dd></div>
-            </dl>
-            <p class="cvb__foot"><span translate="no">Oni Korp</span> · Album officiel<br /><em>Oni's never on knees</em></p>
+            <p class="cvb__foot"><em>Oni's never on knees</em><img class="cvb__hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" /></p>
           </div>
         </div>
       </div>
@@ -50,16 +51,65 @@ const { total } = Astro.props;
   const done = (a: Animation, ms: number) => Promise.race([a.finished, new Promise((r) => setTimeout(r, ms + 80))]);
 
   let index = -1;
-  let face = 0;          // 0, 180, 360… : côté affiché
-  let drag = 0;          // rotation en cours de glisser
-  let tiltX = 0, tiltY = 0;
+  // Orientation libre de la carte : une matrice 3D à laquelle on applique chaque petite rotation
+  let m = new DOMMatrix();
+  let tilt = new DOMMatrix();          // inclinaison au survol, par-dessus
+  let vx = 0, vy = 0, spinning = 0, idle = 0;
 
-  const render = (animate = true) => {
-    card.style.transition = animate ? '' : 'none';
-    card.style.transform = `rotateX(${tiltX}deg) rotateY(${face + drag + tiltY}deg)`;
-    const showsBack = Math.round((((face + drag) % 360) + 360) % 360 / 180) % 2 === 1;
-    $('.cv__flip').textContent = showsBack ? 'Voir le recto' : 'Retourner';
+  const turnBy = (dx: number, dy: number) => {
+    const angle = Math.hypot(dx, dy) * 0.5;
+    if (angle < 0.01) return;
+    m = new DOMMatrix().rotateAxisAngle(-dy, dx, 0, angle).multiply(m);
   };
+
+  const render = () => {
+    const t = tilt.multiply(m);
+    card.style.transform = t.toString();
+    // Normale de la face avant : d'où vient la lumière, et quel côté est visible
+    const n = t.transformPoint(new DOMPoint(0, 0, 1, 0));
+    const px = Math.min(1, Math.max(0, 0.5 - n.x * 0.6));
+    const py = Math.min(1, Math.max(0, 0.5 - n.y * 0.6));
+    card.style.setProperty('--px', px.toFixed(3));
+    card.style.setProperty('--py', py.toFixed(3));
+    card.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`);
+    card.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
+    $('.cv__flip').textContent = n.z < 0 ? 'Voir le recto' : 'Retourner';
+  };
+
+  const glow = (on: boolean) => {
+    card.style.setProperty('--holo', on ? '1' : '0');
+    clearTimeout(idle);
+    if (on) idle = window.setTimeout(() => card.style.setProperty('--holo', '0'), 1600);
+  };
+
+  // Élan après le lâcher, puis la carte ralentit
+  const coast = () => {
+    cancelAnimationFrame(spinning);
+    const step = () => {
+      vx *= 0.94; vy *= 0.94;
+      if (Math.hypot(vx, vy) < 0.05) return;
+      turnBy(vx, vy); render(); glow(true);
+      spinning = requestAnimationFrame(step);
+    };
+    spinning = requestAnimationFrame(step);
+  };
+
+  // Rotation animée (retourner la carte)
+  const spin = (deg: number, ms = 600) => {
+    cancelAnimationFrame(spinning);
+    if (reduce) { m = new DOMMatrix().rotate(0, deg, 0).multiply(m); render(); return; }
+    const start = performance.now(), base = m;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / ms);
+      const e = 1 - Math.pow(1 - k, 3);
+      m = new DOMMatrix().rotate(0, deg * e, 0).multiply(base);
+      render(); glow(true);
+      if (k < 1) spinning = requestAnimationFrame(step);
+    };
+    spinning = requestAnimationFrame(step);
+  };
+
+  const reset = () => { cancelAnimationFrame(spinning); vx = vy = 0; m = new DOMMatrix(); tilt = new DOMMatrix(); render(); glow(false); };
 
   // Remplit le recto (copie de la vignette) et le verso (fiche du joueur)
   const fill = (el: HTMLElement) => {
@@ -68,15 +118,17 @@ const { total } = Astro.props;
     clone.querySelectorAll('img').forEach((img) => (img.loading = 'eager'));
     const holo = document.createElement('div');
     holo.className = 'cv__holo';
-    front.replaceChildren(clone, holo);
+    const glitter = document.createElement('div');
+    glitter.className = 'cv__glitter';
+    front.replaceChildren(clone, holo, glitter);
     const d = el.dataset;
     const cs = getComputedStyle(el);
     for (const v of ['--c1', '--c2', '--accent']) back.style.setProperty(v, cs.getPropertyValue(v));
-    $('.cvb__n').textContent = 'N° ' + String(d.num).padStart(2, '0');
+    $('.cvb__n').textContent = String(d.num).padStart(2, '0');
     $('.cvb__name').textContent = d.name ?? '';
     $('.cvb__role').textContent = d.role || (d.pole === 'staff' ? '' : 'Joueur');
     $('.cvb__pole').textContent = POLES[d.pole ?? ''] ?? '';
-    const team = d.label && d.label.startsWith('Roster') ? d.label + (d.equipe ? ` · équipe ${d.equipe}` : '') : '';
+    const team = d.label && d.label.startsWith('Roster') ? d.label + (d.equipe ? `, équipe ${d.equipe}` : '') : '';
     $('.cvb__team').textContent = team;
     $('.cvb__team-row').hidden = !team;
     dlg.setAttribute('aria-label', `Vignette ${d.num} : ${d.name}`);
@@ -97,9 +149,8 @@ const { total } = Astro.props;
 
   const open = async (i: number) => {
     index = i;
-    face = 0; drag = 0; tiltX = 0; tiltY = 0;
     fill(cards[i]);
-    render(false);
+    reset();
     dlg.showModal();
     if (reduce) return;
     cards[i].style.visibility = 'hidden';
@@ -109,7 +160,7 @@ const { total } = Astro.props;
 
   const close = async () => {
     if (!dlg.open) return;
-    face = Math.round(face / 360) * 360; drag = 0; tiltX = tiltY = 0; render();
+    reset();
     const src = cards[index];
     if (!reduce && src) {
       dlg.classList.add('is-closing');
@@ -125,21 +176,12 @@ const { total } = Astro.props;
 
   const go = (step: number) => {
     index = (index + step + cards.length) % cards.length;
-    face = 0; drag = 0; render(false);
     fill(cards[index]);
+    reset();
     if (!reduce) fly.animate([{ transform: `translateX(${step * 60}px) rotate(${step * 4}deg)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
   };
 
-  const flip = () => { face += 180; render(); };
-
-  // Lumière holographique : position (0..1) et intensité
-  const light = (px: number, py: number, on: number) => {
-    card.style.setProperty('--px', px.toFixed(3));
-    card.style.setProperty('--py', py.toFixed(3));
-    card.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`);
-    card.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
-    card.style.setProperty('--holo', String(on));
-  };
+  const flip = () => spin(180);
 
   cards.forEach((el, i) => el.querySelector('.sticker__zoom')?.addEventListener('click', () => open(i)));
   $('.cv__close').addEventListener('click', close);
@@ -154,43 +196,37 @@ const { total } = Astro.props;
   // Clic sur le fond : fermer
   dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target === $('.cv__stage')) close(); });
 
-  // Glisser pour tourner, clic simple pour retourner, inclinaison au survol
-  let startX = 0, startY = 0, moved = 0, dragging = false;
+  // Glisser : rotation libre dans tous les sens, avec élan. Clic simple : retourner. Survol : légère inclinaison.
+  let lastX = 0, lastY = 0, moved = 0, dragging = false;
   card.addEventListener('pointerdown', (e) => {
-    dragging = true; moved = 0; startX = e.clientX; startY = e.clientY; e_type = e.pointerType;
+    cancelAnimationFrame(spinning);
+    dragging = true; moved = 0; vx = vy = 0; lastX = e.clientX; lastY = e.clientY;
+    tilt = new DOMMatrix();
     card.setPointerCapture(e.pointerId);
     card.classList.add('is-dragging');
   });
   card.addEventListener('pointermove', (e) => {
     if (dragging) {
-      const dx = e.clientX - startX, dy = e.clientY - startY;
-      moved = Math.max(moved, Math.hypot(dx, dy));
-      drag = dx * 0.6;
-      tiltX = Math.max(-25, Math.min(25, -dy * 0.15));
-      tiltY = 0;
-      const turn = (((face + drag) % 180) + 180) % 180 / 180;
-      light(turn, Math.min(1, Math.max(0, 0.5 + dy / 300)), 1);
-      render(false);
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      moved += Math.hypot(dx, dy);
+      vx = dx; vy = dy;
+      turnBy(dx, dy); render(); glow(true);
     } else if (e.pointerType === 'mouse' && !reduce) {
       const r = card.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-      tiltX = (0.5 - py) * 16; tiltY = (px - 0.5) * 20;
-      light(px, py, 1);
-      render(false);
+      const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+      tilt = new DOMMatrix().rotate(-py * 18, px * 22, 0);
+      render(); glow(true);
     }
   });
-  let e_type = 'mouse';
   const release = () => {
     if (!dragging) return;
     dragging = false;
     card.classList.remove('is-dragging');
-    if (moved < 6) { drag = 0; tiltX = 0; flip(); return; }
-    face = Math.round((face + drag) / 180) * 180;
-    drag = 0; tiltX = 0;
-    if (e_type !== 'mouse') light(0.5, 0.5, 0);
-    render();
+    if (moved < 6) { flip(); return; }
+    if (!reduce) coast();
   };
   card.addEventListener('pointerup', release);
   card.addEventListener('pointercancel', release);
-  card.addEventListener('pointerleave', () => { if (!dragging) { tiltX = tiltY = 0; light(0.5, 0.5, 0); render(); } });
+  card.addEventListener('pointerleave', () => { if (!dragging) { tilt = new DOMMatrix(); render(); } });
 </script>
