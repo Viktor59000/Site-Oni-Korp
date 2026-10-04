@@ -29,6 +29,8 @@ jobs:
           </head><body><p>Le site Oni Korp est maintenant sur <a href="https://oni-korp.vercel.app/">oni-korp.vercel.app</a>.</p></body></html>
           HTML
           cp out/index.html out/404.html
+          # Cette branche ne doit jamais être construite par Vercel
+          echo '{"git":{"deploymentEnabled":false}}' > out/vercel.json
           touch out/.nojekyll
       - uses: peaceiris/actions-gh-pages@v4
         with:
