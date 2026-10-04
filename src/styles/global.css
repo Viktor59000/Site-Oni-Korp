@@ -990,3 +990,5 @@ main { counter-reset: page; }
 .agenda__score.is-win { color: var(--red-text); }
 .agenda__link { grid-column: 3; grid-row: 1 / span 2; align-self: center; font-weight: 700; font-size: var(--step--1); }
 @media (max-width: 520px) { .agenda__item { grid-template-columns: 1fr auto; } .agenda__item time { grid-column: 1 / -1; } .agenda__meta { grid-column: 1; } }
+.ledger__video { font-weight: 700; color: var(--red-text); white-space: nowrap; }
+.ledger__video::before { content: "▶ "; font-size: .8em; }

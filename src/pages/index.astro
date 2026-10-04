@@ -83,14 +83,15 @@ const rosterLabel = (g) => {
         {matches.map((m, i) => (
           <li>
             <span class="ledger__n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
-            {m.event === 'Showmatch' ? (
+            {m.event === 'Showmatch' || m.event === 'Scrim' ? (
               <span class="ledger__vs"><span translate="no">Oni Korp</span><span class="ledger__x">vs</span><span translate="no">{m.opponent}</span></span>
             ) : (
               <span class="ledger__vs"><span translate="no">{m.event}</span></span>
             )}
             <span class="ledger__meta">
-              {m.event === 'Showmatch' ? 'Showmatch Rocket League' : m.opponent}
+              {m.event === 'Showmatch' || m.event === 'Scrim' ? `${m.event} Rocket League` : m.opponent}
               {m.format && m.format !== 'Cup' && <b>{m.format}</b>}
+              {m.video && <a class="ledger__video" href={m.video} rel="noopener" aria-label={`Revoir le match contre ${m.opponent} sur YouTube`}>Revoir</a>}
             </span>
           </li>
         ))}
