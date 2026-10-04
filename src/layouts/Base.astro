@@ -1,6 +1,8 @@
 ---
 import '../styles/fonts.css';
 import delaLatin from '@fontsource/dela-gothic-one/files/dela-gothic-one-latin-400-normal.woff2?url';
+import zen400 from '@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-400-normal.woff2?url';
+import zen700 from '@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-700-normal.woff2?url';
 import '@fontsource/zen-kaku-gothic-new/latin-400.css';
 import '@fontsource/zen-kaku-gothic-new/latin-500.css';
 import '@fontsource/zen-kaku-gothic-new/latin-700.css';
@@ -33,6 +35,10 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
       })();
     </script>
     <link rel="preload" href={delaLatin} as="font" type="font/woff2" crossorigin />
+    <!-- Police du texte et grain de papier : arrivent tout de suite, la page ne change plus d'aspect après l'affichage -->
+    <link rel="preload" href={zen400} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={zen700} as="font" type="font/woff2" crossorigin />
+    {!qg && <link rel="preload" href="/img/papier-washi.webp" as="image" type="image/webp" />}
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
