@@ -60,8 +60,8 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
   <header class="page-head">
     <div class="wrap">
       <h1>Espace équipe</h1>
-      {user && me?.member
-        ? <p class="eq-who">{user.avatar && <img src={user.avatar} alt="" width="40" height="40" />}Connecté en tant que <strong>{me.member.name}</strong>{me.staff && <span class="eq-tag">Encadrement</span>} · <a href="/api/auth/logout">Se déconnecter</a></p>
+      {user
+        ? <p class="eq-who">{user.avatar && <img src={user.avatar} alt="" width="40" height="40" />}Connecté en tant que <strong>{me?.member?.name ?? user.name}</strong>{me?.staff && <span class="eq-tag">Encadrement</span>} · <a href="/api/auth/logout">Se déconnecter</a></p>
         : <p>Séances, présences et disponibilités de ton roster, reliées au Discord du club.</p>}
     </div>
   </header>
@@ -78,7 +78,19 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
         </div>
       )}
 
-      {user && me && !me.rosters.length && (
+      {user && me && !me.member && (
+        <div class="eq-login">
+          <p class="eq-alert">Oni Bot n'a pas encore transmis la liste des membres du serveur au site.</p>
+          <p class="eq-note">Ça se fait automatiquement dès qu'Oni Bot tourne relié à la base de données. Reviens dans quelques minutes.</p>
+        </div>
+      )}
+      {user && me?.member && me.staff && !me.rosters.length && (
+        <div class="eq-login">
+          <p>Aucun roster n'existe encore.</p>
+          <p class="eq-note">Crée-les sur Discord avec <code>/roster creer</code>, puis ajoute les joueurs avec <code>/roster ajouter</code> : ils apparaîtront ici.</p>
+        </div>
+      )}
+      {user && me?.member && !me.staff && !me.rosters.length && (
         <div class="eq-login">
           <p>Cet espace est réservé aux joueurs des rosters et au staff du club.</p>
           <a class="btn" href="/recrutement/">Rejoindre un roster</a>
