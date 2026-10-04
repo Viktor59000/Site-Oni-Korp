@@ -49,6 +49,7 @@
         root.querySelector<HTMLElement>(`[data-col="${key}"]`)!.hidden = false;
       }
       root.hidden = !any;
+      root.closest<HTMLElement>('[data-agenda-section]')?.toggleAttribute('hidden', !any);
     })
     .catch(() => {});
 </script>

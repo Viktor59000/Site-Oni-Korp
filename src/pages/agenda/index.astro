@@ -55,7 +55,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     </div>
   </section>
 
-  <section class="section section--bone" aria-labelledby="videos-title">
+  <section class="section section--bone" aria-labelledby="videos-title" data-videos-section hidden>
     <div class="wrap">
       <div class="section__head section__head--row">
         <h2 id="videos-title">Dernières vidéos.</h2>
@@ -141,6 +141,8 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
         `<a class="cal-ev g-${esc(it.code)}${it.score ? ' is-done' : ''}" href="#m-${it.id}"><b>${hour.format(new Date(it.date))}</b> ${esc(it.adversaire)}${it.score ? ` <i>${it.score[0]}-${it.score[1]}</i>` : ''}</a>`).join('')}</div>`;
     }
     grid.innerHTML = html;
+    // Mois sans rendez-vous : grille compacte, le message prend le relais
+    grid.classList.toggle('is-quiet', !items.length);
     list.innerHTML = items.map(row).join('');
     document.querySelector<HTMLElement>('[data-empty]')!.hidden = items.length > 0;
     const url = new URL(location.href);
@@ -171,6 +173,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
         <li><a href="${esc(v.lien)}" rel="noopener">${v.image ? `<img src="${esc(v.image)}" alt="" width="480" height="360" loading="lazy" />` : ''}
           <span>${esc(v.titre)}</span><small>${esc(v.auteur)} · ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(v.date))}</small></a></li>`).join('');
       document.querySelector<HTMLElement>('[data-videos-empty]')!.hidden = true;
+      document.querySelector<HTMLElement>('[data-videos-section]')!.hidden = false;
     }
   }).catch(() => {});
 </script>
@@ -196,6 +199,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   .cal-dow { padding: .5rem .4rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
   .cal-days { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, 1fr); border-left: 1px solid var(--line); }
   .cal-days :global(.cal-pad), .cal-days :global(.cal-day) { min-height: 6.5rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .cal-days.is-quiet :global(.cal-pad), .cal-days.is-quiet :global(.cal-day) { min-height: 2.6rem; }
   .cal-days :global(.cal-day) { display: flex; flex-direction: column; gap: .25rem; padding: .35rem; min-width: 0; }
   .cal-days :global(.cal-num) { font-size: .8rem; font-weight: 700; color: var(--muted); }
   .cal-days :global(.is-today .cal-num) { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--lacquer); color: #fff; }
@@ -225,7 +229,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   .ag-list :global(.ag-score.is-loss) { color: var(--muted); }
   .ag-list :global(.ag-watch) { font-weight: 700; color: var(--red-text); white-space: nowrap; }
   .ag-empty { color: var(--muted); padding: 1.25rem 0; max-width: 46ch; }
-  .ag-empty[hidden] { display: none; }
+  .ag-empty[hidden], [data-videos-section][hidden] { display: none; }
   .ag-hist { margin-top: 1rem; }
   .ag-hist li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); font-size: .95rem; }
   .ag-hist__meta { color: var(--muted); font-size: var(--step--1); }

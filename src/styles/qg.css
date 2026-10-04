@@ -148,3 +148,21 @@ body.qg .eq-roster__head h2 { font-size: var(--text-lg); }
 body.qg .eq-roster h3 { margin-top: var(--space-5); font-size: var(--text-md); }
 body.qg .eq-roster__head.is-single { display: none; }
 body.qg .eq-roster__head.is-single + h3 { margin-top: 0; }
+
+/* ---------- États vides : une seule présentation pour tous les outils ---------- */
+body.qg :is(.eq-empty, .nt-empty, .ag-empty, .ou .eq-note:only-child) { padding: var(--space-5) var(--space-4); text-align: center; color: var(--qg-muted); background: var(--qg-card); border: 1px dashed var(--qg-border); border-radius: var(--radius); max-width: none; }
+
+/* ---------- Mobile : barre d'onglets en bas ---------- */
+.qg-tabs { display: none; }
+@media (max-width: 900px) {
+  .qg-tabs { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+    background: var(--qg-card); border-top: 1px solid var(--qg-border); padding-bottom: env(safe-area-inset-bottom); }
+  .qg-tabs a, .qg-tabs button { display: grid; justify-items: center; gap: 2px; padding: .45rem 0 .5rem; border: 0; background: none; color: var(--qg-muted); text-decoration: none; font: 700 .68rem var(--font-body); cursor: pointer; }
+  .qg-tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .qg-tabs [aria-current] { color: var(--game); }
+  .qg-main { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+  /* La navigation complète s'ouvre depuis l'onglet « Menu » ; le résumé du haut suffit à s'orienter */
+}
+/* Un seul roster affiché : son nom est déjà dans l'en-tête, pas besoin de le répéter */
+body.qg :is(.st-roster, .ob-roster, .jo-roster):only-of-type > :is(.st-h, .ob-h, .jo-roster__head h2, .jo-h) { display: none; }
+body.qg .jo-roster:only-of-type .jo-roster__head { border-bottom: 0; padding-bottom: 0; justify-content: flex-end; }

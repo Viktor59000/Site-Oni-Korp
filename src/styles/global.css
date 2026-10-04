@@ -554,7 +554,7 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 
 /* Soulignement « trait + carré » sous les grands titres */
 /* Souligné : un trait de pinceau sumi, teinté à la couleur du texte */
-.section__head h2::after, .roster-game__head h2::after {
+.roster-game__head h2::after {
   content: ""; display: block; width: min(100%, 15rem); aspect-ratio: 900 / 157; margin-top: .6rem;
   background: var(--ink);
   -webkit-mask: url(/img/encre-trait.webp) left center / contain no-repeat;
@@ -621,13 +621,7 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 /* Numéros de page de l'album au-dessus des titres de section */
 main { counter-reset: page; }
 .section .section__head { position: relative; }
-.section .section__head::before {
-  counter-increment: page;
-  content: "P. " counter(page, decimal-leading-zero);
-  content: "P. " counter(page, decimal-leading-zero) / "";
-  position: absolute; left: 0; bottom: 100%; margin-bottom: 1rem;
-  font-size: .78rem; font-weight: 700; letter-spacing: .18em; color: var(--muted);
-}
+
 /* Tampon hanko : posé en fin de titre, encre « imprimée » sur le papier */
 .hanko { display: inline-block; width: .9em; height: .9em; vertical-align: -.05em; margin-left: .3em; rotate: -8deg; }
 :root:not([data-theme="dark"]) .hanko { mix-blend-mode: multiply; }
@@ -1012,3 +1006,38 @@ main { counter-reset: page; }
 .legend-now p { margin-top: .6rem; max-width: 52ch; color: var(--muted); }
 .legend-now__actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 .topo--legend .roster h3::after { content: 'Ère 2021–2024'; margin-left: .75rem; font-family: var(--font-body); font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold, #b8902f); border: 1.5px solid currentColor; padding: .1rem .45rem; vertical-align: .35em; }
+
+/* Menu : accès discret à l'espace équipe (cadenas) */
+.nav__qg { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .7rem; border: 1px solid var(--line); color: var(--muted); text-decoration: none; font-size: .85rem; font-weight: 500; white-space: nowrap; }
+.nav__qg:hover { color: var(--ink); border-color: var(--ink); }
+.nav__qg svg { width: 15px; height: 15px; fill: currentColor; }
+.nav__mobile-only { display: none; }
+@media (max-width: 1100px) { .nav__qg span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+@media (max-width: 860px) { .nav__qg { display: none; } .nav[data-open] .nav__links .nav__mobile-only { display: block; } }
+
+/* Accueil : la nouvelle ère */
+.today { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); align-items: start; }
+.today h2 { font-size: var(--step-3); }
+.today__lead { font-size: 1.15rem; margin-top: 1rem; }
+.today__points { display: grid; gap: 1rem; counter-reset: t; }
+.today__points li { counter-increment: t; display: grid; grid-template-columns: 2.5rem 1fr; gap: .2rem 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgb(255 255 255 / .3); }
+.today__points li::before { content: counter(t, decimal-leading-zero); grid-row: span 2; font-family: var(--font-display); font-size: 1.4rem; }
+.today__points strong { font-size: 1.05rem; }
+.today__points span { opacity: .9; }
+.today .recruit__actions { margin-top: 1.75rem; }
+.next-rdv[hidden] { display: none; }
+@media (max-width: 860px) { .today { grid-template-columns: 1fr; } }
+
+/* Menu : tout tient sur une ligne, l'accès espace équipe se réduit à son cadenas si la place manque */
+.nav__inner { gap: 1.25rem; }
+.nav__links { gap: 1.35rem; }
+.nav__links a, .nav__brand span, .nav__cta { white-space: nowrap; }
+.nav__links a { position: relative; }
+.nav__badge { margin-left: .3rem; }
+@media (max-width: 1240px) { .nav__qg span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .nav__qg { padding: .45rem; } }
+/* Rythme vertical plus serré entre les sections */
+.section { padding-block: clamp(3rem, 7vw, 5.5rem); }
+/* Accueil : le bloc rendez-vous a déjà son bouton « Tout l'agenda » */
+.next-rdv .agenda__all { display: none; }
+.next-rdv .agenda { margin-bottom: 0; }
+@media (max-width: 1180px) and (min-width: 861px) { .nav__brand span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }

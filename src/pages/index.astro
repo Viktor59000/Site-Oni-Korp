@@ -3,16 +3,9 @@ import { srcset } from '../lib/img.js';
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import site from '../data/site.json';
-import matches from '../data/matches.json';
-import PlayerCard from '../components/PlayerCard.astro';
 import Agenda from '../components/Agenda.astro';
 import { album } from '../lib/album.js';
 
-// Nombre de joueurs annoncés dans le pôle
-const rosterLabel = (g) => {
-  const n = g.rosters.reduce((t, r) => t + r.players.length, 0);
-  return `Depuis ${g.since} · ${n} légende${n > 1 ? 's' : ''}`;
-};
 ---
 <Base>
   <section class="hero" aria-labelledby="hero-title">
@@ -31,6 +24,35 @@ const rosterLabel = (g) => {
     </div>
   </section>
 
+  <section class="section section--red section--brush" aria-labelledby="today-title">
+    <div class="wrap today">
+      <div>
+        <h2 id="today-title">Une nouvelle ère commence.</h2>
+        <p class="today__lead">Le club se reconstruit : nouveaux rosters, nouveaux outils, la même exigence. Les places sont ouvertes, sur tous nos jeux, pour les joueurs comme pour le staff.</p>
+        <div class="recruit__actions">
+          <a class="btn btn--ink" href="/postuler/">Postuler</a>
+          <a class="btn btn--ghost" href="/recrutement/">Voir les postes</a>
+        </div>
+      </div>
+      <ol class="today__points">
+        <li><strong>Des rosters à construire</strong><span>Rocket League, League of Legends, Valorant, osu! : chaque line-up se forme maintenant.</span></li>
+        <li><strong>Un vrai cadre</strong><span>Planning, stats, débriefs, strats : chaque roster a son espace et son staff.</span></li>
+        <li><strong>On joue et on se montre</strong><span>Tournois, showmatchs castés sur Twitch, contenu avec le club.</span></li>
+      </ol>
+    </div>
+  </section>
+
+
+  <section class="section next-rdv" aria-labelledby="rdv-title" data-agenda-section hidden>
+    <div class="wrap">
+      <div class="section__head section__head--row">
+        <h2 id="rdv-title">Prochains rendez-vous.</h2>
+        <a class="btn btn--ghost" href="/agenda/">Tout l'agenda</a>
+      </div>
+      <Agenda />
+    </div>
+  </section>
+
   <section class="section" aria-labelledby="poles-title">
     <div class="wrap">
       <div class="album-intro">
@@ -44,62 +66,10 @@ const rosterLabel = (g) => {
           <img src="/img/album-couverture.webp" srcset={srcset("/img/album-couverture.webp")} sizes="(max-width: 860px) 100vw, 46vw" alt="" width="1400" height="933" loading="lazy" />
         </a>
       </div>
-      <ul class="games">
-        {album.games.map(({ game: g, rosters }) => (
-          <li>
-            <a class="game" href={`/effectif/#${g.id}`}>
-              <div>
-                <h3 translate="no">{g.name}</h3>
-                <div class="game__meta">{rosterLabel(g)}</div>
-                <p class="game__pitch">{g.pitch}</p>
-              </div>
-              <ul class="game__fan" aria-hidden="true">
-                {rosters.flatMap((r) => r.cards).slice(0, 3).map((c) => <li><PlayerCard {...c} /></li>)}
-              </ul>
-            </a>
-          </li>
-        ))}
-      </ul>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="matchs-title">
-    <div class="wrap">
-      <div class="section__head">
-        <h2 id="matchs-title">Sur le terrain.</h2>
-        <p>Showmatchs castés en direct sur Twitch et coupes communautaires.</p>
-      </div>
-      <Agenda />
-      <div class="match-visuals" aria-hidden="true">
-        {[
-          ['match-showmatch', 'Rocket League', 759],
-          ['match-lol', 'League of Legends', 534],
-          ['match-valo', 'Valorant', 684],
-          ['match-cup', 'Coupes', 684],
-        ].map(([img, label, h]) => (
-          <figure class="hud"><img src={`/img/${img}.webp`} srcset={srcset(`/img/${img}.webp`)} sizes="(max-width: 720px) 100vw, 48vw" alt="" width="1600" height={h} loading="lazy" /><figcaption>{label}</figcaption></figure>
-        ))}
-      </div>
-      <ol class="ledger">
-        {matches.map((m, i) => (
-          <li>
-            <span class="ledger__n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
-            {m.event === 'Showmatch' || m.event === 'Scrim' ? (
-              <span class="ledger__vs"><span translate="no">Oni Korp</span><span class="ledger__x">vs</span><span translate="no">{m.opponent}</span></span>
-            ) : (
-              <span class="ledger__vs"><span translate="no">{m.event}</span></span>
-            )}
-            <span class="ledger__meta">
-              {m.event === 'Showmatch' || m.event === 'Scrim' ? `${m.event} Rocket League` : m.opponent}
-              {m.format && m.format !== 'Cup' && <b>{m.format}</b>}
-              {m.video && <a class="ledger__video" href={m.video} rel="noopener" aria-label={`Revoir le match contre ${m.opponent} sur YouTube`}>Revoir</a>}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <p style="margin-top:2rem"><a class="btn btn--ghost" href="https://www.twitch.tv/oni_korp" rel="noopener"><Icon name="twitch" />Suivre les matchs sur Twitch</a></p>
-    </div>
-  </section>
+
 
   <section class="section" aria-labelledby="partenaires-title">
     <div class="wrap">
@@ -120,30 +90,7 @@ const rosterLabel = (g) => {
     </div>
   </section>
 
-  <section class="section section--red section--brush" aria-labelledby="recrut-title">
-    <div class="wrap recruit">
-      <div>
-        <h2 id="recrut-title">On recrute.</h2>
-        <p style="margin-top:1rem;font-size:1.15rem">Tu veux jouer dans une dynamique plus pro, avec des coéquipiers qui ont le même niveau d'exigence ? Ta place est peut-être ici.</p>
-        <ul class="reqs">
-          <li>Rang Champion 1 minimum sur Rocket League</li>
-          <li>15 ans minimum</li>
-          <li>Actif, mature et disponible pour les entraînements</li>
-        </ul>
-      </div>
-      <div>
-        <ol class="steps">
-          <li><div><strong>Rejoins le Discord</strong><p>C'est là que vit le club.</p></div></li>
-          <li><div><strong>Postule en deux minutes</strong><p>Connexion avec Discord, jeu, rang, disponibilités.</p></div></li>
-          <li><div><strong>Échange avec le staff</strong><p>Un fil privé s'ouvre aussitôt avec le manager et le coach du pôle.</p></div></li>
-        </ol>
-        <div class="recruit__actions">
-          <a class="btn btn--ink" href="/postuler/">Postuler</a>
-          <a class="btn btn--ghost" href="/recrutement/">Voir les postes ouverts</a>
-        </div>
-      </div>
-    </div>
-  </section>
+
 
 </Base>
 

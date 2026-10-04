@@ -2,14 +2,14 @@
 // POST /api/equipe/outils (formulaire, champ « action ») · GET /api/equipe/outils?type=drafts|lineups&roster=ID (JSON)
 import type { APIRoute, AstroCookies } from 'astro';
 import { getSession, sameOrigin } from '../session';
-import { exec, rows } from '../db';
+import { db, exec, rows } from '../db';
 import { access } from './access';
 
 let ready = false;
 /** Tables des outils (créées au premier usage ; Oni Bot les crée aussi). */
 export async function ensureTables() {
   if (ready) return;
-  for (const sql of [
+  const statements = [
     `CREATE TABLE IF NOT EXISTS accounts (user_id TEXT, game TEXT, ident TEXT, region TEXT, updated_at INTEGER, PRIMARY KEY (user_id, game))`,
     `CREATE TABLE IF NOT EXISTS match_notes (match_id INTEGER, user_id TEXT, good TEXT, work TEXT, rating INTEGER, at INTEGER, PRIMARY KEY (match_id, user_id))`,
     `CREATE TABLE IF NOT EXISTS drafts (id INTEGER PRIMARY KEY, roster_id INTEGER, title TEXT, data TEXT, author TEXT, at INTEGER)`,
@@ -25,7 +25,9 @@ export async function ensureTables() {
     `CREATE TABLE IF NOT EXISTS docs (id INTEGER PRIMARY KEY, roster_id INTEGER, title TEXT, body TEXT, pinned INTEGER DEFAULT 0, author TEXT, updated_at INTEGER)`,
     `CREATE TABLE IF NOT EXISTS boards (id INTEGER PRIMARY KEY, roster_id INTEGER, game TEXT, map TEXT, title TEXT, state TEXT, updated_at INTEGER, updated_by TEXT)`,
     `CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`,
-  ]) await exec(sql).catch(() => {});
+  ];
+  // Un seul aller-retour vers la base pour toutes les tables
+  const c = db(); if (c) await c.batch(statements, 'write').catch(async () => { for (const sql of statements) await exec(sql).catch(() => {}); });
   ready = true;
 }
 

@@ -95,6 +95,14 @@ const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === cu
           </nav>
         </details>
       )}
+      {!bare && (
+        <nav class="qg-tabs" aria-label="Accès rapide">
+          {([['planning', 'Planning', 'M4 6h16M4 12h16M4 18h10'], ['calendrier', 'Calendrier', 'M5 5h14v15H5zM5 9h14M9 3v4M15 3v4'], ['stats', 'Stats', 'M5 20V11M12 20V5M19 20v-7'], ['tactique', 'Tableau', 'M4 19l5-5 4 4 7-9M4 5h16']] as [string, string, string][]).map(([k, l, d]) => (
+            <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>{l}</a>
+          ))}
+          <button type="button" data-qg-more><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>Menu</button>
+        </nav>
+      )}
       <main id="contenu" class="qg-main">
         <header class="qg-head">
           <div>
@@ -121,6 +129,11 @@ const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === cu
   if (matchMedia('(max-width: 900px)').matches) document.querySelector('[data-qg-nav]')?.removeAttribute('open');
   document.addEventListener('click', (e) => {
     document.querySelectorAll<HTMLDetailsElement>('.qg-switch[open], .qg-account[open]').forEach((d) => { if (!d.contains(e.target as Node)) d.open = false; });
+  });
+  // Onglet « Menu » (mobile) : ouvre la navigation complète
+  document.querySelector('[data-qg-more]')?.addEventListener('click', () => {
+    const n = document.querySelector<HTMLDetailsElement>('[data-qg-nav]');
+    if (n) { n.open = true; n.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
   // Panneaux (formulaires) : fermeture par Échap
   document.addEventListener('keydown', (e) => {
