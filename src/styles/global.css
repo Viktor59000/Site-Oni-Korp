@@ -933,7 +933,7 @@ main { counter-reset: page; }
   font-family: var(--font-display); font-size: 11cqi; line-height: 1; color: #fff; text-shadow: 0 0 12px rgb(255 60 60 / .9), 0 2px 0 #000;
 }
 .sp-overlay {
-  position: absolute; left: 7%; top: 18%; z-index: 2;
+  position: absolute; left: 7%; top: 27%; z-index: 2;
   font-family: var(--font-display); font-size: 15cqi; line-height: 1; color: transparent; -webkit-text-stroke: 1.5px #fff;
   text-shadow: 0 0 20px rgb(0 0 0 / .6);
 }
@@ -962,3 +962,6 @@ main { counter-reset: page; }
 /* Logo réel posé par-dessus l'illustration (4o ne dessine jamais les logos) */
 .sp-logo--over, .sp-blason--over { position: absolute; inset: 0; z-index: 1; background: none !important; }
 .sp-logo--over img { filter: invert(1) drop-shadow(0 4px 14px rgb(0 0 0 / .8)); }
+
+/* Logo du club posé sur la poitrine du sweat (carte Vestiaire) */
+.sticker__art .sp-chest { position: absolute; z-index: 1; left: 50%; top: 31%; translate: -50% 0; width: 15% !important; height: auto !important; object-fit: contain !important; opacity: .95; }

@@ -116,7 +116,7 @@ const SERIES = [
     { title: 'osu!', sub: 'Terrain', img: '/img/pole-osu.webp' },
   ] },
   { id: 'vestiaire', titre: 'Vestiaire', rarete: 'commune', cartes: [
-    { title: 'Le sweat', sub: 'Face', img: '/img/sweat-porte-face.webp', pos: '50% 30%' },
+    { title: 'Le sweat', sub: 'Au casier', img: '/img/sweat-porte-face.webp', chest: true },
     { title: 'Le sweat', sub: 'Dos personnalisé', img: '/img/sweat-dos.webp' },
   ] },
   { id: 'legendaires', titre: 'Légendaires', rarete: 'legendaire', cartes: [

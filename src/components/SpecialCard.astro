@@ -2,7 +2,7 @@
 // Vignette des séries spéciales (moments, garage, partenaires, terrains, vestiaire, légendaires, recrue).
 // Même structure que les vignettes joueurs : elles se retournent et brillent de la même façon.
 import { existsSync } from 'node:fs';
-const { title, sub, img, pos, overlay, logo, bg, wide, kind, num, serie, serieTitre, rarete, art } = Astro.props;
+const { title, sub, img, pos, overlay, logo, bg, wide, kind, num, serie, serieTitre, rarete, art, chest } = Astro.props;
 // Illustration de l'album (public/img/cartes/sp-<série>-<n>.webp) dès qu'elle existe ; sinon visuel provisoire
 const artSrc = art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null;
 const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
@@ -21,8 +21,8 @@ const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
       ) : (
         <img src={img} alt="" loading="lazy" style={pos ? `object-position:${pos}` : undefined} />
       )}
-      {artSrc && logo && <span class="sp-logo sp-logo--over"><img class={wide ? 'is-wide' : undefined} src={logo} alt="" loading="lazy" /></span>}
       {artSrc && kind === 'blason' && <span class="sp-blason sp-blason--over"><img src="/img/oni-logo.svg" alt="" width="200" height="200" loading="lazy" /></span>}
+      {artSrc && chest && <img class="sp-chest" src="/img/oni-logo.svg" alt="" width="200" height="200" />}
       {kind === 'devise' && <span class="sp-devise" aria-hidden="true">Jamais<br />à genoux</span>}
       {overlay && <span class="sp-overlay" aria-hidden="true">{overlay}</span>}
     </div>
@@ -31,7 +31,6 @@ const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
     <div class="sticker__band">
       <p class="sticker__name" style={`font-size:${nameSize}`}>{title}</p>
       <span class="sticker__role">{sub}</span>
-      <span class="sp-serie">{serieTitre}</span>
     </div>
   </div>
 </article>

@@ -29,21 +29,25 @@ Reply "OK".
 | `sp-moments-4.png` | `MOMENT "Opening of the League of Legends division, 2024". A heavy ancient stone gate in a fantasy jungle being pushed open, teal and gold magic light bursting through, five small silhouettes stepping in, red ink splashes. League of Legends mood, no champions.` |
 | `sp-moments-5.png` | `MOMENT "Opening of the Valorant division, 2024". Five silhouettes walking in a line out of a sunlit tactical map corridor, long shadows, coral red #FF4655 accents, a spike-like device glowing in the foreground, red ink splashes. No agents.` |
 
-## Garage — argent (4)
+## Garage — argent (4) · *joins l'image de référence*
 
-| Fichier | Prompt |
-|---|---|
-| `sp-garage-1.png` | `GARAGE. A Rocket League Octane-style car, painted black and lacquer red with sharp diagonal stripes (no logo, no text), jumping toward the viewer out of a garage door, sparks and red boost flames, ink splashes. Home kit.` |
-| `sp-garage-2.png` | `GARAGE. The same Octane-style car painted white and lacquer red (away kit, no logo, no text), drifting sideways on a wet arena floor at night, spray of water and red light trails.` |
-| `sp-garage-3.png` | `GARAGE. A Rocket League Fennec-style car (boxy, low), black and lacquer red with diagonal stripes (no logo, no text), seen from a low angle as it flips in the air above the ball, red boost flames.` |
-| `sp-garage-4.png` | `GARAGE. The same Fennec-style car painted white and lacquer red (away kit, no logo, no text), parked under a single spotlight in a dark garage, wrenches and tires around, red ink splashes like a showroom poster.` |
+Pour chaque carte, **joins le rendu du decal** (dossier `site/visuels/references/`) avec le prompt : la voiture de la carte doit porter **exactement ce decal**, bien visible, comme une vraie carte de collection de la voiture.
 
-## Partenaires — argent (2)
+| Fichier | Joindre | Prompt |
+|---|---|---|
+| `sp-garage-1.png` | `decal-octane-domicile.png` | `GARAGE CARD. Use the attached image as the exact reference for the car and its decal: same Octane car, same black and red livery, same pattern and placement. Redraw it in the album style (ink outlines, cel shading, halftone, red ink splashes). The car is the hero: three-quarter front view, jumping toward the viewer out of a garage door, red boost flames, sparks. The decal must be clearly readable.` |
+| `sp-garage-2.png` | `decal-octane-visiteur.png` | `GARAGE CARD. Use the attached image as the exact reference for the car and its decal: same Octane car, same white and red away livery, same pattern and placement. Redraw it in the album style. Side three-quarter view, drifting on a wet arena floor at night, spray of water and red light trails. The decal must be clearly readable.` |
+| `sp-garage-3.png` | `decal-fennec-domicile.png` | `GARAGE CARD. Use the attached image as the exact reference for the car and its decal: same Fennec car, same black and red livery, same pattern and placement. Redraw it in the album style. Low angle, the car flipping in the air above the ball, red boost flames. The decal must be clearly readable.` |
+| `sp-garage-4.png` | `decal-fennec-visiteur.png` | `GARAGE CARD. Use the attached image as the exact reference for the car and its decal: same Fennec car, same white and red away livery, same pattern and placement. Redraw it in the album style. The car parked under a single spotlight in a dark garage like a showroom poster, three-quarter front view, wrenches and tires around, red ink splashes. The decal must be clearly readable.` |
 
-| Fichier | Prompt |
-|---|---|
-| `sp-partenaires-1.png` | `PARTNER CARD for a Rocket League decal brand. Two Rocket League cars side by side, freshly painted with abstract red and white brush designs (no logo, no text), paint spray cans and flying paint drops around them, garage lights. EMPTY AREA: the upper center of the card stays clean dark background (a logo goes there).` |
-| `sp-partenaires-2.png` | `PARTNER CARD for a League of Legends team-builder website. A glowing holographic board with five empty round slots arranged in a line, a hand placing a glowing teal token into one slot, teal and gold magic light, fantasy runes floating. EMPTY AREA: the upper center of the card stays clean dark background (a logo goes there).` |
+## Partenaires — argent (2) · *joins le logo*
+
+Joins le logo du partenaire (`site/visuels/references/`) : il doit apparaître **en grand et sans être redessiné**, intégré dans la scène. Si 4o le déforme, dis-le-moi : je repose le vrai logo par-dessus.
+
+| Fichier | Joindre | Prompt |
+|---|---|---|
+| `sp-partenaires-1.png` | `logo-carl-barl.png` | `PARTNER CARD for "Carl & Barl by LNDR", the club's Rocket League decal partner. Reproduce the attached logo EXACTLY (same shape, white, not redrawn, not stylized) as a huge glowing emblem painted on the garage wall in the upper half of the card. Below it, an Octane car in a black and red Oni Korp decal being finished by a spray-paint gun, flying paint drops, garage lights, red ink splashes. Album style.` |
+| `sp-partenaires-2.png` | `logo-lolineup.png` | `PARTNER CARD for "LoLineup.gg", the club's League of Legends partner (a team line-up website). Reproduce the attached wordmark EXACTLY (same letters, white, not redrawn) as a big glowing holographic sign in the upper half of the card. Below it, a holographic board with five round slots filling up with glowing teal tokens, a hand placing the last one, teal and gold magic light, red ink splashes. Album style.` |
 
 ## Terrains — commune (4)
 
