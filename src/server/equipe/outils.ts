@@ -172,6 +172,25 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(back);
   }
 
+  if (action === 'adversaire') {
+    const id = Number(f.get('id'));
+    const fields = ['players', 'style', 'forces', 'faiblesses', 'plan', 'links'].map((k) => String(f.get(k) ?? '').slice(0, 4000));
+    const name = clip(f.get('name'), 80);
+    if (!name) return redirect(back);
+    await exec(`CREATE TABLE IF NOT EXISTS opponents (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, players TEXT, style TEXT, forces TEXT, faiblesses TEXT, plan TEXT, links TEXT, author TEXT, updated_at INTEGER)`).catch(() => {});
+    const qs = back.includes('?') ? `&${back.split('?')[1]}` : '';
+    if (id) {
+      const [o] = await rows<{ roster_id: number }>('SELECT roster_id FROM opponents WHERE id = ?', id);
+      if (!o || !canRoster(Number(o.roster_id))) return redirect(back);
+      await exec('UPDATE opponents SET name = ?, players = ?, style = ?, forces = ?, faiblesses = ?, plan = ?, links = ?, author = ?, updated_at = ? WHERE id = ?', name, ...fields, user.id, Date.now(), id);
+      return redirect(`/equipe/scouting/?o=${id}${qs}`);
+    }
+    const roster = Number(f.get('roster'));
+    if (!canRoster(roster)) return redirect(back);
+    const [n] = await rows<{ id: number }>('INSERT INTO opponents (roster_id, name, players, style, forces, faiblesses, plan, links, author, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id', roster, name, ...fields, user.id, Date.now());
+    return redirect(n ? `/equipe/scouting/?o=${n.id}${qs}` : back);
+  }
+
   if (action === 'osu-map') {
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);

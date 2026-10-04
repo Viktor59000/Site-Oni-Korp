@@ -1,0 +1,146 @@
+---
+// Scouting : une fiche par équipe adverse. Historique contre nous (automatique, d'après les matchs et scrims du roster),
+// joueurs, style de jeu, forces, faiblesses, notre plan, liens (op.gg, tracker, chaîne), VOD et tableaux qui les mentionnent.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { exec, rows } from '../db';
+import { md } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me } = t;
+await exec(`CREATE TABLE IF NOT EXISTS opponents (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, players TEXT, style TEXT, forces TEXT, faiblesses TEXT, plan TEXT, links TEXT, author TEXT, updated_at INTEGER)`).catch(() => {});
+const sc = scope(me.rosters, Astro.url);
+const q = sc.active ? `r=${sc.active}` : '';
+const listUrl = `/equipe/scouting/${q ? `?${q}` : ''}`;
+const ids = sc.list.map((r) => r.id);
+type O = { id: number; roster_id: number; name: string; players: string; style: string; forces: string; faiblesses: string; plan: string; links: string; author: string; updated_at: number };
+const fiches = ids.length ? await rows<O>(`SELECT * FROM opponents WHERE roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY updated_at DESC`, ...ids) : [];
+type M = { id: number; opponent: string; at: number; kind: string | null; score_us: number | null; score_them: number | null; roster_id: number; format: string };
+const matches = ids.length ? await rows<M>(`SELECT id, opponent, at, kind, score_us, score_them, roster_id, format FROM matches WHERE cancelled = 0 AND roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY at DESC`, ...ids) : [];
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '');
+const vsOf = (name: string) => matches.filter((m) => norm(m.opponent) === norm(name));
+// Adversaires déjà affrontés sans fiche : proposés en un clic
+const known = new Set(fiches.map((f) => norm(f.name)));
+const suggestions = [...new Set(matches.map((m) => m.opponent))].filter((n) => !known.has(norm(n))).slice(0, 12);
+const oid = Astro.url.searchParams.get('o');
+const edit = Astro.url.searchParams.has('modifier') || oid === 'nouveau';
+const current = oid === 'nouveau' ? { id: 0, roster_id: ids[0], name: Astro.url.searchParams.get('nom') ?? '', players: '', style: '', forces: '', faiblesses: '', plan: '', links: '', author: '', updated_at: 0 } as O : oid ? fiches.find((f) => String(f.id) === oid) ?? null : null;
+const related = current?.id ? {
+  vods: await rows<{ id: number; title: string }>(`SELECT id, title FROM vods WHERE roster_id = ? AND LOWER(title) LIKE ?`, current.roster_id, `%${current.name.toLowerCase()}%`),
+  boards: await rows<{ id: number; title: string }>(`SELECT id, title FROM boards WHERE roster_id = ? AND LOWER(title) LIKE ?`, current.roster_id, `%${current.name.toLowerCase()}%`),
+} : null;
+const names = new Map((await rows<{ id: string; name: string }>('SELECT id, name FROM guild_members')).map((m) => [m.id, m.name]));
+const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' });
+const record = (list: M[]) => {
+  const done = list.filter((m) => m.score_us !== null);
+  return { w: done.filter((m) => Number(m.score_us) > Number(m.score_them)).length, l: done.filter((m) => Number(m.score_us) < Number(m.score_them)).length, n: list.length };
+};
+const SECTIONS: [keyof O, string, string][] = [
+  ['players', 'Joueurs et rôles', '- Pseudo · rôle · ce qu\'il faut savoir'], ['style', 'Style de jeu', 'Agressif ? Lent ? Leurs habitudes, leurs strats favorites'],
+  ['forces', 'Forces', '- …'], ['faiblesses', 'Faiblesses', '- …'], ['plan', 'Notre plan', 'Ce qu\'on fait contre eux : picks, bans, cartes, appels'],
+];
+---
+<Base title="Scouting · Espace équipe" description="Fiches des équipes adverses.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Scouting</h1><p>Une fiche par adversaire : qui ils sont, comment ils jouent, comment on les bat.</p></div></header>
+  <EquipeShell current="scouting" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    {current && edit ? (
+      <form method="post" action="/api/equipe/outils" class="sc-form">
+        <input type="hidden" name="action" value="adversaire" /><input type="hidden" name="id" value={current.id} /><input type="hidden" name="back" value={listUrl} />
+        <p><a class="sc-back" href={listUrl}>← Toutes les fiches</a></p>
+        <div class="sc-row">
+          <label>Équipe adverse<input name="name" required maxlength="80" value={current.name} /></label>
+          {!current.id && <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>}
+        </div>
+        {SECTIONS.map(([k, label, ph]) => <label>{label}<textarea name={k} rows="4" maxlength="4000" placeholder={ph}>{current[k]}</textarea></label>)}
+        <label>Liens <small>(op.gg multi, tracker, Twitch, site… un par ligne)</small><textarea name="links" rows="3" maxlength="2000">{current.links}</textarea></label>
+        <button class="btn">Enregistrer la fiche</button>
+      </form>
+    ) : current ? (
+      <article class="sc-view">
+        <p><a class="sc-back" href={listUrl}>← Toutes les fiches</a></p>
+        <div class="sc-head">
+          <h2>{current.name}</h2>
+          {(() => { const r = record(vsOf(current.name)); return r.n ? <p class="sc-rec"><b>{r.w}</b> V · <b>{r.l}</b> D <span>sur {r.n} rencontre{r.n > 1 ? 's' : ''}</span></p> : <p class="sc-rec"><span>Jamais affrontés</span></p>; })()}
+        </div>
+        <p class="sc-meta">{rosterName.get(Number(current.roster_id))} · mise à jour le {fmt.format(new Date(Number(current.updated_at)))} par {names.get(current.author) ?? 'un membre'}</p>
+        <div class="sc-grid">
+          {SECTIONS.map(([k, label]) => current[k] ? <section class:list={['sc-sec', { 'is-plan': k === 'plan' }]}><h3>{label}</h3><div set:html={md(String(current[k]))} /></section> : null)}
+          {current.links && <section class="sc-sec"><h3>Liens</h3><ul>{current.links.split(/\n+/).filter((l) => /^https?:\/\//.test(l.trim())).map((l) => <li><a href={l.trim()} rel="noopener" target="_blank">{l.trim().replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)}</a></li>)}</ul></section>}
+          <section class="sc-sec">
+            <h3>Historique contre eux</h3>
+            {vsOf(current.name).length ? <ul class="sc-hist">{vsOf(current.name).map((m) => <li><span>{fmt.format(new Date(Number(m.at)))}</span><span>{(m.kind ?? '') === 'scrim' ? 'Scrim' : 'Match'} · {m.format}</span><b class:list={{ 'is-win': m.score_us !== null && Number(m.score_us) > Number(m.score_them) }}>{m.score_us === null ? 'à venir' : `${m.score_us}–${m.score_them}`}</b></li>)}</ul> : <p class="eq-note">Aucun match ni scrim enregistré contre eux.</p>}
+          </section>
+          {related && (related.vods.length > 0 || related.boards.length > 0) && (
+            <section class="sc-sec">
+              <h3>À revoir</h3>
+              <ul>
+                {related.vods.map((v) => <li><a href={`/equipe/vod/?v=${v.id}${q ? `&${q}` : ''}`}>VOD · {v.title}</a></li>)}
+                {related.boards.map((b) => <li><a href={`/equipe/tactique/?b=${b.id}${q ? `&${q}` : ''}`}>Tableau · {b.title}</a></li>)}
+              </ul>
+            </section>
+          )}
+        </div>
+        <p class="sc-actions"><a class="btn btn--ghost" href={`/equipe/scouting/?o=${current.id}&modifier${q ? `&${q}` : ''}`}>Modifier la fiche</a>
+          <a class="btn btn--ghost" href={`/equipe/tactique/${q ? `?${q}` : ''}`}>Préparer un tableau</a></p>
+      </article>
+    ) : (
+      <div class="sc">
+        {ids.length > 0 && <a class="btn" href={`/equipe/scouting/?o=nouveau${q ? `&${q}` : ''}`}>Nouvelle fiche</a>}
+        {suggestions.length > 0 && <p class="sc-sugg">Déjà affrontés, sans fiche : {suggestions.map((n) => <a href={`/equipe/scouting/?o=nouveau&nom=${encodeURIComponent(n)}${q ? `&${q}` : ''}`}>{n}</a>)}</p>}
+        {fiches.length ? (
+          <ul class="sc-list">
+            {fiches.map((f) => { const r = record(vsOf(f.name)); return (
+              <li><a href={`/equipe/scouting/?o=${f.id}${q ? `&${q}` : ''}`}>
+                <strong>{f.name}</strong>
+                <span>{r.n ? `${r.w} V · ${r.l} D sur ${r.n}` : 'Jamais affrontés'} · {rosterName.get(Number(f.roster_id))}</span>
+                {f.plan && <p>{f.plan.replace(/[#*\-]/g, '').slice(0, 120)}</p>}
+              </a></li>
+            ); })}
+          </ul>
+        ) : <p class="eq-note">Aucune fiche. Avant le prochain match, crée celle de l'adversaire : le roster entier la retrouvera ici.</p>}
+      </div>
+    )}
+  </EquipeShell>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .sc { display: grid; gap: 1.5rem; justify-items: start; }
+  .sc-sugg { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; color: var(--muted); font-size: var(--step--1); margin: 0; }
+  .sc-sugg a { padding: .25rem .6rem; border: 1.5px dashed var(--line); color: var(--ink); font-weight: 700; text-decoration: none; }
+  .sc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1rem; width: 100%; }
+  .sc-list a { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid var(--ink); color: inherit; text-decoration: none; height: 100%; box-sizing: border-box; }
+  .sc-list a:hover { border-color: var(--ink); }
+  .sc-list strong { font-family: var(--font-display); font-size: 1.2rem; }
+  .sc-list span { color: var(--muted); font-size: var(--step--1); }
+  .sc-list p { margin: 0; font-size: .88rem; }
+  .sc-back { color: var(--muted); font-weight: 700; }
+  .sc-form { display: grid; gap: 1rem; max-width: 52rem; }
+  .sc-row { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .sc-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; flex: 1 1 14rem; }
+  .sc-form small { font-weight: 400; color: var(--muted); }
+  .sc-form :is(input, select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .5rem .65rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .sc-form .btn { justify-self: start; }
+  .sc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 1rem; margin-top: .5rem; }
+  .sc-head h2 { font-size: var(--step-2); }
+  .sc-rec { margin: 0; } .sc-rec b { font-family: var(--font-display); font-size: 1.6rem; color: var(--red-text); } .sc-rec span { color: var(--muted); }
+  .sc-meta { color: var(--muted); font-size: var(--step--1); }
+  .sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .sc-sec { padding: 1rem; border: 1px solid var(--line); }
+  .sc-sec.is-plan { border: 2px solid var(--lacquer); background: color-mix(in srgb, var(--lacquer) 5%, transparent); }
+  .sc-sec h3 { font-family: var(--font-body); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .5rem; }
+  .sc-sec :global(ul) { list-style: square; padding-left: 1.2rem; display: grid; gap: .25rem; }
+  .sc-sec :global(p) { margin: .3rem 0; }
+  .sc-sec a { color: var(--red-text); }
+  .sc-hist { list-style: none !important; padding: 0 !important; }
+  .sc-hist li { display: flex; justify-content: space-between; gap: .75rem; padding: .3rem 0; border-bottom: 1px solid var(--line); font-size: .88rem; }
+  .sc-hist span { color: var(--muted); }
+  .sc-hist b.is-win { color: #1f8f55; }
+  .sc-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+</style>

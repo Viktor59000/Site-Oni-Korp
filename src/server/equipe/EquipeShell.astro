@@ -16,6 +16,7 @@ const tools = (r: RosterRow) => [
   ['objectifs', `/equipe/objectifs/?r=${r.slug}`, 'Objectifs'],
   ['notes', `/equipe/notes/?r=${r.slug}`, 'Notes de match'],
   ['vod', `/equipe/vod/?r=${r.slug}`, 'VOD'],
+  ['scouting', `/equipe/scouting/?r=${r.slug}`, 'Scouting'],
   ...(r.game === 'lol' ? [['lol', `/equipe/lol/?r=${r.slug}`, 'Drafter']] : []),
   ...(r.game === 'valo' ? [['valo', `/equipe/valo/?r=${r.slug}`, 'Lineups']] : []),
   ...(r.game === 'osu' ? [['osu', `/equipe/osu/?r=${r.slug}`, 'Défis et maps']] : []),
@@ -26,7 +27,7 @@ const tools = (r: RosterRow) => [
 ];
 const all = [
   ['planning', '/equipe/', 'Planning'], ['stats', '/equipe/stats/', 'Stats'], ['objectifs', '/equipe/objectifs/', 'Objectifs'], ['notes', '/equipe/notes/', 'Notes de match'],
-  ['vod', '/equipe/vod/', 'VOD'], ['tactique', '/equipe/tactique/', 'Tableau blanc'], ['setup', '/equipe/setup/', 'Setups'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['docs', '/equipe/docs/', 'Docs'],
+  ['vod', '/equipe/vod/', 'VOD'], ['scouting', '/equipe/scouting/', 'Scouting'], ['tactique', '/equipe/tactique/', 'Tableau blanc'], ['setup', '/equipe/setup/', 'Setups'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['docs', '/equipe/docs/', 'Docs'],
   ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['osu', '/equipe/osu/', 'osu!']] : []),
 ];
 const activeRoster = rosters.find((r) => r.slug === active);
