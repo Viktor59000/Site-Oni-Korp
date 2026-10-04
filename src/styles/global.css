@@ -6,8 +6,8 @@
 :root {
   color-scheme: light;
   --black: #000;
-  --lacquer: #c22e28;      /* bas du dégradé du logo */
-  --lacquer-hi: #e0433c;   /* survols sur fond noir */
+  --lacquer: #e5251f;      /* vermillon Oni : couleur de marque */
+  --lacquer-hi: #ff4a3d;   /* survols sur fond noir */
   --ember: #4a1210;        /* haut du dégradé du logo */
   --bone: #edebe7;
   --ash: #9a948e;
@@ -20,7 +20,7 @@
   --ink: #0e0e0e;
   --muted: #5a5550;
   --line: rgb(0 0 0 / 0.14);
-  --red-text: var(--lacquer);
+  --red-text: #b3241e;   /* rouge foncé pour le texte sur papier (contraste) */
   --shadow: rgb(0 0 0 / .22);
   --shadow-hi: rgb(0 0 0 / .28);
 
@@ -47,7 +47,7 @@ html {
   scroll-padding-top: 84px;
 }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
-a, button { touch-action: manipulation; -webkit-tap-highlight-color: rgb(194 46 40 / .25); }
+a, button { touch-action: manipulation; -webkit-tap-highlight-color: rgb(229 37 31 / .25); }
 body {
   margin: 0;
   background: var(--surface);
@@ -404,7 +404,7 @@ a.game:hover h3 { color: var(--red-text); }
 .sticker[data-pole="rl"]   { --c1: #1450d6; --c2: #ff7a18; --accent: #ffb347; }
 .sticker[data-pole="lol"]  { --c1: #0a2b36; --c2: #0f5f6b; --accent: #d8b25a; }
 .sticker[data-pole="valo"] { --c1: #ff4655; --c2: #0f1923; --accent: #ece8e1; }
-.sticker[data-pole="osu"]  { --c1: #ff66aa; --c2: #5b1a4a; --accent: #ffffff; }
+.sticker[data-pole="osu"]  { --c1: #72d3a8; --c2: #0e6b4c; --accent: #86e3b4; }
 
 .sticker__frame {
   position: relative; isolation: isolate; overflow: hidden; height: 100%;
@@ -459,7 +459,7 @@ a.game:hover h3 { color: var(--red-text); }
   background: repeating-linear-gradient(135deg, transparent 0 10px, rgb(0 0 0 / .03) 10px 20px);
   transition: border-color .2s ease, background-color .2s ease;
 }
-.slot:hover { border-color: var(--lacquer-hi); background-color: rgb(194 46 40 / .12); }
+.slot:hover { border-color: var(--lacquer-hi); background-color: rgb(229 37 31 / .12); }
 .slot:focus-visible { outline-offset: 3px; }
 .slot__num { position: absolute; top: 5%; right: 7%; font-family: var(--font-display); font-size: 11cqi; color: color-mix(in srgb, var(--ink) 35%, transparent); }
 .slot__plus { font-family: var(--font-display); font-size: 34cqi; line-height: 1; color: var(--red-text); }
@@ -579,7 +579,7 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 
 /* ---------- Thème : îlots sombres et bloc rouge ---------- */
 .dark, .hero, .page-head, .footer {
-  --surface: #000; --ink: #edebe7; --muted: #9a948e; --line: rgb(255 255 255 / .14);
+  --surface: #000; --ink: #edebe7; --muted: #9a948e; --line: rgb(255 255 255 / .14); --red-text: var(--lacquer-hi);
   color-scheme: dark; background-color: var(--surface); color: var(--ink);
 }
 .section--red { --surface: var(--lacquer); --ink: #fff; --muted: rgb(255 255 255 / .85); --line: rgb(255 255 255 / .35); }
