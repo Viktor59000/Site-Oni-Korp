@@ -122,10 +122,17 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     document.querySelectorAll<HTMLElement>('[data-jeu]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.jeu === jeu)));
     const ck = `${key}|${jeu}`;
     if (!cache.has(ck)) {
+      paint(key, []);
       const d = await fetch(`/api/agenda?mois=${key}${jeu ? `&jeu=${jeu}` : ''}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       cache.set(ck, (d?.matchs ?? []).filter((it: Item) => dayKey(new Date(it.date)).startsWith(key)));
     }
-    const items = cache.get(ck)!;
+    paint(key, cache.get(ck)!);
+    const url = new URL(location.href);
+    url.searchParams.set('mois', key); jeu ? url.searchParams.set('jeu', jeu) : url.searchParams.delete('jeu');
+    history.replaceState(null, '', url);
+  }
+
+  function paint(key: string, items: Item[]) {
     const byDay = new Map<string, Item[]>();
     for (const it of items) { const k = dayKey(new Date(it.date)); byDay.set(k, [...(byDay.get(k) ?? []), it]); }
 
@@ -141,13 +148,8 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
         `<a class="cal-ev g-${esc(it.code)}${it.score ? ' is-done' : ''}" href="#m-${it.id}"><b>${hour.format(new Date(it.date))}</b> ${esc(it.adversaire)}${it.score ? ` <i>${it.score[0]}-${it.score[1]}</i>` : ''}</a>`).join('')}</div>`;
     }
     grid.innerHTML = html;
-    // Mois sans rendez-vous : grille compacte, le message prend le relais
-    grid.classList.toggle('is-quiet', !items.length);
     list.innerHTML = items.map(row).join('');
     document.querySelector<HTMLElement>('[data-empty]')!.hidden = items.length > 0;
-    const url = new URL(location.href);
-    url.searchParams.set('mois', key); jeu ? url.searchParams.set('jeu', jeu) : url.searchParams.delete('jeu');
-    history.replaceState(null, '', url);
   }
 
   document.querySelectorAll<HTMLElement>('[data-move]').forEach((b) => b.addEventListener('click', () => {

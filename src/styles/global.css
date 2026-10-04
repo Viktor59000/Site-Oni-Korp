@@ -169,11 +169,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* Séquence d'ouverture : unique moment animé du site */
 @media (prefers-reduced-motion: no-preference) {
-  .hero__kanji { animation: ink 1.6s cubic-bezier(.2,.7,.2,1) both; }
-  .hero__inner > * { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
-  .hero__inner > :nth-child(2) { animation-delay: .1s; }
-  .hero__inner > :nth-child(3) { animation-delay: .2s; }
-  .hero__inner > :nth-child(4) { animation-delay: .3s; }
+  .hero__kanji { animation: ink .9s cubic-bezier(.2,.7,.2,1) both; }
+  .hero__inner > * { animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
+  .hero__inner > :nth-child(2) { animation-delay: .06s; }
+  .hero__inner > :nth-child(3) { animation-delay: .12s; }
+  .hero__inner > :nth-child(4) { animation-delay: .18s; }
   @keyframes ink { from { opacity: 0; scale: 1.08; } }
   @keyframes rise { from { opacity: 0; translate: 0 18px; } }
 }
@@ -817,7 +817,7 @@ main { counter-reset: page; }
 }
 .pack:not(:disabled) .pack__label { background: var(--lacquer); color: #fff; padding: .45rem 1.2rem; }
 @media (prefers-reduced-motion: no-preference) {
-  .pack:not(:disabled) { animation: pack-idle 3s ease-in-out infinite; }
+  .pack:not(:disabled) { animation: pack-idle 3s 4s ease-in-out infinite; }
   @keyframes pack-idle { 50% { translate: 0 -6px; } }
   .pack.is-shaking { animation: pack-shake .55s linear both; }
   @keyframes pack-shake { 20% { rotate: -3deg; } 40% { rotate: 5deg; } 60% { rotate: -4deg; } 80% { rotate: 3deg; } }
