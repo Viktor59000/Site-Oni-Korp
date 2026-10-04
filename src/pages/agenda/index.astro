@@ -66,7 +66,7 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
 </Base>
 
 <script>
-  type Item = { id: number; type: string; cast: string | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  type Item = { id: number; type: string; cast: string | null; compo: string[] | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
   type F = { auteur: string; titre: string; lien: string; image: string | null; jeu: string | null; date: string };
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   const tz = { timeZone: 'Europe/Paris' } as const;
@@ -81,7 +81,7 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
     const watch = !m.score && http(m.lien) ? `<a class="ag-watch" href="${esc(m.lien)}" rel="noopener">Regarder</a>` : '';
     return `<li class="ag-item"><time class="ag-date" datetime="${m.date}"><b>${day.format(d)}</b>${month.format(d)}</time>
       <div><p class="ag-vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(m.adversaire)}</p>
-      <p class="ag-meta">${[esc(m.type), m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format), m.score ? '' : rest.format(d), m.cast ? `cast ${esc(m.cast)}` : ''].filter(Boolean).join(' · ')}</p></div>${score}${watch}</li>`;
+      <p class="ag-meta">${[esc(m.type), m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format), m.score ? '' : rest.format(d), m.cast ? `cast ${esc(m.cast)}` : ''].filter(Boolean).join(' · ')}</p>${m.compo?.length ? `<p class="ag-meta">Compo : ${m.compo.map(esc).join(', ')}</p>` : ''}</div>${score}${watch}</li>`;
   };
 
   fetch('/api/agenda').then((r) => (r.ok ? r.json() : null)).then((d: { aVenir: Item[]; resultats: Item[] } | null) => {

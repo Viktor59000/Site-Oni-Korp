@@ -1,0 +1,127 @@
+---
+// Partenaires : pour les marques et structures. Chiffres en direct (Oni Bot), partenaires actuels, kit média, contact.
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import site from '../../data/site.json';
+
+const partners = [
+  { name: 'Carl & Barl', sub: 'by LNDR · Rocket League', logo: '/img/partenaires/carl-barl.webp', bg: '#1d1d1d' },
+  { name: 'LoLineup.gg', sub: 'League of Legends', logo: '/img/partenaires/lolineup.webp', bg: '#0a2b36' },
+];
+const offers = [
+  ['Sur le terrain', 'Ton logo sur nos decals Rocket League et nos visuels de match.'],
+  ['En direct', 'Mention dans nos showmatchs castés sur Twitch et sur nos annonces Discord.'],
+  ['Sur le site', 'Une place dans cette page, et une vignette dans l’album à collectionner.'],
+  ['Sur mesure', 'Tournoi communautaire, giveaway, contenu ensemble : on en parle.'],
+];
+const founded = new Date(site.founded);
+---
+<Base title="Partenaires" description="Devenir partenaire d'Oni Korp : audience du club, partenaires actuels, kit média et contact.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Partenaires</h1>
+      <p>Un club qui joue, qui caste et qui grandit. Avance avec nous.</p>
+      <div class="pt-actions">
+        <a class="btn" href="/contact/?type=partenariat">Proposer un partenariat</a>
+        <a class="btn btn--ghost" href="#kit">Kit média</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="wrap">
+      <ul class="pt-stats">
+        <li><b>{new Date().getFullYear() - founded.getFullYear()}</b><span>ans d'existence<br />depuis juillet {founded.getFullYear()}</span></li>
+        <li><b>4</b><span>jeux<br />RL · LoL · Valorant · osu!</span></li>
+        <li data-stat="membres" hidden><b></b><span>membres<br />sur le Discord</span></li>
+        <li data-stat="saison" hidden><b></b><span><span data-plural="match officiel|matchs officiels">matchs officiels</span><br />cette saison</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="offre-title">
+    <div class="wrap">
+      <div class="section__head"><h2 id="offre-title">Ce qu'on peut construire.</h2></div>
+      <ul class="pt-offers">
+        {offers.map(([t, d]) => <li><strong>{t}</strong><p>{d}</p></li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="actuels-title">
+    <div class="wrap">
+      <div class="section__head"><h2 id="actuels-title">Ils sont déjà là.</h2></div>
+      <ul class="pt-logos">
+        {partners.map((p) => (
+          <li style={`--bg:${p.bg}`}><img src={p.logo} alt={p.name} loading="lazy" width="240" height="120" /><span><strong>{p.name}</strong>{p.sub}</span></li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section--bone" id="kit" aria-labelledby="kit-title">
+    <div class="wrap">
+      <div class="section__head"><h2 id="kit-title">Kit média.</h2><p>Pour un article, un visuel, une affiche de tournoi.</p></div>
+      <div class="pt-kit">
+        <figure><div class="pt-kit__logo pt-kit__logo--light"><img src="/img/oni-logo.svg" alt="Logo Oni Korp" width="120" height="120" /></div>
+          <figcaption><a href="/img/oni-logo.svg" download="oni-korp-logo.svg">Logo (SVG)</a></figcaption></figure>
+        <figure><div class="pt-kit__logo pt-kit__logo--dark"><img src="/img/oni-logo-blanc.svg" alt="Logo Oni Korp blanc" width="120" height="120" /></div>
+          <figcaption><a href="/img/oni-logo-blanc.svg" download="oni-korp-logo-blanc.svg">Logo blanc (SVG)</a></figcaption></figure>
+        <div class="pt-kit__info">
+          <p><span class="pt-swatch" style="background:#E5251F"></span><strong>Vermillon</strong> #E5251F</p>
+          <p><span class="pt-swatch" style="background:#0a0a0a"></span><strong>Encre</strong> #0A0A0A</p>
+          <p><span class="pt-swatch" style="background:#f3f1ec;border:1px solid var(--line)"></span><strong>Washi</strong> #F3F1EC</p>
+          <p>Typographies : <strong>Dela Gothic One</strong> (titres), <strong>Zen Kaku Gothic New</strong> (texte).</p>
+          <p>Nom : <strong translate="no">Oni Korp</strong> (deux mots). Devise : <em>Oni's never on knees</em>.</p>
+          <ul class="pt-socials">
+            {site.socials.map((s) => <li><a href={s.url} rel="noopener" aria-label={s.label}><Icon name={s.icon} /></a></li>)}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  fetch('/api/club').then((r) => (r.ok ? r.json() : null)).then((d) => {
+    const show = (k: string, v: number | undefined) => {
+      if (!v) return;
+      const li = document.querySelector<HTMLElement>(`[data-stat="${k}"]`)!;
+      li.querySelector('b')!.textContent = String(v);
+      const w = li.querySelector<HTMLElement>('[data-plural]');
+      if (w) { const [one, many] = w.dataset.plural!.split('|'); w.textContent = v > 1 ? many : one; }
+      li.hidden = false;
+    };
+    show('membres', d?.discord?.membres);
+    const s = d?.saison; show('saison', s ? s.victoires + s.defaites + s.nuls : 0);
+  }).catch(() => {});
+</script>
+
+<style>
+  .pt-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
+  .pt-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 2rem; }
+  .pt-stats li { display: grid; gap: .4rem; border-top: 3px solid var(--lacquer); padding-top: 1rem; }
+  .pt-stats li[hidden] { display: none; }
+  .pt-stats b { font-family: var(--font-display); font-size: clamp(2.5rem, 6vw, 4rem); line-height: 1; }
+  .pt-stats span { color: var(--muted); }
+  .pt-offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1.5rem; }
+  .pt-offers li { display: grid; gap: .5rem; padding: 1.25rem; border: 1.5px solid var(--line); }
+  .pt-offers strong { font-family: var(--font-display); font-size: 1.2rem; }
+  .pt-offers p { color: var(--muted); }
+  .pt-logos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: 1.25rem; }
+  .pt-logos li { display: grid; gap: .75rem; }
+  .pt-logos img { width: 100%; height: 8rem; object-fit: contain; padding: 1.25rem; background: var(--bg); box-sizing: border-box; }
+  .pt-logos span { display: grid; color: var(--muted); font-size: var(--step--1); }
+  .pt-logos strong { color: var(--ink); font-size: 1rem; }
+  .pt-kit { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 2rem; align-items: start; }
+  .pt-kit figure { margin: 0; display: grid; gap: .6rem; }
+  .pt-kit__logo { display: grid; place-items: center; aspect-ratio: 1; border: 1px solid var(--line); }
+  .pt-kit__logo--light { background: #f3f1ec; }
+  .pt-kit__logo--dark { background: #0a0a0a; }
+  .pt-kit figcaption a { font-weight: 700; color: var(--red-text); }
+  .pt-kit__info { display: grid; gap: .6rem; }
+  .pt-swatch { display: inline-block; width: 1.1rem; height: 1.1rem; vertical-align: -.2rem; margin-right: .5rem; }
+  .pt-socials { display: flex; gap: .5rem; margin-top: .5rem; }
+  .pt-socials a { display: grid; place-items: center; width: 44px; height: 44px; border: 1.5px solid var(--line); color: var(--ink); }
+  .pt-socials :global(svg) { width: 20px; height: 20px; fill: currentColor; }
+</style>
