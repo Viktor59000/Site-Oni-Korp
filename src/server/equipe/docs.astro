@@ -1,0 +1,117 @@
+---
+// Docs du roster : routines d'entraînement, règles internes, guides, liens utiles. Mise en forme simple (# titre, - liste, **gras**, liens).
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+import { md } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const q = sc.active ? `r=${sc.active}` : '';
+const listUrl = `/equipe/docs/${q ? `?${q}` : ''}`;
+const ids = sc.list.map((r) => r.id);
+type D = { id: number; roster_id: number; title: string; body: string; pinned: number; author: string; updated_at: number };
+const docs = ids.length ? await rows<D>(`SELECT * FROM docs WHERE roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY pinned DESC, updated_at DESC`, ...ids) : [];
+const did = Astro.url.searchParams.get('d');
+const editing = did === 'nouveau' ? { id: 0, roster_id: ids[0], title: '', body: '', pinned: 0 } as D : did ? docs.find((d) => String(d.id) === did) ?? null : null;
+const edit = Astro.url.searchParams.has('modifier') || did === 'nouveau';
+const names = new Map((await rows<{ id: string; name: string }>('SELECT id, name FROM guild_members')).map((m) => [m.id, m.name]));
+const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+const STARTERS = [
+  ['Routine de la semaine', '# Routine de la semaine\n- Lundi : \n- Mercredi : \n- Vendredi : \n\n# Avant chaque match\n- Échauffement 15 min\n- Vocal 20 min avant'],
+  ['Règles du roster', '# Règles\n- Prévenir en cas d\'absence, au plus tard la veille\n- Répondre aux séances sur Discord ou l\'espace équipe\n- Débrief écrit après chaque match'],
+  ['Appels et vocabulaire', '# Appels\n- **Nom** : ce que ça veut dire\n'],
+];
+---
+<Base title="Docs · Espace équipe" description="Documents du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Docs</h1><p>Routines, règles, appels, guides : ce que tout le roster doit savoir.</p></div></header>
+  <EquipeShell current="docs" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    {editing && edit ? (
+      <form method="post" action="/api/equipe/outils" class="dc-form">
+        <input type="hidden" name="action" value="doc" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} />
+        <p><a class="dc-back" href={listUrl}>← Tous les docs</a></p>
+        <div class="dc-row">
+          <label>Titre<input name="title" required maxlength="100" value={editing.title} data-title /></label>
+          {!editing.id && <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>}
+          {me.staff && <label class="dc-check"><input type="checkbox" name="pinned" value="1" checked={!!Number(editing.pinned)} /> Épinglé</label>}
+        </div>
+        {!editing.id && <p class="dc-starters">Partir d'un modèle : {STARTERS.map(([l, b]) => <button type="button" data-starter={b} data-label={l}>{l}</button>)}</p>}
+        <label>Contenu <small># titre · - liste · **gras** · *italique* · liens collés tels quels</small><textarea name="body" rows="16" maxlength="20000" data-body>{editing.body}</textarea></label>
+        <button class="btn">Enregistrer</button>
+      </form>
+    ) : editing ? (
+      <article class="dc-view">
+        <p><a class="dc-back" href={listUrl}>← Tous les docs</a></p>
+        <h2>{editing.title}</h2>
+        <p class="dc-meta">{rosterName.get(Number(editing.roster_id))} · modifié le {fmt.format(new Date(Number(editing.updated_at)))} par {names.get(editing.author) ?? 'un membre'}</p>
+        <div class="dc-body" set:html={md(editing.body)} />
+        <p class="dc-actions">
+          <a class="btn btn--ghost" href={`/equipe/docs/?d=${editing.id}&modifier${q ? `&${q}` : ''}`}>Modifier</a>
+          {(editing.author === user.id || me.staff) && (
+            <form method="post" action="/api/equipe/outils" onsubmit="return confirm('Supprimer ce doc ?')"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="docs" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} /><button class="dc-link">Supprimer</button></form>
+          )}
+        </p>
+      </article>
+    ) : (
+      <div class="dc">
+        {ids.length > 0 && <a class="btn" href={`/equipe/docs/?d=nouveau${q ? `&${q}` : ''}`}>Nouveau doc</a>}
+        {docs.length ? (
+          <ul class="dc-list">
+            {docs.map((d) => (
+              <li><a href={`/equipe/docs/?d=${d.id}${q ? `&${q}` : ''}`}>
+                <strong>{Number(d.pinned) ? '📌 ' : ''}{d.title}</strong>
+                <span>{rosterName.get(Number(d.roster_id))} · {fmt.format(new Date(Number(d.updated_at)))} · {names.get(d.author) ?? 'un membre'}</span>
+                <p>{d.body.replace(/[#*\-]/g, '').slice(0, 140)}</p>
+              </a></li>
+            ))}
+          </ul>
+        ) : <p class="eq-note">Aucun doc pour l'instant. Commence par la routine de la semaine ou les règles du roster.</p>}
+      </div>
+    )}
+  </EquipeShell>
+</Base>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-starter]').forEach((b) => b.addEventListener('click', () => {
+    const body = document.querySelector<HTMLTextAreaElement>('[data-body]')!, title = document.querySelector<HTMLInputElement>('[data-title]')!;
+    if (!body.value.trim() || confirm('Remplacer le contenu par ce modèle ?')) { body.value = b.dataset.starter!; if (!title.value) title.value = b.dataset.label!; }
+  }));
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .dc { display: grid; gap: 1.5rem; justify-items: start; }
+  .dc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1rem; width: 100%; }
+  .dc-list a { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; height: 100%; box-sizing: border-box; }
+  .dc-list a:hover { border-color: var(--ink); }
+  .dc-list span { color: var(--muted); font-size: var(--step--1); }
+  .dc-list p { margin: 0; color: var(--muted); font-size: .88rem; }
+  .dc-back { color: var(--muted); font-weight: 700; }
+  .dc-form { display: grid; gap: 1rem; max-width: 52rem; }
+  .dc-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+  .dc-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; flex: 1 1 14rem; }
+  .dc-form small { font-weight: 400; color: var(--muted); }
+  .dc-form :is(input:not([type="checkbox"]), select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .5rem .65rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .dc-form textarea { font-family: ui-monospace, monospace; font-size: .9rem; line-height: 1.5; }
+  .dc-check { display: flex !important; flex: 0 0 auto !important; align-items: center; gap: .4rem; min-height: 40px; }
+  .dc-starters { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; color: var(--muted); font-size: var(--step--1); margin: 0; }
+  .dc-starters button { padding: .3rem .7rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .78rem var(--font-body); cursor: pointer; }
+  .dc-form .btn { justify-self: start; }
+  .dc-view { max-width: 50rem; }
+  .dc-view h2 { font-size: var(--step-2); margin: .5rem 0 .25rem; }
+  .dc-meta { color: var(--muted); font-size: var(--step--1); }
+  .dc-body { margin: 1.5rem 0; line-height: 1.6; }
+  .dc-body :global(h3), .dc-body :global(h4), .dc-body :global(h5) { font-family: var(--font-body); font-weight: 700; margin: 1.25rem 0 .4rem; }
+  .dc-body :global(ul) { list-style: square; padding-left: 1.3rem; display: grid; gap: .25rem; }
+  .dc-body :global(p) { margin: .5rem 0; }
+  .dc-body :global(a) { color: var(--red-text); }
+  .dc-actions { display: flex; gap: 1rem; align-items: center; }
+  .dc-link { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: var(--step--1); }
+</style>

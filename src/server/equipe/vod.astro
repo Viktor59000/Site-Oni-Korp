@@ -1,0 +1,160 @@
+---
+// VOD : les vidéos du roster (matchs, scrims, références pro), commentées avec des repères horodatés.
+// YouTube : lecteur intégré, « Repère ici » prend le moment en cours et un clic sur un repère y saute.
+// Autres liens (Twitch, Medal…) : repères saisis à la main (mm:ss).
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const q = sc.active ? `r=${sc.active}` : '';
+const listUrl = `/equipe/vod/${q ? `?${q}` : ''}`;
+const ids = sc.list.map((r) => r.id);
+type V = { id: number; roster_id: number; title: string; url: string; match_id: number | null; added_by: string; at: number; marks?: number };
+const vods = ids.length ? await rows<V>(`SELECT v.*, (SELECT COUNT(*) FROM vod_marks k WHERE k.vod_id = v.id) AS marks FROM vods v WHERE v.roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY v.at DESC`, ...ids) : [];
+const vid = Number(Astro.url.searchParams.get('v')) || null;
+const current = vid ? vods.find((x) => Number(x.id) === vid) : null;
+const names = new Map((await rows<{ id: string; name: string }>('SELECT id, name FROM guild_members')).map((m) => [m.id, m.name]));
+const marks = current ? await rows<{ id: number; t: number; text: string; kind: string; author: string }>('SELECT * FROM vod_marks WHERE vod_id = ? ORDER BY t', current.id) : [];
+const matches = ids.length ? await rows<{ id: number; opponent: string; at: number }>(`SELECT id, opponent, at FROM matches WHERE roster_id IN (${ids.map(() => '?').join(',')}) AND cancelled = 0 AND at < ? ORDER BY at DESC LIMIT 30`, ...ids, Date.now()) : [];
+const yt = (u: string) => u.match(/(?:youtu\.be\/|v=|\/embed\/|\/live\/)([\w-]{11})/)?.[1] ?? null;
+const ytId = current ? yt(current.url) : null;
+const clock = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:` : ''}${String(Math.floor((s % 3600) / 60)).padStart(Math.floor(s / 3600) ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`;
+const KINDS: Record<string, [string, string]> = { bien: ['Bien joué', '#1f8f55'], erreur: ['Erreur', '#e5251f'], revoir: ['À revoir', '#e2a33b'], info: ['Note', '#6b7280'] };
+const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
+---
+<Base title="VOD · Espace équipe" description="Vidéos commentées du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>VOD</h1><p>Les vidéos du roster, commentées au bon moment.</p></div></header>
+  <EquipeShell current="vod" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    {!current ? (
+      <div class="vd">
+        {ids.length > 0 && (
+          <form method="post" action="/api/equipe/outils" class="vd-add">
+            <input type="hidden" name="action" value="vod" /><input type="hidden" name="back" value={listUrl} />
+            <label class="vd-wide">Lien de la vidéo<input name="url" type="url" required placeholder="YouTube, Twitch, Medal…" /></label>
+            <label>Titre<input name="title" required maxlength="100" placeholder="Ex. : scrim vs X, map 2" /></label>
+            <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+            <label>Match lié <small>(facultatif)</small><select name="match"><option value="">—</option>{matches.map((m) => <option value={m.id}>vs {m.opponent} · {fmt.format(new Date(Number(m.at)))}</option>)}</select></label>
+            <button class="btn">Ajouter</button>
+          </form>
+        )}
+        {vods.length ? (
+          <ul class="vd-list">
+            {vods.map((v) => (
+              <li><a href={`/equipe/vod/?v=${v.id}${q ? `&${q}` : ''}`}>
+                {yt(v.url) ? <img src={`https://i.ytimg.com/vi/${yt(v.url)}/mqdefault.jpg`} alt="" loading="lazy" width="320" height="180" /> : <span class="vd-ph">▶</span>}
+                <strong>{v.title}</strong><span>{Number(v.marks)} repère{Number(v.marks) > 1 ? 's' : ''} · {names.get(v.added_by) ?? 'un membre'} · {fmt.format(new Date(Number(v.at)))}</span>
+              </a></li>
+            ))}
+          </ul>
+        ) : <p class="eq-note">Aucune vidéo pour l'instant. Ajoute la VOD du dernier match : chacun pourra y poser ses repères.</p>}
+      </div>
+    ) : (
+      <div class="vd-view" data-vod={current.id} data-yt={ytId ?? ''}>
+        <p><a class="vd-back" href={listUrl}>← Toutes les VOD</a></p>
+        <h2>{current.title}</h2>
+        <div class="vd-main">
+          <div class="vd-player">
+            {ytId ? <div id="vd-yt"></div> : <a class="btn" href={current.url} rel="noopener" target="_blank">Ouvrir la vidéo</a>}
+          </div>
+          <aside class="vd-side">
+            <form method="post" action="/api/equipe/outils" class="vd-mark" data-mark-form>
+              <input type="hidden" name="action" value="vod-mark" /><input type="hidden" name="vod" value={current.id} />
+              <input type="hidden" name="back" value={`/equipe/vod/?v=${current.id}${q ? `&${q}` : ''}`} />
+              <div class="vd-row">
+                <label>Moment<input name="t" required placeholder="mm:ss" pattern="[0-9:]+" data-t /></label>
+                {ytId && <button type="button" class="vd-now" data-now>Repère ici</button>}
+              </div>
+              <div class="vd-kinds">{Object.entries(KINDS).map(([k, [l, c]], i) => <label style={`--c:${c}`}><input type="radio" name="kind" value={k} checked={i === 0} />{l}</label>)}</div>
+              <textarea name="text" required maxlength="400" rows="2" placeholder="Ce qu'on voit, ce qu'il fallait faire"></textarea>
+              <button class="btn">Ajouter le repère</button>
+            </form>
+            <ol class="vd-marks">
+              {marks.map((k) => (
+                <li style={`--c:${(KINDS[k.kind] ?? KINDS.info)[1]}`}>
+                  <button type="button" class="vd-t" data-seek={k.t}>{clock(Number(k.t))}</button>
+                  <div><p>{k.text}</p><small>{(KINDS[k.kind] ?? KINDS.info)[0]} · {names.get(k.author) ?? 'un membre'}</small></div>
+                </li>
+              ))}
+              {!marks.length && <li class="eq-note">Pas encore de repère.</li>}
+            </ol>
+          </aside>
+        </div>
+        {(current.added_by === user.id || me.staff) && (
+          <form method="post" action="/api/equipe/outils" class="vd-del" onsubmit="return confirm('Supprimer cette VOD et ses repères ?')">
+            <input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="vods" /><input type="hidden" name="id" value={current.id} /><input type="hidden" name="back" value={listUrl} />
+            <button class="vd-link">Supprimer cette VOD</button>
+          </form>
+        )}
+      </div>
+    )}
+  </EquipeShell>
+</Base>
+
+<script>
+  const view = document.querySelector<HTMLElement>('[data-vod]');
+  if (view) {
+    const tInput = view.querySelector<HTMLInputElement>('[data-t]')!;
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    let player: any = null;
+    const ytId = view.dataset.yt;
+    if (ytId) {
+      (window as any).onYouTubeIframeAPIReady = () => {
+        player = new (window as any).YT.Player('vd-yt', { videoId: ytId, playerVars: { rel: 0, modestbranding: 1 } });
+      };
+      const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.append(s);
+      view.querySelector('[data-now]')?.addEventListener('click', () => { if (player?.getCurrentTime) { tInput.value = fmt(player.getCurrentTime()); player.pauseVideo?.(); view.querySelector<HTMLTextAreaElement>('textarea')!.focus(); } });
+    }
+    view.addEventListener('click', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('[data-seek]'); if (!b) return;
+      const s = Number(b.dataset.seek);
+      if (player?.seekTo) { player.seekTo(s, true); player.playVideo?.(); window.scrollTo({ top: view.offsetTop - 90, behavior: 'smooth' }); }
+    });
+  }
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .vd { display: grid; gap: 2rem; }
+  .vd-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .8rem; align-items: end; padding: 1rem; border: 1px solid var(--line); }
+  .vd-add label, .vd-mark label { display: grid; gap: .3rem; font-weight: 700; font-size: .82rem; }
+  .vd-add small { font-weight: 400; color: var(--muted); }
+  .vd-add .vd-wide { grid-column: span 2; }
+  .vd-add :is(input, select), .vd-mark :is(input, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .vd-add .btn { justify-self: start; }
+  .vd-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+  .vd-list a { display: grid; gap: .35rem; color: inherit; text-decoration: none; }
+  .vd-list img, .vd-ph { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #111; }
+  .vd-ph { display: grid; place-items: center; color: #fff; font-size: 2rem; }
+  .vd-list span { color: var(--muted); font-size: var(--step--1); }
+  .vd-list a:hover strong { text-decoration: underline; }
+  .vd-back { color: var(--muted); font-weight: 700; }
+  .vd-view h2 { font-size: var(--step-1); margin: .5rem 0 1rem; }
+  .vd-main { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; gap: 1.25rem; align-items: start; }
+  .vd-player :global(iframe), .vd-player #vd-yt { width: 100%; aspect-ratio: 16 / 9; height: auto; display: block; background: #000; }
+  .vd-side { display: grid; gap: 1rem; }
+  .vd-mark { display: grid; gap: .6rem; padding: .9rem; border: 1px solid var(--line); }
+  .vd-row { display: flex; gap: .5rem; align-items: end; }
+  .vd-row label { flex: 1; }
+  .vd-now { min-height: 40px; padding: 0 .8rem; border: 1.5px solid var(--lacquer); background: none; color: var(--red-text); font: 700 .82rem var(--font-body); cursor: pointer; }
+  .vd-kinds { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .vd-kinds label { display: flex !important; align-items: center; gap: .3rem; padding: .25rem .55rem; border: 1.5px solid var(--line); font-size: .78rem !important; cursor: pointer; }
+  .vd-kinds label:has(input:checked) { border-color: var(--c); color: var(--c); }
+  .vd-kinds input { accent-color: var(--c); }
+  .vd-mark .btn { justify-self: start; }
+  .vd-marks { display: grid; gap: .4rem; max-height: 32rem; overflow-y: auto; }
+  .vd-marks li { display: grid; grid-template-columns: auto 1fr; gap: .6rem; padding: .5rem .6rem; border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 7%, transparent); }
+  .vd-marks p { margin: 0; font-size: .9rem; }
+  .vd-marks small { color: var(--muted); font-size: .72rem; }
+  .vd-t { border: 0; background: none; padding: 0; font: 700 .9rem var(--font-body); color: var(--c); cursor: pointer; font-variant-numeric: tabular-nums; align-self: start; }
+  .vd-del { margin-top: 1.5rem; }
+  .vd-link { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: var(--step--1); }
+  @media (max-width: 960px) { .vd-main { grid-template-columns: 1fr; } .vd-add .vd-wide { grid-column: auto; } }
+</style>

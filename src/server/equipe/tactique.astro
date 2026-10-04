@@ -13,7 +13,7 @@ if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 await ensureBoards();
 const sc = scope(me.rosters, Astro.url);
-const usable = sc.list.filter((r) => ['valo', 'lol'].includes(r.game) || (me.staff && !sc.active));
+const usable = sc.list.filter((r) => ['valo', 'lol', 'rl'].includes(r.game) || (me.staff && !sc.active));
 const boardId = Number(Astro.url.searchParams.get('b')) || null;
 type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null };
 const list = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.map, b.title, b.updated_at, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by
@@ -35,7 +35,7 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
             <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={`/equipe/tactique/?${q.slice(1)}`} />
             <label>Titre<input name="title" required maxlength="60" placeholder="Ex. : Ascent · retake B" /></label>
             <label>Roster<select name="roster">{usable.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
-            <label>Jeu<select name="game" data-game><option value="valo">Valorant</option><option value="lol">League of Legends</option></select></label>
+            <label>Jeu<select name="game" data-game><option value="valo">Valorant</option><option value="lol">League of Legends</option><option value="rl">Rocket League</option></select></label>
             <label data-map-field>Carte<select name="map" data-map-select><option value="">Chargement…</option></select></label>
             <button class="btn">Créer et ouvrir</button>
           </form>
@@ -45,7 +45,7 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
             <h2>Tableaux du roster</h2>
             <ul>
               {list.map((b) => (
-                <li><a href={`/equipe/tactique/?b=${b.id}${q}`}><strong>{b.title}</strong><span>{b.game === 'lol' ? 'Faille de l\'invocateur' : b.map} · {rosterName.get(Number(b.roster_id))} · modifié {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span></a></li>
+                <li><a href={`/equipe/tactique/?b=${b.id}${q}`}><strong>{b.title}</strong><span>{b.game === 'lol' ? 'Faille de l\'invocateur' : b.game === 'rl' ? 'Terrain Rocket League' : b.map} · {rosterName.get(Number(b.roster_id))} · modifié {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span></a></li>
               ))}
             </ul>
           </section>
@@ -78,7 +78,7 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
               {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally">{n}</button>)}
               {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy">{n}</button>)}
             </div>
-            <p class="tb-pal-h">{current.game === 'lol' ? 'Champions' : 'Agents'}</p>
+            <p class="tb-pal-h">{current.game === 'lol' ? 'Champions' : current.game === 'rl' ? 'Balle' : 'Agents'}</p>
             <input type="search" placeholder="Chercher" data-pal-search aria-label="Chercher" />
             <div class="tb-pal" data-pal></div>
             <p class="eq-note">Clique sur un élément puis sur la carte pour le poser. Glisse pour déplacer, gomme pour retirer.</p>
@@ -105,9 +105,9 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
     const field = newForm.querySelector<HTMLElement>('[data-map-field]')!;
     let valoMaps: string[] = [];
     const sync = () => {
-      const lol = newForm.querySelector<HTMLSelectElement>('[data-game]')!.value === 'lol';
-      field.hidden = lol;
-      sel.innerHTML = lol ? '<option value="Faille">Faille</option>' : valoMaps.map((m) => `<option>${esc(m)}</option>`).join('');
+      const g = newForm.querySelector<HTMLSelectElement>('[data-game]')!.value;
+      field.hidden = g !== 'valo';
+      sel.innerHTML = g === 'lol' ? '<option value="Faille">Faille</option>' : g === 'rl' ? '<option value="Terrain">Terrain</option>' : valoMaps.map((m) => `<option>${esc(m)}</option>`).join('');
     };
     newForm.querySelector('[data-game]')!.addEventListener('change', sync);
     fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
@@ -208,7 +208,19 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
       };
       $('[data-pal-search]').addEventListener('input', draw); draw(); render();
     };
-    if (game === 'lol') {
+    if (game === 'rl') {
+      // Terrain vu du dessus : buts en haut et en bas, cercle central, surfaces, pastilles de boost
+      const pads = [[.08, .5], [.92, .5], [.08, .1], [.92, .1], [.08, .9], [.92, .9]].map(([x, y]) => `<circle cx="${x * 600}" cy="${y * 1000}" r="16" fill="#ffb020" opacity=".85"/>`).join('');
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1000"><rect width="600" height="1000" fill="#1d5a2f"/>`
+        + `<rect x="20" y="40" width="560" height="920" rx="70" fill="#247038" stroke="#fff" stroke-width="5"/>`
+        + `<line x1="20" y1="500" x2="580" y2="500" stroke="#fff" stroke-width="4"/><circle cx="300" cy="500" r="90" fill="none" stroke="#fff" stroke-width="4"/>`
+        + `<rect x="210" y="8" width="180" height="34" fill="#ff7a1a" stroke="#fff" stroke-width="4"/><rect x="210" y="958" width="180" height="34" fill="#2f6bff" stroke="#fff" stroke-width="4"/>`
+        + `<rect x="150" y="40" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/><rect x="150" y="820" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>`
+        + pads + `</svg>`;
+      $<HTMLImageElement>('[data-mapimg]').src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      // Pas de portraits en Rocket League : les repères numérotés et la balle suffisent
+      fill([{ name: 'Balle', icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#eee" stroke="#555" stroke-width="3"/><path d="M8 14h24M8 26h24M20 2v36" stroke="#999" stroke-width="2"/></svg>')}` }]);
+    } else if (game === 'lol') {
       $<HTMLImageElement>('[data-mapimg]').src = LOL_MAP;
       fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()).then(async (v) => {
         const d = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v[0]}/data/fr_FR/champion.json`).then((r) => r.json());

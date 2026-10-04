@@ -1,0 +1,138 @@
+---
+// Setups : réglages et matériel de chaque joueur, par jeu. Pratique pour comparer, dépanner, ou copier le viseur d'un coéquipier.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const back = `/equipe/setup/${sc.active ? `?r=${sc.active}` : ''}`;
+
+type F = { key: string; label: string; type?: 'number' | 'url' | 'text'; wide?: boolean; hint?: string };
+const COMMON: F[] = [
+  { key: 'souris', label: 'Souris' }, { key: 'clavier', label: 'Clavier' }, { key: 'casque', label: 'Casque / micro' },
+  { key: 'ecran', label: 'Écran (Hz)' }, { key: 'resolution', label: 'Résolution' },
+];
+const FIELDS: Record<string, F[]> = {
+  valo: [
+    { key: 'dpi', label: 'DPI', type: 'number' }, { key: 'sens', label: 'Sensibilité', type: 'number' }, { key: 'scope', label: 'Sensi. lunette', type: 'number' },
+    { key: 'viseur', label: 'Code du viseur', wide: true, hint: 'Paramètres → Viseur → Importer / exporter le profil' }, ...COMMON,
+  ],
+  lol: [{ key: 'dpi', label: 'DPI', type: 'number' }, { key: 'sens', label: 'Sensibilité souris', type: 'number' }, { key: 'camera', label: 'Caméra (verrouillée ?)' }, { key: 'smartcast', label: 'Smart cast' }, ...COMMON],
+  rl: [
+    { key: 'controle', label: 'Manette / clavier' }, { key: 'fov', label: 'FOV', type: 'number' }, { key: 'distance', label: 'Distance', type: 'number' }, { key: 'hauteur', label: 'Hauteur', type: 'number' },
+    { key: 'angle', label: 'Angle', type: 'number' }, { key: 'stiffness', label: 'Rigidité', type: 'number' }, { key: 'swivel', label: 'Vitesse de pivot', type: 'number' }, { key: 'transition', label: 'Transition', type: 'number' },
+    { key: 'deadzone', label: 'Zone morte', type: 'number' }, { key: 'dodge', label: 'Zone morte esquive', type: 'number' }, { key: 'sensi', label: 'Sensibilité direction', type: 'number' },
+    { key: 'binds', label: 'Touches particulières', wide: true }, { key: 'ecran', label: 'Écran (Hz)' },
+  ],
+  osu: [
+    { key: 'tablette', label: 'Tablette' }, { key: 'zone', label: 'Zone (L × H mm)' }, { key: 'position', label: 'Position (X, Y)' },
+    { key: 'osurea', label: 'Lien Osurea de ma zone', type: 'url', wide: true, hint: 'Règle ta zone sur osurea.yuzuctus.fr puis colle le lien partagé' },
+    { key: 'touches', label: 'Touches' }, { key: 'clavier', label: 'Clavier' }, { key: 'skin', label: 'Skin (nom ou lien)', wide: true, hint: 'Les skins de Yuzuctus : skins.yuzuctus.fr' },
+    { key: 'ecran', label: 'Écran (Hz)' },
+  ],
+};
+const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
+const games = [...new Set(sc.list.map((r) => r.game))].filter((g) => FIELDS[g]);
+const blocks = await Promise.all(games.map(async (g) => {
+  const roleIds = sc.list.filter((r) => r.game === g).map((r) => r.role_id);
+  const members = roleIds.length ? await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE ${roleIds.map(() => 'roles LIKE ?').join(' OR ')} ORDER BY name`, ...roleIds.map((id) => `%"${id}"%`)) : [];
+  const setups = members.length ? await rows<{ user_id: string; data: string }>(`SELECT user_id, data FROM setups WHERE game = ? AND user_id IN (${members.map(() => '?').join(',')})`, g, ...members.map((m) => m.id)) : [];
+  const of = (id: string) => JSON.parse(setups.find((s) => s.user_id === id)?.data ?? '{}');
+  return { g, members, of, mine: of(user.id), inRoster: members.some((m) => m.id === user.id) };
+}));
+const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? Math.round(Number(d.dpi) * Number(d.sens)) : null);
+---
+<Base title="Setups · Espace équipe" description="Réglages et matériel des joueurs du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Setups</h1><p>Réglages et matériel de chacun : pour comparer, dépanner, ou copier un viseur.</p></div></header>
+  <EquipeShell current="setup" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="su">
+      {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
+      {blocks.map((b) => (
+        <section>
+          <h2 class="su-h">{GAME_LABEL[b.g]}</h2>
+          {(b.inRoster || me.staff) && (
+            <details class="su-edit" open={b.inRoster && !Object.keys(b.mine).length}>
+              <summary>{Object.keys(b.mine).length ? 'Modifier mon setup' : 'Remplir mon setup'}</summary>
+              <form method="post" action="/api/equipe/outils">
+                <input type="hidden" name="action" value="setup" /><input type="hidden" name="game" value={b.g} /><input type="hidden" name="back" value={back} />
+                {FIELDS[b.g].map((f) => (
+                  <label class:list={{ 'su-wide': f.wide }}>{f.label}{f.hint && <small>{f.hint}</small>}
+                    <input name={f.key} type={f.type === 'number' ? 'text' : f.type ?? 'text'} inputmode={f.type === 'number' ? 'decimal' : undefined} maxlength="200" value={b.mine[f.key] ?? ''} />
+                  </label>
+                ))}
+                <button class="btn">Enregistrer</button>
+              </form>
+            </details>
+          )}
+          <div class="su-grid">
+            {b.members.map((m) => {
+              const d = b.of(m.id);
+              const filled = FIELDS[b.g].filter((f) => d[f.key]);
+              return (
+                <article class="su-card">
+                  <p class="su-who">{m.avatar && <img src={m.avatar} alt="" width="30" height="30" loading="lazy" />}<strong>{m.name}</strong></p>
+                  {b.g === 'valo' && edpi(d) && <p class="su-big"><b>{edpi(d)}</b> eDPI</p>}
+                  {filled.length ? (
+                    <dl>
+                      {filled.map((f) => (
+                        <div class:list={{ 'su-wide': f.wide }}>
+                          <dt>{f.label}</dt>
+                          <dd>
+                            {f.key === 'viseur' ? <><code>{d[f.key]}</code><button type="button" class="su-copy" data-copy={d[f.key]}>Copier</button></>
+                              : /^https?:\/\//.test(d[f.key]) ? <a href={d[f.key]} rel="noopener" target="_blank">{f.key === 'osurea' ? 'Voir ma zone' : 'Ouvrir'}</a> : d[f.key]}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : <p class="eq-note">Pas encore rempli.</p>}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  </EquipeShell>
+</Base>
+
+<script>
+  document.addEventListener('click', async (e) => {
+    const b = (e.target as Element).closest<HTMLButtonElement>('[data-copy]'); if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.copy!); b.textContent = 'Copié !'; setTimeout(() => (b.textContent = 'Copier'), 1500); } catch {}
+  });
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .su { display: grid; gap: 3rem; }
+  .su-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
+  .su-edit { margin-bottom: 1.25rem; }
+  .su-edit summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
+  .su-edit form { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .8rem; margin-top: .8rem; padding: 1rem; border: 1px solid var(--line); align-items: end; }
+  .su-edit label { display: grid; gap: .25rem; font-weight: 700; font-size: .8rem; }
+  .su-edit small { font-weight: 400; color: var(--muted); font-size: .72rem; }
+  .su-edit .su-wide { grid-column: span 2; }
+  .su-edit input { width: 100%; box-sizing: border-box; min-height: 38px; padding: .35rem .55rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .92rem var(--font-body); }
+  .su-edit .btn { justify-self: start; }
+  .su-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+  .su-card { padding: 1rem; border: 1px solid var(--line); display: grid; gap: .6rem; align-content: start; }
+  .su-who { display: flex; align-items: center; gap: .5rem; margin: 0; }
+  .su-who img { border-radius: 50%; background: var(--line); }
+  .su-big { margin: 0; color: var(--muted); } .su-big b { font-family: var(--font-display); font-size: 1.6rem; color: var(--ink); }
+  .su-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem .8rem; margin: 0; }
+  .su-card dl div { min-width: 0; }
+  .su-card .su-wide { grid-column: 1 / -1; }
+  .su-card dt { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .su-card dd { margin: 0; font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
+  .su-card code { font-size: .72rem; font-weight: 400; display: block; margin-bottom: .3rem; }
+  .su-copy { min-height: 30px; padding: 0 .6rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .75rem var(--font-body); cursor: pointer; }
+  .su-card a { color: var(--red-text); }
+  @media (max-width: 600px) { .su-edit .su-wide { grid-column: auto; } }
+</style>

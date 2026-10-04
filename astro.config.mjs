@@ -34,6 +34,11 @@ const api = {
       route('/api/equipe/outils', './src/server/equipe/outils.ts');
       route('/equipe/tactique', './src/server/equipe/tactique.astro');
       route('/equipe/objectifs', './src/server/equipe/objectifs.astro');
+      route('/equipe/stats', './src/server/equipe/mesures.astro');
+      route('/equipe/osu', './src/server/equipe/osu.astro');
+      route('/equipe/setup', './src/server/equipe/setup.astro');
+      route('/equipe/vod', './src/server/equipe/vod.astro');
+      route('/equipe/docs', './src/server/equipe/docs.astro');
       route('/api/equipe/tableau', './src/server/equipe/tableau-api.ts');
       route('/postuler', './src/server/recrutement/page.astro');
       route('/api/postuler', './src/server/recrutement/postuler.ts');

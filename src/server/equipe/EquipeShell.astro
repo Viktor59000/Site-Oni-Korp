@@ -12,16 +12,22 @@ const GAMES: Record<string, { label: string; color: string }> = {
 const byGame = Object.entries(GAMES).map(([k, g]) => ({ key: k, ...g, list: rosters.filter((r) => r.game === k) })).filter((g) => g.list.length);
 const tools = (r: RosterRow) => [
   ['planning', `/equipe/?r=${r.slug}`, 'Planning'],
-  ['joueurs', `/equipe/joueurs/?r=${r.slug}`, 'Joueurs'],
-  ['notes', `/equipe/notes/?r=${r.slug}`, 'Notes de match'],
+  ['stats', `/equipe/stats/?r=${r.slug}`, 'Stats'],
   ['objectifs', `/equipe/objectifs/?r=${r.slug}`, 'Objectifs'],
+  ['notes', `/equipe/notes/?r=${r.slug}`, 'Notes de match'],
+  ['vod', `/equipe/vod/?r=${r.slug}`, 'VOD'],
   ...(r.game === 'lol' ? [['lol', `/equipe/lol/?r=${r.slug}`, 'Drafter']] : []),
   ...(r.game === 'valo' ? [['valo', `/equipe/valo/?r=${r.slug}`, 'Lineups']] : []),
-  ...(['valo', 'lol'].includes(r.game) ? [['tactique', `/equipe/tactique/?r=${r.slug}`, 'Tableau tactique']] : []),
+  ...(r.game === 'osu' ? [['osu', `/equipe/osu/?r=${r.slug}`, 'Défis et maps']] : []),
+  ...(['valo', 'lol', 'rl'].includes(r.game) ? [['tactique', `/equipe/tactique/?r=${r.slug}`, 'Tableau tactique']] : []),
+  ['setup', `/equipe/setup/?r=${r.slug}`, 'Setups'],
+  ['joueurs', `/equipe/joueurs/?r=${r.slug}`, 'Joueurs'],
+  ['docs', `/equipe/docs/?r=${r.slug}`, 'Docs'],
 ];
 const all = [
-  ['planning', '/equipe/', 'Planning'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['notes', '/equipe/notes/', 'Notes de match'], ['objectifs', '/equipe/objectifs/', 'Objectifs'],
-  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['tactique', '/equipe/tactique/', 'Tableau tactique']] : []),
+  ['planning', '/equipe/', 'Planning'], ['stats', '/equipe/stats/', 'Stats'], ['objectifs', '/equipe/objectifs/', 'Objectifs'], ['notes', '/equipe/notes/', 'Notes de match'],
+  ['vod', '/equipe/vod/', 'VOD'], ['setup', '/equipe/setup/', 'Setups'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['docs', '/equipe/docs/', 'Docs'],
+  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['osu', '/equipe/osu/', 'osu!'], ['tactique', '/equipe/tactique/', 'Tableau tactique']] : []),
 ];
 const activeRoster = rosters.find((r) => r.slug === active);
 ---

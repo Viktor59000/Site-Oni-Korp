@@ -1,0 +1,249 @@
+---
+// Stats : les mesures en jeu du roster, joueur par joueur, avec leur tendance.
+// - LoL et osu! : relevées automatiquement par Oni Bot (API Riot et osu!).
+// - Valorant et Rocket League : saisies après chaque match ou scrim (leurs API publiques ne donnent pas les parties).
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+import { TIERS_FR } from './stats';
+import { avg, ddragon, pct, r1, spark, SHARED_CSS } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const back = `/equipe/stats/${sc.active ? `?r=${sc.active}` : ''}`;
+const DAY = 86400_000;
+const v = await ddragon();
+const fmtD = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
+
+// Champs saisis à la main par jeu
+const MANUAL: Record<string, { key: string; label: string; short: string; unit?: string }[]> = {
+  valo: [
+    { key: 'acs', label: 'ACS', short: 'ACS' }, { key: 'k', label: 'Kills', short: 'K' }, { key: 'd', label: 'Morts', short: 'D' }, { key: 'a', label: 'Assists', short: 'A' },
+    { key: 'adr', label: 'ADR', short: 'ADR' }, { key: 'hs', label: 'Headshots %', short: 'HS', unit: '%' }, { key: 'fb', label: 'First bloods', short: 'FB' }, { key: 'kast', label: 'KAST %', short: 'KAST', unit: '%' },
+  ],
+  rl: [
+    { key: 'score', label: 'Score', short: 'Score' }, { key: 'buts', label: 'Buts', short: 'Buts' }, { key: 'passes', label: 'Passes', short: 'Passes' },
+    { key: 'arrets', label: 'Arrêts', short: 'Arrêts' }, { key: 'tirs', label: 'Tirs', short: 'Tirs' }, { key: 'demos', label: 'Démolitions', short: 'Démos' },
+  ],
+};
+
+type M = { id: string; name: string; avatar: string };
+const blocks = await Promise.all(sc.list.map(async (r) => {
+  const members = await rows<M>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const ids = members.map((m) => m.id);
+  const inIds = ids.map(() => '?').join(',') || 'NULL';
+  const accounts = ids.length ? await rows<{ user_id: string; game: string; ident: string; region: string | null }>(`SELECT * FROM accounts WHERE user_id IN (${inIds})`, ...ids) : [];
+  const hist = ids.length ? await rows<{ user_id: string; game: string; day: string; value: string }>(`SELECT * FROM rank_history WHERE user_id IN (${inIds}) AND day >= ? ORDER BY day`, ...ids, new Date(Date.now() - 90 * DAY).toISOString().slice(0, 10)) : [];
+  const cache = async (key: string) => (await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', key))[0]?.value;
+
+  if (r.game === 'lol') {
+    const perfs = ids.length ? await rows<{ user_id: string; data: string; at: number }>(`SELECT user_id, data, at FROM perf WHERE game = 'lol' AND user_id IN (${inIds}) ORDER BY at DESC`, ...ids) : [];
+    const players = await Promise.all(members.map(async (m) => {
+      const acc = accounts.find((a) => a.user_id === m.id && a.game === 'riot');
+      const rank = acc ? JSON.parse((await cache(`lol:${acc.region ?? 'euw'}:${acc.ident.toLowerCase()}`)) ?? 'null') : null;
+      const games = perfs.filter((p) => p.user_id === m.id).slice(0, 20).map((p) => ({ ...JSON.parse(p.data), at: Number(p.at) }));
+      const champs = Object.entries(games.reduce((o: Record<string, number>, g) => ({ ...o, [g.champ]: (o[g.champ] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      const kda = games.length ? (games.reduce((s, g) => s + g.k + g.a, 0) / Math.max(1, games.reduce((s, g) => s + g.d, 0))) : null;
+      return {
+        m, acc, rank, games, champs, kda,
+        win: games.length ? (games.filter((g) => g.win).length / games.length) * 100 : null,
+        cs: avg(games.map((g) => g.csMin)), vis: avg(games.map((g) => g.visionMin)), kp: avg(games.map((g) => g.kp)), dmg: avg(games.map((g) => g.dmgShare)),
+        trend: spark(hist.filter((h) => h.user_id === m.id && h.game === 'lol').map((h) => JSON.parse(h.value).score)),
+      };
+    }));
+    return { r, kind: 'lol' as const, players };
+  }
+  if (r.game === 'osu') {
+    const perfs = ids.length ? await rows<{ user_id: string; data: string }>(`SELECT user_id, data FROM perf WHERE game = 'osu' AND user_id IN (${inIds}) AND at > ? ORDER BY at DESC`, ...ids, Date.now() - 7 * DAY) : [];
+    const players = await Promise.all(members.map(async (m) => {
+      const acc = accounts.find((a) => a.user_id === m.id && a.game === 'osu');
+      const st = acc ? JSON.parse((await cache(`osu:${acc.ident.toLowerCase()}`)) ?? 'null') : null;
+      const best = acc ? JSON.parse((await cache(`osu-best:${acc.ident.toLowerCase()}`)) ?? '[]') : [];
+      const week = perfs.filter((p) => p.user_id === m.id).map((p) => JSON.parse(p.data));
+      const h = hist.filter((x) => x.user_id === m.id && x.game === 'osu').map((x) => JSON.parse(x.value));
+      return { m, acc, st, best: best.slice(0, 5), week: week.length, weekAcc: avg(week.map((w: any) => w.acc)), trend: spark(h.map((x) => x.rank), { invert: true }), ppTrend: spark(h.map((x) => x.pp)) };
+    }));
+    return { r, kind: 'osu' as const, players };
+  }
+  // Saisie manuelle (Valorant, Rocket League)
+  const fields = MANUAL[r.game] ?? MANUAL.valo;
+  const matches = await rows<{ id: number; opponent: string; at: number; kind: string | null }>(`SELECT id, opponent, at, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND at < ? AND at > ? ORDER BY at DESC`, r.id, Date.now(), Date.now() - 180 * DAY);
+  const ms = matches.length ? await rows<{ match_id: number; user_id: string; data: string }>(`SELECT * FROM match_stats WHERE match_id IN (${matches.map(() => '?').join(',')})`, ...matches.map((x) => x.id)) : [];
+  const players = members.map((m) => {
+    const lines = matches.map((x) => ({ x, d: ms.find((s) => Number(s.match_id) === Number(x.id) && s.user_id === m.id) })).filter((l) => l.d).map((l) => ({ ...JSON.parse(l.d!.data), match: l.x }));
+    const averages = Object.fromEntries(fields.map((f) => [f.key, avg(lines.map((l) => Number(l[f.key])).filter((n) => Number.isFinite(n)))]));
+    const main = fields[0].key;
+    return { m, lines, averages, trend: spark(lines.slice().reverse().map((l) => Number(l[main]))) };
+  });
+  return { r, kind: 'manual' as const, fields, matches, players };
+}));
+const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${c}.png`;
+---
+<Base title="Stats · Espace équipe" description="Mesures en jeu du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Stats</h1><p>Les mesures en jeu de chaque joueur, et dans quel sens elles vont.</p></div></header>
+  <EquipeShell current="stats" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="st">
+      {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
+      {blocks.map((b) => (
+        <section class="st-roster">
+          <h2 class="st-h">{b.r.name}</h2>
+
+          {b.kind === 'lol' && (
+            <>
+              <p class="eq-note">20 dernières parties classées de chaque joueur, relevées automatiquement toutes les 30 minutes. Courbe : évolution du rang sur 90 jours.</p>
+              <div class="st-scroll">
+                <table class="st-table">
+                  <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>Parties</th><th>Victoires</th><th>KDA</th><th>CS/min</th><th>Vision/min</th><th>KP</th><th>Dégâts</th><th>Champions</th></tr></thead>
+                  <tbody>
+                    {b.players.map((p) => (
+                      <tr>
+                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                        <td>{p.rank ? (p.rank.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.rank.tier] ?? p.rank.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.rank.tier) ? '' : p.rank.rank} · ${p.rank.lp} LP`) : p.acc ? '…' : <a href="/equipe/joueurs/">Relier</a>}</td>
+                        <td set:html={p.trend || '—'} />
+                        <td>{p.games.length || '—'}</td>
+                        <td>{pct(p.win)}</td>
+                        <td>{r1(p.kda, 2)}</td>
+                        <td>{r1(p.cs)}</td>
+                        <td>{r1(p.vis, 2)}</td>
+                        <td>{pct(p.kp)}</td>
+                        <td>{pct(p.dmg)}</td>
+                        <td class="st-champs">{p.champs.map(([c, n]) => <img src={champIcon(c)} alt={c} title={`${c} · ${n} partie${n > 1 ? 's' : ''}`} width="26" height="26" loading="lazy" />)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {b.players.filter((p) => p.games.length).map((p) => (
+                <details class="st-games">
+                  <summary>Parties de {p.m.name}</summary>
+                  <ul>
+                    {p.games.map((g) => (
+                      <li class:list={{ 'is-win': g.win }}>
+                        <img src={champIcon(g.champ)} alt="" width="30" height="30" loading="lazy" />
+                        <strong>{g.win ? 'Victoire' : 'Défaite'}</strong>
+                        <span>{g.k}/{g.d}/{g.a}</span><span>{g.csMin} CS/min</span><span>vision {g.vision}</span><span>KP {g.kp} %</span><span>{g.dmgShare} % des dégâts</span>
+                        <small>{g.min} min · {fmtD.format(new Date(g.at))}</small>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </>
+          )}
+
+          {b.kind === 'osu' && (
+            <>
+              <p class="eq-note">Relevé automatique toutes les 30 minutes. Courbes : rang mondial et pp sur 90 jours.</p>
+              <div class="st-scroll">
+                <table class="st-table">
+                  <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>pp</th><th>Tendance pp</th><th>Précision</th><th>Parties 7 j</th><th>Préc. 7 j</th><th>Heures</th></tr></thead>
+                  <tbody>
+                    {b.players.map((p) => (
+                      <tr>
+                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                        <td>{p.st ? `#${p.st.rank?.toLocaleString('fr-FR') ?? '—'}` : p.acc ? '…' : <a href="/equipe/joueurs/">Relier</a>}</td>
+                        <td set:html={p.trend || '—'} />
+                        <td>{p.st?.pp?.toLocaleString('fr-FR') ?? '—'}</td>
+                        <td set:html={p.ppTrend || '—'} />
+                        <td>{p.st ? `${String(p.st.acc).replace('.', ',')} %` : '—'}</td>
+                        <td>{p.week || '—'}</td>
+                        <td>{p.weekAcc === null ? '—' : `${r1(p.weekAcc, 2)} %`}</td>
+                        <td>{p.st?.hours ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div class="st-best">
+                {b.players.filter((p) => p.best.length).map((p) => (
+                  <div>
+                    <p class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="22" height="22" loading="lazy" />}<strong>Top plays de {p.m.name}</strong></p>
+                    <ol>
+                      {p.best.map((s: any) => (
+                        <li><a href={`https://osu.ppy.sh/b/${s.beatmap}`} rel="noopener" target="_blank">{s.title}</a>
+                          <span>{s.pp} pp · {String(s.acc).replace('.', ',')} % · {r1(s.stars, 2)}★{s.mods?.length ? ` · +${s.mods.join('')}` : ''}{s.miss ? ` · ${s.miss} miss` : ' · FC'}</span></li>
+                      ))}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {b.kind === 'manual' && (
+            <>
+              <p class="eq-note">Après chaque match ou scrim, chacun saisit ses stats (tableau de fin de partie). Courbe : {b.fields[0].label} au fil des matchs.</p>
+              <div class="st-scroll">
+                <table class="st-table">
+                  <thead><tr><th>Joueur</th><th>Matchs</th><th>Tendance</th>{b.fields.map((f) => <th title={f.label}>{f.short}</th>)}</tr></thead>
+                  <tbody>
+                    {b.players.map((p) => (
+                      <tr>
+                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                        <td>{p.lines.length || '—'}</td>
+                        <td set:html={p.trend || '—'} />
+                        {b.fields.map((f) => <td>{p.averages[f.key] === null ? '—' : `${r1(p.averages[f.key])}${f.unit ? ' %' : ''}`}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {b.matches.length ? (
+                <details class="st-entry" open={b.players.some((p) => p.m.id === user.id && p.lines.length < b.matches.length)}>
+                  <summary>Saisir des stats</summary>
+                  <form method="post" action="/api/equipe/outils">
+                    <input type="hidden" name="action" value="stats" /><input type="hidden" name="back" value={back} />
+                    <label>Match<select name="match">{b.matches.map((x) => <option value={x.id}>vs {x.opponent} · {fmtD.format(new Date(Number(x.at)))}{(x.kind ?? '') === 'scrim' ? ' (scrim)' : ''}</option>)}</select></label>
+                    {me.staff && <label>Joueur<select name="user">{b.players.map((p) => <option value={p.m.id} selected={p.m.id === user.id}>{p.m.name}</option>)}</select></label>}
+                    {b.r.game === 'valo' && <label>Agent<input name="agent" maxlength="20" /></label>}
+                    {b.fields.map((f) => <label>{f.label}<input name={f.key} type="number" step="any" min="0" inputmode="decimal" /></label>)}
+                    <button class="btn">Enregistrer</button>
+                  </form>
+                </details>
+              ) : <p class="eq-note">Les matchs et scrims passés du roster apparaîtront ici pour la saisie.</p>}
+            </>
+          )}
+        </section>
+      ))}
+    </div>
+  </EquipeShell>
+</Base>
+
+<style set:html={SHARED_CSS}></style>
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .st { display: grid; gap: 3rem; }
+  .st-roster { display: grid; gap: 1rem; }
+  .st-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+  .st-scroll { overflow-x: auto; }
+  .st-table { width: 100%; border-collapse: collapse; font-size: .9rem; white-space: nowrap; }
+  .st-table th { text-align: left; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: .5rem .6rem; border-bottom: 1px solid var(--line); }
+  .st-table td { padding: .55rem .6rem; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .st-table tr:hover td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .st-who { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+  .st-who img, .st-champs img { border-radius: 50%; background: var(--line); }
+  .st-champs { display: flex; gap: 2px; }
+  .st-table a { color: var(--red-text); font-weight: 700; }
+  .st-games summary, .st-entry summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
+  .st-games ul { display: grid; gap: .3rem; margin-top: .6rem; }
+  .st-games li { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; padding: .4rem .6rem; border-left: 4px solid var(--lacquer); background: color-mix(in srgb, var(--lacquer) 5%, transparent); font-size: .88rem; }
+  .st-games li.is-win { border-left-color: #1f8f55; background: color-mix(in srgb, #1f8f55 6%, transparent); }
+  .st-games img { border-radius: 4px; }
+  .st-games small { color: var(--muted); margin-left: auto; }
+  .st-best { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1.5rem; }
+  .st-best ol { display: grid; gap: .35rem; margin-top: .5rem; padding-left: 1.2rem; }
+  .st-best li { font-size: .88rem; }
+  .st-best a { color: inherit; font-weight: 700; }
+  .st-best span { display: block; color: var(--muted); font-size: .8rem; }
+  .st-entry form { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .75rem; align-items: end; margin-top: .75rem; padding: 1rem; border: 1px solid var(--line); }
+  .st-entry label { display: grid; gap: .3rem; font-weight: 700; font-size: .8rem; }
+  .st-entry label:first-of-type { grid-column: span 2; }
+  .st-entry :is(input, select) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .35rem .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .st-entry .btn { justify-self: start; }
+</style>

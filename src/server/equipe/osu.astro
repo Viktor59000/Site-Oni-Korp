@@ -1,0 +1,141 @@
+---
+// osu! : le coin du roster. Défi de la semaine (classement interne relevé par Oni Bot), maps d'entraînement partagées,
+// et les outils de Yuzuctus : Osurea (zone de tablette) et Yuzu Skins.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+import { r1 } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const osuRosters = sc.list.filter((r) => r.game === 'osu' || (me.staff && !sc.active));
+const back = `/equipe/osu/${sc.active ? `?r=${sc.active}` : ''}`;
+const erreur = Astro.url.searchParams.get('erreur');
+const names = new Map((await rows<{ id: string; name: string; avatar: string }>('SELECT id, name, avatar FROM guild_members')).map((m) => [m.id, m]));
+type Mp = { id: number; roster_id: number; beatmap_id: number; note: string | null; challenge: number; ends: number | null; meta: string | null; added_by: string; at: number };
+const maps = osuRosters.length ? await rows<Mp>(`SELECT * FROM osu_maps WHERE roster_id IN (${osuRosters.map(() => '?').join(',')}) ORDER BY challenge DESC, at DESC`, ...osuRosters.map((r) => r.id)) : [];
+const challenges = await Promise.all(maps.filter((m) => Number(m.challenge) && (!m.ends || Number(m.ends) > Date.now() - 7 * 86400_000)).map(async (c) => ({
+  c, meta: c.meta ? JSON.parse(c.meta) : null,
+  board: JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `osu-chal:${c.id}`))[0]?.value ?? '[]') as any[],
+})));
+const training = maps.filter((m) => !Number(m.challenge)).map((m) => ({ m, meta: m.meta ? JSON.parse(m.meta) : null }));
+const len = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000); return h <= 0 ? 'terminé' : h < 48 ? `encore ${h} h` : `encore ${Math.round(h / 24)} jours`; };
+---
+<Base title="osu! · Espace équipe" description="Défis, maps d'entraînement et outils osu! du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>osu!</h1><p>Défi de la semaine, maps d'entraînement et outils du roster.</p></div></header>
+  <EquipeShell current="osu" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="ou">
+      <section class="ou-tools">
+        <a href="https://osurea.yuzuctus.fr/" rel="noopener" target="_blank"><strong>Osurea</strong><span>Visualiser et comparer sa zone de tablette, partager sa config. Par Yuzuctus.</span></a>
+        <a href="https://skins.yuzuctus.fr/" rel="noopener" target="_blank"><strong>Yuzu Skins</strong><span>Collection de skins osu!standard classée, avec aperçus et téléchargements. Par Yuzuctus.</span></a>
+        <a href="/equipe/setup/" ><strong>Setups du roster</strong><span>Tablette, zone, touches, skin de chacun.</span></a>
+      </section>
+
+      {!osuRosters.length ? <p class="eq-note">Aucun roster osu! pour l'instant : défis et maps d'entraînement s'ouvriront dès sa création sur Discord.</p> : (
+        <>
+          <section>
+            <h2 class="ou-h">Défi de la semaine</h2>
+            {challenges.length ? challenges.map(({ c, meta, board }) => (
+              <article class="ou-chal">
+                {meta?.cover && <img class="ou-cover" src={meta.cover} alt="" loading="lazy" />}
+                <div class="ou-chal__body">
+                  <p class="ou-tag">{c.ends ? left(Number(c.ends)) : 'en cours'}</p>
+                  <h3><a href={`https://osu.ppy.sh/b/${c.beatmap_id}`} rel="noopener" target="_blank">{meta ? `${meta.title} [${meta.version}]` : `Map #${c.beatmap_id}`}</a></h3>
+                  {meta && <p class="ou-meta">{r1(meta.stars, 2)}★ · {Math.round(meta.bpm)} BPM · {len(meta.length)} · AR {meta.ar} · OD {meta.od} · CS {meta.cs}</p>}
+                  {c.note && <p>{c.note}</p>}
+                  {board.length ? (
+                    <ol class="ou-board">
+                      {board.map((s, i) => (
+                        <li class:list={{ 'is-me': s.user_id === user.id }}>
+                          <b>{i + 1}</b><span class="ou-p">{names.get(s.user_id)?.name ?? 'Joueur'}</span>
+                          <span>{Number(s.score).toLocaleString('fr-FR')}</span><span>{String(s.acc).replace('.', ',')} %</span><span>{s.miss ? `${s.miss} miss` : 'FC'}</span>{s.pp && <span>{s.pp} pp</span>}{s.mods?.length > 0 && <span>+{s.mods.join('')}</span>}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : <p class="eq-note">Pas encore de score. Joue la map : le classement se met à jour toutes les 30 minutes (comptes osu! reliés dans <a href="/equipe/joueurs/">Joueurs</a>).</p>}
+                </div>
+              </article>
+            )) : <p class="eq-note">{me.staff ? 'Aucun défi en cours. Lance-en un ci-dessous (case « défi de la semaine »).' : 'Aucun défi en cours.'}</p>}
+          </section>
+
+          <section>
+            <h2 class="ou-h">Maps d'entraînement</h2>
+            <form method="post" action="/api/equipe/outils" class="ou-add">
+              <input type="hidden" name="action" value="osu-map" /><input type="hidden" name="back" value={back} />
+              {erreur === 'map' && <p class="ou-err">Lien non reconnu : colle le lien de la difficulté (osu.ppy.sh/beatmapsets/…#osu/…).</p>}
+              <label class="ou-wide">Lien de la map<input name="map" required placeholder="https://osu.ppy.sh/beatmapsets/…#osu/…" /></label>
+              <label>Roster<select name="roster">{osuRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+              <label class="ou-wide">Pourquoi cette map<input name="note" maxlength="300" placeholder="Ex. : streams 200 BPM, lecture AR10, endurance" /></label>
+              {me.staff && <label class="ou-check"><input type="checkbox" name="challenge" value="1" /> Défi de la semaine, pendant <input name="days" type="number" min="1" max="30" value="7" /> jours</label>}
+              <button class="btn">Ajouter</button>
+            </form>
+            {training.length ? (
+              <ul class="ou-maps">
+                {training.map(({ m, meta }) => (
+                  <li>
+                    {meta?.cover && <img src={meta.cover} alt="" loading="lazy" />}
+                    <div>
+                      <a href={`https://osu.ppy.sh/b/${m.beatmap_id}`} rel="noopener" target="_blank"><strong>{meta ? meta.title : `Map #${m.beatmap_id}`}</strong>{meta && <span> [{meta.version}]</span>}</a>
+                      {meta ? <p class="ou-meta">{r1(meta.stars, 2)}★ · {Math.round(meta.bpm)} BPM · {len(meta.length)} · AR {meta.ar} · OD {meta.od}</p> : <p class="ou-meta">Infos en cours de récupération par Oni Bot…</p>}
+                      {m.note && <p>{m.note}</p>}
+                      <p class="ou-by">Ajoutée par {names.get(m.added_by)?.name ?? 'un membre'}</p>
+                    </div>
+                    {(m.added_by === user.id || me.staff) && (
+                      <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="osu_maps" /><input type="hidden" name="id" value={m.id} /><input type="hidden" name="back" value={back} /><button class="ou-x" aria-label="Retirer">×</button></form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : <p class="eq-note">Aucune map pour l'instant : partage celles qui te font progresser.</p>}
+          </section>
+        </>
+      )}
+    </div>
+  </EquipeShell>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .ou { display: grid; gap: 2.75rem; }
+  .ou-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
+  .ou-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .75rem; }
+  .ou-tools a { display: grid; gap: .3rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid #ff66aa; color: inherit; text-decoration: none; }
+  .ou-tools a:hover { border-color: var(--ink); border-top-color: #ff66aa; }
+  .ou-tools span { color: var(--muted); font-size: var(--step--1); }
+  .ou-chal { display: grid; grid-template-columns: 16rem 1fr; gap: 1.25rem; border: 1px solid var(--line); margin-bottom: 1rem; overflow: hidden; }
+  .ou-cover { width: 100%; height: 100%; object-fit: cover; min-height: 10rem; }
+  .ou-chal__body { padding: 1rem 1rem 1rem 0; display: grid; gap: .5rem; align-content: start; }
+  .ou-chal h3 { font-size: 1.15rem; } .ou-chal h3 a { color: inherit; }
+  .ou-chal p { margin: 0; }
+  .ou-tag { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #ff66aa; }
+  .ou-meta { color: var(--muted); font-size: var(--step--1); }
+  .ou-board { display: grid; gap: .25rem; margin-top: .4rem; }
+  .ou-board li { display: flex; flex-wrap: wrap; gap: .3rem .9rem; align-items: baseline; padding: .4rem .6rem; border: 1px solid var(--line); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .ou-board li:first-child { border-color: #e2bd62; background: color-mix(in srgb, #e2bd62 12%, transparent); }
+  .ou-board li.is-me { outline: 2px solid var(--lacquer); }
+  .ou-board b { font-family: var(--font-display); width: 1.4rem; }
+  .ou-p { font-weight: 700; min-width: 7rem; }
+  .ou-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .8rem; align-items: end; padding: 1rem; border: 1px solid var(--line); margin-bottom: 1.25rem; }
+  .ou-add label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .ou-add .ou-wide { grid-column: span 2; }
+  .ou-add :is(input:not([type="checkbox"]), select) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .ou-check { display: flex !important; align-items: center; gap: .4rem; }
+  .ou-check input[type="number"] { width: 4rem !important; }
+  .ou-add .btn { justify-self: start; }
+  .ou-err { grid-column: 1 / -1; color: var(--red-text); font-weight: 700; margin: 0; }
+  .ou-maps { display: grid; gap: .6rem; }
+  .ou-maps li { display: grid; grid-template-columns: 8rem 1fr auto; gap: 1rem; align-items: center; border: 1px solid var(--line); padding-right: .75rem; }
+  .ou-maps img { width: 100%; height: 100%; object-fit: cover; min-height: 4.5rem; }
+  .ou-maps p { margin: .15rem 0 0; }
+  .ou-maps a { color: inherit; }
+  .ou-by { color: var(--muted); font-size: .75rem; }
+  .ou-x { border: 0; background: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+  @media (max-width: 700px) { .ou-chal { grid-template-columns: 1fr; } .ou-chal__body { padding: 0 1rem 1rem; } .ou-add .ou-wide { grid-column: auto; } .ou-maps li { grid-template-columns: 5rem 1fr auto; } }
+</style>
