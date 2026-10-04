@@ -78,6 +78,7 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
           {riot && <a href={links.valo(riot.ident)!} rel="noopener" target="_blank">tracker Valorant</a>}
           {acc('rl') && <a href={links.rl(acc('rl')!.ident)} rel="noopener" target="_blank">tracker RL</a>}
           {acc('osu') && <a href={links.osu(acc('osu')!.ident)} rel="noopener" target="_blank">osu!</a>}
+          {acc('osu') && <a href={links.osutrack(acc('osu')!.ident)} rel="noopener" target="_blank">osu!track</a>}
           {!accounts.length && <span>{uid === user.id ? <a href="/equipe/joueurs/">Relier mes comptes de jeu</a> : 'Aucun compte relié'}</span>}
         </li>
       </ul>

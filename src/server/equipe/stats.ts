@@ -34,6 +34,7 @@ export const links = {
   valo: (id: string) => (riotId(id) ? `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(id)}/overview` : null),
   rl: (id: string) => `https://rocketleague.tracker.network/rocket-league/profile/epic/${encodeURIComponent(id)}/overview`,
   osu: (id: string) => `https://osu.ppy.sh/users/${encodeURIComponent(id)}`,
+  osutrack: (id: string) => `https://ameobea.me/osutrack/user/${encodeURIComponent(id)}/`,
 };
 
 export async function lolRank(id: string, region = 'euw') {

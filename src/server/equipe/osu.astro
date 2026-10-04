@@ -23,6 +23,27 @@ const challenges = await Promise.all(maps.filter((m) => Number(m.challenge) && (
   board: JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `osu-chal:${c.id}`))[0]?.value ?? '[]') as any[],
 })));
 const training = maps.filter((m) => !Number(m.challenge)).map((m) => ({ m, meta: m.meta ? JSON.parse(m.meta) : null }));
+// Outils recommandés par Yuzuctus pour l'environnement osu!
+const KIT: [string, [string, string, string, string?][]][] = [
+  ['Tablette', [
+    ['OpenTabletDriver', 'https://opentabletdriver.net/', 'Le pilote de base : tout le monde l\'a déjà.'],
+    ['Osurea', 'https://osurea.yuzuctus.fr/', 'Visualiser et comparer sa zone de tablette, partager sa config.'],
+    ['Firmwares custom', 'https://files.shav.it/osu/tablet/', 'Firmwares modifiés pour tablettes.', 'Récent et risqué : une mauvaise installation peut rendre la tablette inutilisable.'],
+    ['Calculateur de lissage', 'https://mixmg.github.io/smoothing/smoothing-calculator.html', 'Pour qui veut un filtre logiciel (smoothing) sur sa tablette.'],
+  ]],
+  ['Skins', [
+    ['Yuzu Skins', 'https://skins.yuzuctus.fr/', 'La collection de Yuzuctus, classée, avec aperçus.'],
+    ['Compendium Skinship', 'https://compendium.skinship.xyz/', 'L\'archive des skins de la communauté.'],
+    ['osuck skins', 'https://skins.osuck.net/fr', 'Catalogue avec recherche et aperçus.'],
+    ['osuskins.net', 'https://osuskins.net/', 'Grande base de skins.'],
+    ['Forum Skinning', 'https://osu.ppy.sh/community/forums/109', 'Le forum officiel des skins.'],
+  ]],
+  ['Suivi et replays', [
+    ['osu!track', 'https://ameobea.me/osutrack/', 'Le meilleur tracker : progression du rang et des pp (lien direct dans chaque profil).'],
+    ['Rewind', 'https://github.com/abstrakt8/rewind', 'Analyse de replays plus poussée que celle d\'osu! stable.', 'Inutile sur osu! lazer.'],
+    ['osuck tools', 'https://tools.osuck.net/', 'Boîte à outils de la communauté.'],
+  ]],
+];
 const len = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000); return h <= 0 ? 'terminé' : h < 48 ? `encore ${h} h` : `encore ${Math.round(h / 24)} jours`; };
 ---
@@ -30,11 +51,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
   <header class="page-head eq-mini"><div class="wrap"><h1>osu!</h1><p>Défi de la semaine, maps d'entraînement et outils du roster.</p></div></header>
   <EquipeShell current="osu" rosters={me.rosters} staff={me.staff} active={sc.active}>
     <div class="ou">
-      <section class="ou-tools">
-        <a href="https://osurea.yuzuctus.fr/" rel="noopener" target="_blank"><strong>Osurea</strong><span>Visualiser et comparer sa zone de tablette, partager sa config. Par Yuzuctus.</span></a>
-        <a href="https://skins.yuzuctus.fr/" rel="noopener" target="_blank"><strong>Yuzu Skins</strong><span>Collection de skins osu!standard classée, avec aperçus et téléchargements. Par Yuzuctus.</span></a>
-        <a href="/equipe/setup/" ><strong>Setups du roster</strong><span>Tablette, zone, touches, skin de chacun.</span></a>
-      </section>
+
 
       {!osuRosters.length ? <p class="eq-note">Aucun roster osu! pour l'instant : défis et maps d'entraînement s'ouvriront dès sa création sur Discord.</p> : (
         <>
@@ -95,6 +112,16 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
           </section>
         </>
       )}
+
+      <section class="ou-kit" aria-labelledby="kit-title">
+        <h2 class="ou-h" id="kit-title">Boîte à outils <small>sélection de Yuzuctus</small></h2>
+        {KIT.map(([cat, items]) => (
+          <div class="ou-kit__cat">
+            <h3>{cat}</h3>
+            <ul>{items.map(([name, url, note, warn]) => <li><a href={url} rel="noopener" target="_blank">{name}</a><span>{note}</span>{warn && <em>{warn}</em>}</li>)}</ul>
+          </div>
+        ))}
+      </section>
     </div>
   </EquipeShell>
 </Base>
@@ -105,10 +132,15 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
   .eq-note { color: var(--muted); font-size: var(--step--1); }
   .ou { display: grid; gap: 2.75rem; }
   .ou-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
-  .ou-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .75rem; }
-  .ou-tools a { display: grid; gap: .3rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid #ff66aa; color: inherit; text-decoration: none; }
-  .ou-tools a:hover { border-color: var(--ink); border-top-color: #ff66aa; }
-  .ou-tools span { color: var(--muted); font-size: var(--step--1); }
+  .ou-h small { font-family: var(--font-body); font-size: var(--step--1); font-weight: 400; color: var(--muted); margin-left: .5rem; }
+  .ou-kit__cat { margin-bottom: 1.25rem; }
+  .ou-kit h3 { font-family: var(--font-body); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
+  .ou-kit ul { display: grid; gap: .1rem; }
+  .ou-kit li { display: grid; grid-template-columns: minmax(10rem, 13rem) 1fr; gap: .1rem 1rem; padding: .5rem 0; border-bottom: 1px solid var(--line); }
+  .ou-kit a { font-weight: 700; color: var(--ink); }
+  .ou-kit span { color: var(--muted); font-size: .92rem; }
+  .ou-kit em { grid-column: 2; font-style: normal; font-size: .82rem; color: var(--red-text); }
+  @media (max-width: 600px) { .ou-kit li { grid-template-columns: 1fr; } .ou-kit em { grid-column: 1; } }
   .ou-chal { display: grid; grid-template-columns: 16rem 1fr; gap: 1.25rem; border: 1px solid var(--line); margin-bottom: 1rem; overflow: hidden; }
   .ou-cover { width: 100%; height: 100%; object-fit: cover; min-height: 10rem; }
   .ou-chal__body { padding: 1rem 1rem 1rem 0; display: grid; gap: .5rem; align-content: start; }

@@ -74,6 +74,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
                     {p.riot && <a href={links.valo(p.riot.ident)} rel="noopener">tracker Valorant</a>}
                     {p.rl && <a href={links.rl(p.rl.ident)} rel="noopener">tracker RL</a>}
                     {p.osu && <a href={links.osu(p.osu.ident)} rel="noopener">osu!</a>}
+                    {p.osu && <a href={links.osutrack(p.osu.ident)} rel="noopener">osu!track</a>}
                     {!p.riot && !p.rl && !p.osu && <em>pas encore de compte relié</em>}
                   </span>
                 </li>
