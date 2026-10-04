@@ -97,23 +97,23 @@
           "name": "Principal",
           "players": [
             {
-              "name": "Any",
+              "name": "AlphA",
               "role": "Duelliste"
             },
             {
-              "name": "slth",
+              "name": "Aze",
               "role": "Initiateur"
             },
             {
-              "name": "Wazeerx7",
+              "name": "Any",
               "role": "Contrôleur"
             },
             {
-              "name": "Aze",
+              "name": "Wazeerx7",
               "role": "Sentinelle"
             },
             {
-              "name": "AlphA",
+              "name": "Weyz",
               "role": "Flex"
             }
           ]

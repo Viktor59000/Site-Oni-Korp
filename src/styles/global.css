@@ -502,3 +502,22 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 .role-group h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; color: var(--lacquer-hi); padding-bottom: .75rem; border-bottom: 2px solid var(--lacquer); }
 .role-group .roles { grid-template-columns: 1fr; border-top: 0; margin-bottom: 0; }
 @media (max-width: 860px) { .role-groups { grid-template-columns: 1fr; } }
+
+/* Rocket League : un roster = une équipe (bleue / orange), lettre grecque en filigrane */
+.sticker[data-equipe="orange"] { --c1: #ff7a18; --c2: #1450d6; --ink: #8fb4ff; }
+.sticker[data-equipe="bleue"] .sticker__band::before { background: #2f6bff; }
+.sticker[data-equipe="orange"] .sticker__band::before { background: #ff7a18; }
+.sticker__lettre {
+  position: absolute; right: 6%; bottom: 4%;
+  font-family: var(--font-display); font-size: 30cqi; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1.5px rgb(255 255 255 / .35);
+}
+.roster[data-equipe="bleue"] { border-top-color: #2f6bff; }
+.roster[data-equipe="orange"] { border-top-color: #ff7a18; }
+.roster h3 { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.roster__lettre { font-family: var(--font-display); font-size: 1.6rem; line-height: 1; color: var(--lacquer-hi); }
+.roster[data-equipe="bleue"] .roster__lettre { color: #6f98ff; }
+.roster[data-equipe="orange"] .roster__lettre { color: #ff9a4a; }
+.roster__equipe { font-weight: 400; font-size: var(--step--1); color: var(--ash); }
+.sticker[data-equipe="bleue"] { background: #2f6bff; }
+.sticker[data-equipe="orange"] { background: #ff7a18; }

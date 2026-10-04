@@ -8,14 +8,14 @@
 import { existsSync } from 'node:fs';
 import RoleIcon from './RoleIcon.astro';
 
-const { name, photo, role, label, art, num, pole, flip, icon } = Astro.props;
+const { name, photo, role, label, art, num, pole, flip, icon, lettre, equipe } = Astro.props;
 const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
 const artSrc = photo ?? (art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null);
 // Pictogramme : rôle principal (`icon`) pour le staff, sinon le rôle du joueur
 const iconRole = icon ?? (role && !role.includes('confirmer') ? role : null);
 const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
 ---
-<article class="sticker" data-pole={pole}>
+<article class="sticker" data-pole={pole} data-equipe={equipe}>
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
@@ -31,6 +31,7 @@ const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
     <div class="sticker__band">
       <p class="sticker__name" translate="no" style={`font-size:${nameSize}`}>{name}</p>
       <span class="sticker__role">{role ?? label}</span>
+      {lettre && <span class="sticker__lettre" aria-hidden="true">{lettre}</span>}
     </div>
   </div>
 </article>

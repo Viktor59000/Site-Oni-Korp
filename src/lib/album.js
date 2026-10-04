@@ -21,6 +21,10 @@ const artKey = (g, p, i, ri) => {
   return `${prefix[g.id]}-${((i + ri) % n) + 1}`;
 };
 
+// Lettre grecque de chaque roster, et couleur d'équipe Rocket League (bleue / orange, en alternance)
+const GREC = { Alpha: 'Α', 'Bêta': 'Β', Gamma: 'Γ', Delta: 'Δ', Epsilon: 'Ε', 'Oméga': 'Ω' };
+const EQUIPES = ['bleue', 'orange'];
+
 let num = 0;
 
 // Joueurs, pôle par pôle
@@ -30,6 +34,8 @@ const games = data.games.map((g) => {
     game: g,
     rosters: filled.map((r, ri) => ({
       title: g.rosters.length > 1 ? `Roster ${r.name}` : r.name,
+      lettre: g.rosters.length > 1 ? GREC[r.name] : null,
+      equipe: g.id === 'rocket-league' ? EQUIPES[ri % 2] : null,
       cards: r.players.map(norm).map((p, i) => ({
         name: p.name,
         photo: p.photo,
@@ -38,6 +44,8 @@ const games = data.games.map((g) => {
         art: artKey(g, p, i, ri),
         flip: ri % 2 === 1,
         pole: prefix[g.id],
+        lettre: g.rosters.length > 1 ? GREC[r.name] : null,
+        equipe: g.id === 'rocket-league' ? EQUIPES[ri % 2] : null,
         num: ++num,
       })),
     })),

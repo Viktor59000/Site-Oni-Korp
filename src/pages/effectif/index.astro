@@ -31,8 +31,8 @@ import PlayerCard from '../../components/PlayerCard.astro';
         </div>
         <div class="rosters">
           {rosters.map((r) => (
-            <div class={`roster${rosters.length === 1 ? ' roster--wide' : ''}`}>
-              <h3>{r.title}</h3>
+            <div class={`roster${rosters.length === 1 ? ' roster--wide' : ''}`} data-equipe={r.equipe}>
+              <h3>{r.lettre && <span class="roster__lettre" aria-hidden="true">{r.lettre}</span>}{r.title}{r.equipe && <span class="roster__equipe">Équipe {r.equipe}</span>}</h3>
               <ul class="players">
                 {r.cards.map((c) => <li><PlayerCard {...c} /></li>)}
               </ul>
