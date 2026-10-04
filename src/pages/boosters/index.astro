@@ -2,8 +2,16 @@
 import { album } from '../../lib/album.js';
 import Base from '../../layouts/Base.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
+import SpecialCard from '../../components/SpecialCard.astro';
 
-const cards = [...album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)), ...album.staff];
+// Rareté : plus le poids est faible, plus la vignette est rare dans les boosters
+const WEIGHT = { commune: 2.5, or: 1, argent: 1, holo: 0.8, legendaire: 0.25 };
+const pages = [
+  { titre: 'Joueurs', cartes: album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)).map((c) => ({ ...c, rarete: 'commune' })) },
+  { titre: 'Staff', note: 'Édition or', cartes: album.staff.map((c) => ({ ...c, rarete: 'or' })) },
+  ...album.specials.map((s) => ({ titre: s.titre, note: { holo: 'Holo', argent: 'Argent', legendaire: 'Ultra-rare', commune: '' }[s.rarete], cartes: s.cartes, special: true })),
+];
+const cards = pages.flatMap((p) => p.cartes);
 ---
 <Base title="Boosters" description="Ouvre un booster par jour et complète l'album Oni Korp : 27 vignettes, des holos et l'édition staff en or.">
   <header class="page-head">
@@ -29,7 +37,7 @@ const cards = [...album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)),
           <li data-rule="vestiaire">Visiter le <a href="/vestiaire/">Vestiaire</a></li>
           <li data-rule="recrutement">Visiter le <a href="/recrutement/">Recrutement</a></li>
         </ul>
-        <p class="booster__note">Ta collection est gardée dans ce navigateur. Une chance sur six de tirer une vignette holo ; les vignettes du staff (édition or) sont plus rares.</p>
+        <p class="booster__note">Ta collection est gardée dans ce navigateur. {cards.length} vignettes : joueurs, staff en édition or, moments holo, garage et partenaires en argent, et deux légendaires très rares. Chaque vignette a aussi une chance sur six de sortir en holo.</p>
       </div>
 
       <div class="pack-stage">
@@ -59,15 +67,20 @@ const cards = [...album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)),
         <h2 id="coll-title">Ma collection</h2>
         <p>Les vignettes manquantes restent dans l'ombre. Les doubles sont comptés.</p>
       </div>
-      <ul class="collection">
-        {cards.map((c) => (
-          <li class="collection__item is-missing" data-num={c.num} data-pole={c.pole}>
-            <PlayerCard {...c} />
-            <span class="collection__q" aria-hidden="true">?</span>
-            <span class="collection__n" hidden></span>
-          </li>
-        ))}
-      </ul>
+      {pages.map((pg) => (
+        <div class="collection__page">
+          <h3 class="collection__title">{pg.titre}{pg.note && <span>{pg.note}</span>}</h3>
+          <ul class="collection">
+            {pg.cartes.map((c) => (
+              <li class="collection__item is-missing" data-num={c.num} data-weight={WEIGHT[c.rarete]} data-rarete={c.rarete}>
+                {pg.special ? <SpecialCard {...c} /> : <PlayerCard {...c} />}
+                <span class="collection__q" aria-hidden="true">?</span>
+                <span class="collection__n" hidden></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   </section>
 
@@ -84,7 +97,7 @@ const cards = [...album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)),
   const items = [...document.querySelectorAll<HTMLElement>('.collection__item')];
   const byNum = new Map(items.map((li) => [Number(li.dataset.num), li]));
   const pool = [...byNum.keys()];
-  const weight = (n: number) => (byNum.get(n)!.dataset.pole === 'staff' ? 1 : 2.5);
+  const weight = (n: number) => Number(byNum.get(n)!.dataset.weight) || 1;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const pack = $<HTMLButtonElement>('[data-pack]');
 
@@ -149,7 +162,7 @@ const cards = [...album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)),
       li.append(btn);
       if (p.isNew) li.dataset.new = '';
       if (p.holo) li.dataset.holo = '';
-      if (byNum.get(p.num)!.dataset.pole === 'staff') li.dataset.gold = '';
+      li.dataset.rarete = byNum.get(p.num)!.dataset.rarete;
       btn.addEventListener('click', () => turn(li), { once: true });
       list.append(li);
     });

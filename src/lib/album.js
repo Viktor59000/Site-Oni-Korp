@@ -89,4 +89,49 @@ const staff = [...people.values()]
 // Postes ouverts : emplacements vides en fin d'album
 const open = data.staff.filter((s) => !s.names.length).map((s) => ({ role: s.role, num: ++num }));
 
-export const album = { games, staff, open, total: num };
+// Séries spéciales : uniquement dans les boosters et la collection (pas sur l'Effectif).
+// rarete : commune, argent, holo, legendaire (plus c'est rare, moins on la tire).
+const SERIES = [
+  { id: 'moments', titre: 'Moments', rarete: 'holo', cartes: [
+    { title: 'Fondation', sub: '12 juillet 2021', img: '/img/entete-club.webp', pos: '78% 50%', overlay: '12.07.21' },
+    { title: 'Showmatch', sub: 'Contre Dream Team, BO7', img: '/img/match-showmatch.webp', pos: '55% 50%' },
+    { title: 'IMPC Cup', sub: 'Gamma et Epsilon engagés', img: '/img/match-cup.webp' },
+    { title: 'Ouverture LoL', sub: 'Janvier 2024', img: '/img/match-lol.webp', pos: '35% 50%' },
+    { title: 'Ouverture Valorant', sub: 'Janvier 2024', img: '/img/match-valo.webp', pos: '60% 50%' },
+  ] },
+  { id: 'garage', titre: 'Garage', rarete: 'argent', cartes: [
+    { title: 'Octane', sub: 'Decal domicile', img: '/img/decal-octane-domicile.webp' },
+    { title: 'Octane', sub: 'Decal visiteur', img: '/img/decal-octane-visiteur.webp' },
+    { title: 'Fennec', sub: 'Decal domicile', img: '/img/decal-fennec-domicile.webp' },
+    { title: 'Fennec', sub: 'Decal visiteur', img: '/img/decal-fennec-visiteur.webp' },
+  ] },
+  { id: 'partenaires', titre: 'Partenaires', rarete: 'argent', cartes: [
+    { title: 'Carl & Barl', sub: 'by LNDR · Rocket League', logo: '/img/partenaires/carl-barl.webp', bg: '#1d1d1d' },
+    { title: 'LoLineup.gg', sub: 'League of Legends', logo: '/img/partenaires/lolineup.webp', bg: '#0a2b36', wide: true },
+  ] },
+  { id: 'terrains', titre: 'Terrains', rarete: 'commune', cartes: [
+    { title: 'Rocket League', sub: 'Terrain', img: '/img/pole-rocket-league.webp' },
+    { title: 'League of Legends', sub: 'Terrain', img: '/img/pole-lol.webp' },
+    { title: 'Valorant', sub: 'Terrain', img: '/img/pole-valorant.webp' },
+    { title: 'osu!', sub: 'Terrain', img: '/img/pole-osu.webp' },
+  ] },
+  { id: 'vestiaire', titre: 'Vestiaire', rarete: 'commune', cartes: [
+    { title: 'Le sweat', sub: 'Face', img: '/img/sweat-porte-face.webp', pos: '50% 30%' },
+    { title: 'Le sweat', sub: 'Dos personnalisé', img: '/img/sweat-dos.webp' },
+  ] },
+  { id: 'legendaires', titre: 'Légendaires', rarete: 'legendaire', cartes: [
+    { title: 'Le blason', sub: 'Oni Korp', kind: 'blason' },
+    { title: 'Jamais à genoux', sub: "Oni's never on knees", kind: 'devise', img: '/img/kanji-oni-neon.webp' },
+  ] },
+  { id: 'recrue', titre: 'Recrue', rarete: 'commune', cartes: [
+    { title: 'Ta place ici', sub: 'Postule au club', kind: 'recrue' },
+  ] },
+];
+const players = num;
+// Une vignette spéciale n'entre dans les boosters qu'une fois son illustration livrée
+const specials = SERIES
+  .map((s) => ({ ...s, cartes: s.cartes.map((c, i) => ({ ...c, art: `sp-${s.id}-${i + 1}` })).filter((c) => existsSync(`public/img/cartes/${c.art}.webp`)) }))
+  .filter((s) => s.cartes.length)
+  .map((s) => ({ ...s, cartes: s.cartes.map((c) => ({ ...c, serie: s.id, serieTitre: s.titre, rarete: s.rarete, num: ++num })) }));
+
+export const album = { games, staff, open, total: players, specials, totalAll: num };
