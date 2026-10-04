@@ -11,6 +11,7 @@ import CardViewer from '../../components/CardViewer.astro';
     <div class="wrap">
       <h1>Effectif</h1>
       <p>L'album du club : {album.total} vignettes, les rosters par jeu et le staff qui les fait tourner.</p>
+      <p class="my-album" data-my-album hidden>Ta collection : <strong data-my-owned>0</strong> / {album.total} · <a href="/boosters/">Ouvrir un booster</a></p>
     </div>
   </header>
 
@@ -69,4 +70,20 @@ import CardViewer from '../../components/CardViewer.astro';
   </div>
   </div>
   <CardViewer total={album.total} />
+  <script>
+    import { load, ownedCount } from '../../lib/collection';
+    // Vignettes déjà obtenues dans les boosters : tampon « obtenue » sur l'album
+    const c = load();
+    const n = ownedCount(c);
+    if (n > 0) {
+      document.querySelector<HTMLElement>('[data-my-album]')!.hidden = false;
+      document.querySelector('[data-my-owned]')!.textContent = String(n);
+      document.querySelectorAll<HTMLElement>('.sticker[data-num]').forEach((el) => {
+        const o = c.owned[el.dataset.num!];
+        if (!o) return;
+        el.classList.add('is-owned');
+        if (o.holo) el.classList.add('is-holo');
+      });
+    }
+  </script>
 </Base>
