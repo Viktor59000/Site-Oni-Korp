@@ -40,6 +40,7 @@ const api = {
       route('/equipe/vod', './src/server/equipe/vod.astro');
       route('/equipe/docs', './src/server/equipe/docs.astro');
       route('/equipe/scouting', './src/server/equipe/scouting.astro');
+      route('/equipe/match', './src/server/equipe/match.astro');
       route('/api/equipe/tableau', './src/server/equipe/tableau-api.ts');
       route('/postuler', './src/server/recrutement/page.astro');
       route('/api/postuler', './src/server/recrutement/postuler.ts');

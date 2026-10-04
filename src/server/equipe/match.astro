@@ -1,0 +1,235 @@
+---
+// Avant-match : tout ce qu'il faut pour un match ou un scrim, au même endroit.
+// Infos et horaires (check-in, inscription), compo, fiche de l'adversaire, tableaux blancs, checklist,
+// puis après le match : débrief, stats, replays et VOD.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+import { md } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const q = sc.active ? `r=${sc.active}` : '';
+const ids = sc.list.map((r) => r.id);
+type M = { id: number; roster_id: number; game: string; opponent: string; format: string; at: number; link: string | null; kind: string | null; score_us: number | null; score_them: number | null; lineup: string | null; checkin: number | null; signup_by: number | null; caster: string | null };
+const mid = Number(Astro.url.searchParams.get('m')) || null;
+const all = ids.length ? await rows<M>(`SELECT * FROM matches WHERE cancelled = 0 AND roster_id IN (${ids.map(() => '?').join(',')}) AND at > ? ORDER BY at`, ...ids, Date.now() - 30 * 86400_000) : [];
+const m = mid ? all.find((x) => Number(x.id) === mid) ?? null : null;
+const upcoming = all.filter((x) => Number(x.at) > Date.now() - 3 * 3600_000);
+const recent = all.filter((x) => Number(x.at) <= Date.now() - 3 * 3600_000).reverse();
+const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const hour = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const roster = m ? me.rosters.find((r) => Number(r.id) === Number(m.roster_id)) : null;
+const members = roster ? await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${roster.role_id}"%`) : [];
+const lineup = m?.lineup ? JSON.parse(m.lineup) as { titulaires: { id: string; nom: string }[]; remplacant: { id: string; nom: string } | null; coach: { id: string; nom: string } | null } : null;
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '');
+const fiche = m ? (await rows<{ id: number; name: string; plan: string; forces: string; faiblesses: string }>('SELECT id, name, plan, forces, faiblesses FROM opponents WHERE roster_id = ?', m.roster_id).catch(() => [])).find((o) => norm(o.name) === norm(m.opponent)) : null;
+const boards = m ? await rows<{ id: number; title: string }>('SELECT id, title FROM boards WHERE roster_id = ? AND LOWER(title) LIKE ?', m.roster_id, `%${m.opponent.toLowerCase()}%`).catch(() => []) : [];
+const vods = m ? await rows<{ id: number; title: string }>('SELECT id, title FROM vods WHERE match_id = ? OR (roster_id = ? AND LOWER(title) LIKE ?)', m.id, m.roster_id, `%${m.opponent.toLowerCase()}%`).catch(() => []) : [];
+const [notes] = m ? await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE match_id = ?', m.id) : [];
+const [stats] = m ? await rows<{ n: number }>('SELECT COUNT(*) AS n FROM match_stats WHERE match_id = ?', m.id) : [];
+const casterName = m?.caster ? (await rows<{ name: string }>('SELECT name FROM guild_members WHERE id = ?', m.caster))[0]?.name : null;
+const past = m ? Number(m.at) < Date.now() : false;
+const kindLabel = (k: string | null) => ({ tournoi: 'Tournoi', ligue: 'Ligue', showmatch: 'Showmatch', scrim: 'Scrim' } as Record<string, string>)[k ?? ''] ?? 'Match officiel';
+const CHECK: Record<string, string[]> = {
+  valo: ['Client et jeu à jour, redémarrés', 'Viseur et sensibilité vérifiés', 'Vocal 20 min avant', 'Strats de la carte relues (tableau blanc)', 'Échauffement : 1 DM + range'],
+  lol: ['Client à jour, runes et sorts préparés', 'Drafts relues (drafter)', 'Vocal 20 min avant', 'Champions de l\'adversaire revus (scouting)', 'Échauffement : 1 partie ou practice tool'],
+  rl: ['Jeu à jour, BakkesMod prêt (replays ballchasing)', 'Réglages caméra vérifiés', 'Vocal 20 min avant', 'Kickoffs revus (tableau blanc)', 'Échauffement : free play + 1 partie'],
+  osu: ['Client à jour, skin et réglages prêts', 'Tablette branchée, zone vérifiée (Osurea)', 'Vocal 15 min avant', 'Maps du pool révisées', 'Échauffement : 2 ou 3 maps'],
+};
+const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
+---
+<Base title="Avant-match · Espace équipe" description="Préparation des matchs du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Avant-match</h1><p>Compo, adversaire, strats et checklist : tout le match au même endroit.</p></div></header>
+  <EquipeShell current="match" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    {!m ? (
+      <div class="am-list">
+        <section>
+          <h2 class="am-h">À venir</h2>
+          {upcoming.length ? <ul>{upcoming.map((x) => <li><a href={`/equipe/match/?m=${x.id}${q ? `&${q}` : ''}`}><strong>vs {x.opponent}</strong><span>{fmt.format(new Date(Number(x.at)))} · {kindLabel(x.kind)} · {x.format}</span></a></li>)}</ul>
+            : <p class="eq-note">Aucun match prévu. Le staff les ajoute sur Discord avec <code>/match ajouter</code>.</p>}
+        </section>
+        {recent.length > 0 && (
+          <section>
+            <h2 class="am-h">Derniers matchs</h2>
+            <ul>{recent.map((x) => <li><a href={`/equipe/match/?m=${x.id}${q ? `&${q}` : ''}`}><strong>vs {x.opponent} {x.score_us !== null && <b>{x.score_us}–{x.score_them}</b>}</strong><span>{fmt.format(new Date(Number(x.at)))} · {kindLabel(x.kind)}</span></a></li>)}</ul>
+          </section>
+        )}
+      </div>
+    ) : (
+      <div class="am">
+        <p><a class="am-back" href={`/equipe/match/${q ? `?${q}` : ''}`}>← Tous les matchs</a></p>
+        <div class="am-head">
+          <div>
+            <p class="am-kind">{kindLabel(m.kind)} · {m.format} · {roster?.name}</p>
+            <h2>vs {m.opponent}</h2>
+            <p class="am-when">{fmt.format(new Date(Number(m.at)))}</p>
+          </div>
+          {m.score_us !== null ? <p class="am-score"><b>{m.score_us}–{m.score_them}</b></p> : <p class="am-count" data-countdown={m.at}></p>}
+        </div>
+
+        <div class="am-grid">
+          <section class="am-card">
+            <h3>Horaires</h3>
+            <ul class="am-times">
+              {m.signup_by && <li><span>Inscription avant</span><b>{fmt.format(new Date(Number(m.signup_by)))}</b></li>}
+              {m.checkin && <li><span>Check-in à partir de</span><b>{hour.format(new Date(Number(m.at) - Number(m.checkin) * 60_000))}</b></li>}
+              <li><span>Vocal</span><b>{hour.format(new Date(Number(m.at) - 20 * 60_000))}</b></li>
+              <li><span>Coup d'envoi</span><b>{hour.format(new Date(Number(m.at)))}</b></li>
+              {casterName && <li><span>Cast</span><b>{casterName}</b></li>}
+            </ul>
+            {m.link && /^https?:\/\//.test(m.link) && <a class="btn btn--ghost" href={m.link} rel="noopener" target="_blank">Lien du match / du live</a>}
+          </section>
+
+          <section class="am-card">
+            <h3>Compo</h3>
+            {lineup ? (
+              <ul class="am-lineup">
+                {lineup.titulaires.map((p) => <li class:list={{ 'is-me': p.id === user.id }}>{members.find((x) => x.id === p.id)?.avatar && <img src={members.find((x) => x.id === p.id)!.avatar} alt="" width="28" height="28" />}{p.nom}</li>)}
+                {lineup.remplacant && <li class="is-sub">{lineup.remplacant.nom} <small>remplaçant</small></li>}
+                {lineup.coach && <li class="is-sub">{lineup.coach.nom} <small>coach</small></li>}
+              </ul>
+            ) : <p class="eq-note">Pas encore annoncée.</p>}
+            {me.staff && !past && (
+              <details class="am-edit">
+                <summary>{lineup ? 'Modifier la compo' : 'Annoncer la compo'}</summary>
+                <form method="post" action="/api/equipe/outils">
+                  <input type="hidden" name="action" value="compo" /><input type="hidden" name="match" value={m.id} /><input type="hidden" name="back" value={`/equipe/match/?m=${m.id}${q ? `&${q}` : ''}`} />
+                  <fieldset><legend>Titulaires</legend>{members.map((p) => <label><input type="checkbox" name="titulaires" value={p.id} checked={lineup?.titulaires.some((x) => x.id === p.id)} />{p.name}</label>)}</fieldset>
+                  <label>Remplaçant<select name="remplacant"><option value="">—</option>{members.map((p) => <option value={p.id} selected={lineup?.remplacant?.id === p.id}>{p.name}</option>)}</select></label>
+                  <button class="btn">Enregistrer</button>
+                  <p class="eq-note">Sur Discord, <code>/match compo</code> la publie aussi dans le planning et l'annonce.</p>
+                </form>
+              </details>
+            )}
+          </section>
+
+          <section class="am-card">
+            <h3>Adversaire</h3>
+            {fiche ? (
+              <>
+                {fiche.plan && <div class="am-plan"><p class="am-lbl">Notre plan</p><div set:html={md(fiche.plan)} /></div>}
+                {fiche.faiblesses && <div><p class="am-lbl">Leurs faiblesses</p><div set:html={md(fiche.faiblesses)} /></div>}
+                <a href={`/equipe/scouting/?o=${fiche.id}${q ? `&${q}` : ''}`}>Toute la fiche de {fiche.name} →</a>
+              </>
+            ) : <p class="eq-note">Pas de fiche sur {m.opponent}. <a href={`/equipe/scouting/?o=nouveau&nom=${encodeURIComponent(m.opponent)}${q ? `&${q}` : ''}`}>Créer la fiche</a></p>}
+          </section>
+
+          <section class="am-card">
+            <h3>Strats</h3>
+            {boards.length ? <ul class="am-links">{boards.map((b) => <li><a href={`/equipe/tactique/?b=${b.id}${q ? `&${q}` : ''}`}>{b.title}</a></li>)}</ul> : <p class="eq-note">Aucun tableau blanc pour ce match.</p>}
+            <form method="post" action="/api/equipe/outils" class="am-inline">
+              <input type="hidden" name="action" value="tableau" /><input type="hidden" name="roster" value={m.roster_id} /><input type="hidden" name="game" value={m.game} />
+              <input type="hidden" name="map" value={m.game === 'rl' ? 'Terrain' : m.game === 'lol' ? 'Faille' : 'blanc'} /><input type="hidden" name="title" value={`vs ${m.opponent}`} />
+              <input type="hidden" name="back" value={`/equipe/tactique/${q ? `?${q}` : ''}`} />
+              <button class="btn btn--ghost">Nouveau tableau « vs {m.opponent} »</button>
+            </form>
+          </section>
+
+          {!past && (
+            <section class="am-card" data-check={`am-${m.id}-${user.id}`}>
+              <h3>Ma checklist</h3>
+              <ul class="am-check">{checklist.map((c, i) => <li><label><input type="checkbox" data-i={i} />{c}</label></li>)}</ul>
+              <p class="eq-note">Cochée sur ton appareil, pour toi.</p>
+            </section>
+          )}
+
+          {past && (
+            <section class="am-card">
+              <h3>Après le match</h3>
+              <ul class="am-after">
+                <li><a href={`/equipe/notes/?${q ? `${q}` : ''}#match-${m.id}`}>Débrief</a><span>{Number(notes?.n ?? 0) ? `${notes.n} débrief(s) · ${Math.round(Number(notes.avg) * 10) / 10}/10` : 'pas encore écrit'}</span></li>
+                <li><a href={`/equipe/stats/${q ? `?${q}` : ''}`}>Stats du match</a><span>{Number(stats?.n ?? 0) ? `${stats.n} joueur(s) renseigné(s)` : m.game === 'rl' ? 'importer les replays ballchasing' : 'à saisir'}</span></li>
+                <li><a href={`/equipe/vod/${q ? `?${q}` : ''}`}>VOD</a><span>{vods.length ? vods.map((v) => v.title).join(', ') : 'ajouter la vidéo du match'}</span></li>
+              </ul>
+            </section>
+          )}
+        </div>
+      </div>
+    )}
+  </EquipeShell>
+</Base>
+
+<script>
+  // Compte à rebours
+  const c = document.querySelector<HTMLElement>('[data-countdown]');
+  if (c) {
+    const at = Number(c.dataset.countdown);
+    const tick = () => {
+      const s = Math.round((at - Date.now()) / 1000);
+      if (s <= 0) { c.textContent = 'C\'est parti'; return; }
+      const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+      c.innerHTML = d ? `<b>${d}</b> j <b>${h}</b> h` : `<b>${h}</b> h <b>${String(m).padStart(2, '0')}</b> min`;
+    };
+    tick(); setInterval(tick, 30_000);
+  }
+  // Checklist personnelle (gardée dans le navigateur)
+  const box = document.querySelector<HTMLElement>('[data-check]');
+  if (box) {
+    const key = box.dataset.check!;
+    let saved: number[] = [];
+    try { saved = JSON.parse(localStorage.getItem(key) ?? '[]'); } catch {}
+    box.querySelectorAll<HTMLInputElement>('input[data-i]').forEach((i) => {
+      i.checked = saved.includes(Number(i.dataset.i));
+      i.addEventListener('change', () => {
+        const on = [...box.querySelectorAll<HTMLInputElement>('input[data-i]:checked')].map((x) => Number(x.dataset.i));
+        try { localStorage.setItem(key, JSON.stringify(on)); } catch {}
+      });
+    });
+  }
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .am-list { display: grid; gap: 2rem; }
+  .am-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: .75rem; }
+  .am-list ul { display: grid; gap: .5rem; }
+  .am-list a { display: grid; gap: .2rem; padding: .8rem 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; }
+  .am-list a:hover { border-color: var(--ink); }
+  .am-list span { color: var(--muted); font-size: var(--step--1); }
+  .am-list span::first-letter { text-transform: uppercase; }
+  .am-list b { margin-left: .5rem; color: var(--red-text); }
+  .am-back { color: var(--muted); font-weight: 700; }
+  .am-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1rem; padding-bottom: 1rem; border-bottom: 2px solid var(--ink); margin: .5rem 0 1.5rem; }
+  .am-head h2 { font-size: var(--step-3); line-height: 1; margin: .2rem 0; }
+  .am-kind { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--red-text); margin: 0; }
+  .am-when { margin: 0; color: var(--muted); }
+  .am-when::first-letter { text-transform: uppercase; }
+  .am-count, .am-score { margin: 0; font-size: 1rem; color: var(--muted); }
+  .am-count :global(b), .am-score b { font-family: var(--font-display); font-size: 2.2rem; color: var(--ink); }
+  .am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 1rem; align-items: start; }
+  .am-card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid var(--line); }
+  .am-card h3 { font-family: var(--font-body); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .am-card a { color: var(--red-text); font-weight: 700; }
+  .am-card .btn { justify-self: start; color: inherit; }
+  .am-times li { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-bottom: 1px dashed var(--line); }
+  .am-times span { color: var(--muted); }
+  .am-lineup { display: grid; gap: .35rem; }
+  .am-lineup li { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+  .am-lineup li.is-me { color: var(--red-text); }
+  .am-lineup li.is-sub { font-weight: 400; color: var(--muted); }
+  .am-lineup img { border-radius: 50%; }
+  .am-edit summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
+  .am-edit form { display: grid; gap: .6rem; margin-top: .6rem; }
+  .am-edit fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: .25rem; }
+  .am-edit legend { font-weight: 700; font-size: .85rem; margin-bottom: .3rem; }
+  .am-edit label { display: flex; gap: .4rem; align-items: center; font-size: .9rem; }
+  .am-edit select { min-height: 36px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; margin-left: .4rem; }
+  .am-lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .2rem; }
+  .am-plan { border-left: 4px solid var(--lacquer); padding-left: .7rem; }
+  .am-card :global(ul:not([class])) { list-style: square; padding-left: 1.1rem; }
+  .am-card :global(p) { margin: .2rem 0; }
+  .am-links { display: grid; gap: .3rem; }
+  .am-check { display: grid; gap: .4rem; }
+  .am-check label { display: flex; gap: .5rem; align-items: center; cursor: pointer; }
+  .am-check input { width: 18px; height: 18px; accent-color: var(--lacquer); }
+  .am-check label:has(input:checked) { color: var(--muted); text-decoration: line-through; }
+  .am-after li { display: grid; gap: .1rem; padding: .4rem 0; border-bottom: 1px dashed var(--line); }
+  .am-after span { color: var(--muted); font-size: var(--step--1); }
+</style>

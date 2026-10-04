@@ -132,7 +132,7 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
           {upcoming.length ? (
             <ul class="ov-list">
               {upcoming.map((m) => (
-                <li><strong>vs {m.opponent}</strong>
+                <li><a href={`/equipe/match/?m=${m.id}`}><strong>vs {m.opponent}</strong></a>
                   <span>{fmt.format(new Date(Number(m.at)))} · {(m.kind ?? 'officiel') === 'scrim' ? 'scrim' : 'public'}{m.roster ? ` · ${m.roster}` : ''}{(m.kind ?? 'officiel') !== 'scrim' ? (m.caster ? ' · casté' : ' · sans casteur') : ''}</span></li>
               ))}
             </ul>

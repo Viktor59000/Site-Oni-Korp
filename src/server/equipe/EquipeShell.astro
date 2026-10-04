@@ -12,6 +12,7 @@ const GAMES: Record<string, { label: string; color: string }> = {
 const byGame = Object.entries(GAMES).map(([k, g]) => ({ key: k, ...g, list: rosters.filter((r) => r.game === k) })).filter((g) => g.list.length);
 const tools = (r: RosterRow) => [
   ['planning', `/equipe/?r=${r.slug}`, 'Planning'],
+  ['match', `/equipe/match/?r=${r.slug}`, 'Avant-match'],
   ['stats', `/equipe/stats/?r=${r.slug}`, 'Stats'],
   ['objectifs', `/equipe/objectifs/?r=${r.slug}`, 'Objectifs'],
   ['notes', `/equipe/notes/?r=${r.slug}`, 'Notes de match'],
@@ -26,7 +27,7 @@ const tools = (r: RosterRow) => [
   ['docs', `/equipe/docs/?r=${r.slug}`, 'Docs'],
 ];
 const all = [
-  ['planning', '/equipe/', 'Planning'], ['stats', '/equipe/stats/', 'Stats'], ['objectifs', '/equipe/objectifs/', 'Objectifs'], ['notes', '/equipe/notes/', 'Notes de match'],
+  ['planning', '/equipe/', 'Planning'], ['match', '/equipe/match/', 'Avant-match'], ['stats', '/equipe/stats/', 'Stats'], ['objectifs', '/equipe/objectifs/', 'Objectifs'], ['notes', '/equipe/notes/', 'Notes de match'],
   ['vod', '/equipe/vod/', 'VOD'], ['scouting', '/equipe/scouting/', 'Scouting'], ['tactique', '/equipe/tactique/', 'Tableau blanc'], ['setup', '/equipe/setup/', 'Setups'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['docs', '/equipe/docs/', 'Docs'],
   ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['osu', '/equipe/osu/', 'osu!']] : []),
 ];

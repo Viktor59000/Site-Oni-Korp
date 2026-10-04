@@ -191,6 +191,18 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(n ? `/equipe/scouting/?o=${n.id}${qs}` : back);
   }
 
+  if (action === 'compo' && me.staff) {
+    const id = Number(f.get('match'));
+    const [m] = await rows<{ roster_id: number }>('SELECT roster_id FROM matches WHERE id = ?', id);
+    if (!m) return redirect(back);
+    const name = async (uid: string) => (await rows<{ name: string }>('SELECT name FROM guild_members WHERE id = ?', uid))[0]?.name ?? 'Joueur';
+    const tit = f.getAll('titulaires').map(String).slice(0, 7);
+    const sub = clip(f.get('remplacant'), 25);
+    const lineup = { titulaires: await Promise.all(tit.map(async (u) => ({ id: u, nom: await name(u) }))), remplacant: sub ? { id: sub, nom: await name(sub) } : null, coach: null };
+    await exec('UPDATE matches SET lineup = ? WHERE id = ?', tit.length ? JSON.stringify(lineup) : null, id);
+    return redirect(back);
+  }
+
   if (action === 'osu-map') {
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
