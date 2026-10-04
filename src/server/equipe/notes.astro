@@ -2,8 +2,8 @@
 // Notes de match : après chaque match ou scrim, chacun note ce qui a marché, ce qui est à travailler, et une note sur 10.
 // Le roster voit le débrief de tous ; les notes de l'encadrement sont mises en avant.
 import Base from '../../layouts/Base.astro';
-import EquipeNav from './EquipeNav.astro';
-import { teamUser } from './outils';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { STAFF_ROLES } from './access';
 
@@ -12,7 +12,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { user, me } = t;
 
-const ids = me.rosters.map((r) => Number(r.id));
+const sc = scope(me.rosters, Astro.url);
+const ids = sc.list.map((r) => Number(r.id));
 type M = { id: number; roster_id: number; opponent: string; format: string; at: number; kind: string | null; score_us: number | null; score_them: number | null };
 const matches = ids.length ? await rows<M>(`SELECT id, roster_id, opponent, format, at, kind, score_us, score_them FROM matches
   WHERE cancelled = 0 AND roster_id IN (${ids.map(() => '?').join(',')}) AND at < ? AND at > ? ORDER BY at DESC LIMIT 20`,
@@ -28,10 +29,9 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 ---
 <Base title="Notes de match · Espace équipe" description="Débriefs des matchs et scrims du roster.">
   <header class="page-head eq-mini"><div class="wrap"><h1>Notes de match</h1><p>Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster.</p></div></header>
-  <EquipeNav current="notes" games={games} staff={me.staff} />
 
-  <section class="section">
-    <div class="wrap nt">
+  <EquipeShell current="notes" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="nt">
       {!matches.length && <p class="nt-empty">Pas encore de match joué ces quatre derniers mois. Dès qu'un match ou un scrim de ton roster est passé (<code>/match ajouter</code> sur Discord), il apparaît ici pour le débrief.</p>}
       {matches.map((m) => {
         const list = notes.filter((n) => Number(n.match_id) === Number(m.id));
@@ -62,7 +62,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
             <details class="nt-form" open={!mine}>
               <summary>{mine ? 'Modifier mon débrief' : 'Écrire mon débrief'}</summary>
               <form method="post" action="/api/equipe/outils">
-                <input type="hidden" name="action" value="note" /><input type="hidden" name="match" value={m.id} /><input type="hidden" name="back" value="/equipe/notes/" />
+                <input type="hidden" name="action" value="note" /><input type="hidden" name="match" value={m.id} /><input type="hidden" name="back" value={`/equipe/notes/${sc.active ? `?r=${sc.active}` : ''}`} />
                 <label>Ce qui a marché<textarea name="good" rows="3" maxlength="1000">{mine?.good}</textarea></label>
                 <label>À travailler<textarea name="work" rows="3" maxlength="1000">{mine?.work}</textarea></label>
                 <label class="nt-rating">Note de la perf de l'équipe <output>{mine?.rating ?? 5}</output>/10
@@ -75,7 +75,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
         );
       })}
     </div>
-  </section>
+  </EquipeShell>
 </Base>
 
 <style>

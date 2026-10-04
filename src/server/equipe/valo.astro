@@ -2,22 +2,23 @@
 // Lineups Valorant : la bibliothèque du roster, posée sur les cartes. Deux clics (position du lanceur, point d'impact),
 // un titre, un clip : tout le roster la retrouve. Cartes et agents : valorant-api.com (données officielles du jeu).
 import Base from '../../layouts/Base.astro';
-import EquipeNav from './EquipeNav.astro';
-import { teamUser } from './outils';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
-const valoRosters = me.rosters.filter((r) => r.game === 'valo' || me.staff);
+const sc = scope(me.rosters, Astro.url);
+const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.active));
 const games = [...new Set(me.rosters.map((r) => r.game))];
 ---
 <Base title="Lineups Valorant · Espace équipe" description="La bibliothèque de lineups Valorant du roster.">
   <header class="page-head eq-mini"><div class="wrap"><h1>Lineups Valorant</h1><p>Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une.</p></div></header>
-  <EquipeNav current="valo" games={games} staff={me.staff} />
 
-  <section class="section lu" data-lineups>
-    <div class="wrap">
+  <EquipeShell current="valo" rosters={me.rosters} staff={me.staff} active={sc.active}>
+  <section class="lu" data-lineups>
+    <div>
       {!valoRosters.length ? <p class="eq-note">Aucun roster Valorant pour l'instant : la bibliothèque s'ouvrira dès sa création sur Discord.</p> : (
         <>
           <div class="lu-bar">
@@ -42,7 +43,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
               <div class="lu-detail" data-detail><p class="eq-note">Clique sur un point pour voir la lineup. Les lignes vont du lanceur au point d'impact.</p></div>
               <form class="lu-form" method="post" action="/api/equipe/outils" data-form hidden>
                 <h2>Nouvelle lineup</h2>
-                <input type="hidden" name="action" value="lineup" /><input type="hidden" name="back" value="/equipe/valo/" />
+                <input type="hidden" name="action" value="lineup" /><input type="hidden" name="back" value={`/equipe/valo/${sc.active ? `?r=${sc.active}` : ''}`} />
                 <input type="hidden" name="roster" data-f-roster /><input type="hidden" name="map" data-f-map />
                 <input type="hidden" name="x" data-f-x /><input type="hidden" name="y" data-f-y /><input type="hidden" name="tx" data-f-tx /><input type="hidden" name="ty" data-f-ty />
                 <label>Titre<input name="title" required maxlength="80" placeholder="Ex. : molly default A depuis le spawn" /></label>
@@ -59,6 +60,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       )}
     </div>
   </section>
+  </EquipeShell>
 </Base>
 
 <script>
@@ -100,7 +102,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
         ${l.note ? `<p>${esc(l.note)}</p>` : ''}
         ${l.url ? `<a class="btn btn--ghost" href="${esc(l.url)}" rel="noopener" target="_blank">Voir le clip</a>` : ''}
         <p class="eq-note">Ajoutée par ${esc(l.author_name ?? 'un membre')} · ${new Date(Number(l.at)).toLocaleDateString('fr-FR')}</p>
-        ${canDel ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="lineups" /><input type="hidden" name="id" value="${l.id}" /><input type="hidden" name="back" value="/equipe/valo/" /><button class="dr-btn">Supprimer</button></form>` : ''}`;
+        ${canDel ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="lineups" /><input type="hidden" name="id" value="${l.id}" /><input type="hidden" name="back" value="/equipe/valo/${location.search}" /><button class="dr-btn">Supprimer</button></form>` : ''}`;
       draw();
     }
 

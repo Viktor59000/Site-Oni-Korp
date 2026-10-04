@@ -2,8 +2,8 @@
 // Drafter League of Legends : ordre de draft de tournoi, mode fearless (séries), drafts sauvegardés pour le roster,
 // op.gg multi de notre équipe et de l'adversaire. Champions et icônes : Data Dragon (Riot), à jour automatiquement.
 import Base from '../../layouts/Base.astro';
-import EquipeNav from './EquipeNav.astro';
-import { teamUser } from './outils';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { links } from './stats';
 
@@ -11,7 +11,8 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
-const lolRosters = me.rosters.filter((r) => r.game === 'lol' || me.staff);
+const sc = scope(me.rosters, Astro.url);
+const lolRosters = sc.list.filter((r) => r.game === 'lol' || (me.staff && !sc.active));
 const rosterIds = me.rosters.filter((r) => r.game === 'lol').map((r) => r.role_id);
 // Riot ID de nos joueurs LoL → op.gg multi
 const ours = rosterIds.length ? await rows<{ ident: string; region: string }>(`SELECT a.ident, a.region FROM accounts a JOIN guild_members g ON g.id = a.user_id
@@ -21,10 +22,10 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 ---
 <Base title="Drafter LoL · Espace équipe" description="Préparer les drafts League of Legends du roster.">
   <header class="page-head eq-mini"><div class="wrap"><h1>Drafter LoL</h1><p>Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless.</p></div></header>
-  <EquipeNav current="lol" games={games} staff={me.staff} />
 
-  <section class="section dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))}>
-    <div class="wrap">
+  <EquipeShell current="lol" rosters={me.rosters} staff={me.staff} active={sc.active}>
+  <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))}>
+    <div>
       <div class="dr-top">
         <p class="dr-step" data-step aria-live="polite">Chargement des champions…</p>
         <div class="dr-actions">
@@ -58,7 +59,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       <div class="dr-bottom">
         <form class="dr-save" method="post" action="/api/equipe/outils" data-save>
           <h3>Garder ce draft</h3>
-          <input type="hidden" name="action" value="draft" /><input type="hidden" name="back" value="/equipe/lol/" /><input type="hidden" name="data" data-json />
+          <input type="hidden" name="action" value="draft" /><input type="hidden" name="back" value={`/equipe/lol/${sc.active ? `?r=${sc.active}` : ''}`} /><input type="hidden" name="data" data-json />
           <label>Titre<input name="title" maxlength="80" placeholder="Ex. : vs Team X, game 2, compo engage" required /></label>
           <label>Roster<select name="roster" data-roster-select>{lolRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
           <button class="btn" disabled={!lolRosters.length}>Enregistrer</button>
@@ -77,6 +78,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       </div>
     </div>
   </section>
+  </EquipeShell>
 </Base>
 
 <script>
@@ -167,7 +169,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
     if (!d?.items?.length) { list.innerHTML = '<li class="eq-note">Aucun draft gardé pour ce roster.</li>'; return; }
     list.innerHTML = d.items.map((x: any) => `<li><button type="button" class="dr-load" data-load='${esc(x.data)}'>${esc(x.title)}</button>
       <span class="eq-note">${esc(x.author_name ?? '')} · ${new Date(Number(x.at)).toLocaleDateString('fr-FR')}</span>
-      ${x.author === d.me || d.staff ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="drafts" /><input type="hidden" name="id" value="${x.id}" /><input type="hidden" name="back" value="/equipe/lol/" /><button class="dr-del" aria-label="Supprimer">×</button></form>` : ''}</li>`).join('');
+      ${x.author === d.me || d.staff ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="drafts" /><input type="hidden" name="id" value="${x.id}" /><input type="hidden" name="back" value="/equipe/lol/${location.search}" /><button class="dr-del" aria-label="Supprimer">×</button></form>` : ''}</li>`).join('');
   }
   $('[data-saved]').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-load]'); if (!b) return;

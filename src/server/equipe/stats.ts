@@ -1,10 +1,16 @@
-// Statistiques des joueurs (facultatif, selon les clés configurées sur Vercel) :
+// Statistiques des joueurs. Normalement relevées par Oni Bot (clés dans son .env) et lues ici ;
+// à défaut, le site peut les demander lui-même si les clés sont aussi posées sur Vercel :
 // - League of Legends : RIOT_API_KEY (developer.riotgames.com) → rang classé solo/duo
 // - osu! : OSU_CLIENT_ID + OSU_CLIENT_SECRET (osu.ppy.sh/home/account/edit → OAuth) → rang mondial et pp
 // Résultats mis en cache 30 minutes dans la base. Sans clé : liens vers op.gg, tracker.gg, osu!.
 import { exec, rows } from '../db';
 
 const TTL = 30 * 60_000;
+/** Lecture du cache rempli par Oni Bot (module trackers) : valable 2 h. */
+async function fromBot<T>(key: string): Promise<T | null> {
+  const [c] = await rows<{ value: string; at: number }>('SELECT value, at FROM stats_cache WHERE key = ?', key);
+  return c && Date.now() - Number(c.at) < 4 * TTL ? JSON.parse(c.value) : null;
+}
 async function cached<T>(key: string, fn: () => Promise<T | null>): Promise<T | null> {
   const [c] = await rows<{ value: string; at: number }>('SELECT value, at FROM stats_cache WHERE key = ?', key);
   if (c && Date.now() - Number(c.at) < TTL) return JSON.parse(c.value);
@@ -32,7 +38,8 @@ export const links = {
 
 export async function lolRank(id: string, region = 'euw') {
   const key = process.env.RIOT_API_KEY; const r = riotId(id); const reg = REGIONS[region] ?? REGIONS.euw;
-  if (!key || !r) return null;
+  if (!r) return null;
+  if (!key) return fromBot(`lol:${region}:${id.toLowerCase()}`);
   return cached(`lol:${region}:${id.toLowerCase()}`, async () => {
     const h = { headers: { 'X-Riot-Token': key } };
     const acc = await fetch(`https://${reg.route}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(r.name)}/${encodeURIComponent(r.tag)}`, h).then((x) => (x.ok ? x.json() : null));
@@ -46,7 +53,7 @@ export async function lolRank(id: string, region = 'euw') {
 let osuToken: { v: string; until: number } | null = null;
 export async function osuStats(username: string) {
   const id = process.env.OSU_CLIENT_ID, secret = process.env.OSU_CLIENT_SECRET;
-  if (!id || !secret) return null;
+  if (!id || !secret) return fromBot(`osu:${username.toLowerCase()}`);
   return cached(`osu:${username.toLowerCase()}`, async () => {
     if (!osuToken || osuToken.until < Date.now()) {
       const t = await fetch('https://osu.ppy.sh/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' },

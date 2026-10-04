@@ -26,6 +26,7 @@ const api = {
       route('/api/equipe/presence', './src/server/equipe/presence.ts');
       route('/api/equipe/dispos', './src/server/equipe/dispos.ts');
       route('/equipe', './src/server/equipe.astro');
+      route('/equipe/vue', './src/server/equipe/vue.astro');
       route('/equipe/joueurs', './src/server/equipe/joueurs.astro');
       route('/equipe/notes', './src/server/equipe/notes.astro');
       route('/equipe/lol', './src/server/equipe/lol.astro');

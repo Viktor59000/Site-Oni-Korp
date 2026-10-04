@@ -1,8 +1,8 @@
 ---
 // Joueurs : chacun relie ses comptes de jeu ; le roster voit les profils (op.gg, tracker.gg, osu!) et les rangs quand une clé d'API est configurée.
 import Base from '../../layouts/Base.astro';
-import EquipeNav from './EquipeNav.astro';
-import { teamUser } from './outils';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { REGIONS, TIERS_FR, links, lolRank, osuStats } from './stats';
 
@@ -16,7 +16,8 @@ const mine = await rows<Acc>('SELECT * FROM accounts WHERE user_id = ?', user.id
 const get = (g: string) => mine.find((a) => a.game === g);
 
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
-const rosters = await Promise.all(me.rosters.map(async (r) => {
+const sc = scope(me.rosters, Astro.url);
+const rosters = await Promise.all(sc.list.map(async (r) => {
   const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
   const accs = members.length ? await rows<Acc>(`SELECT * FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [];
   const people = await Promise.all(members.map(async (m) => {
@@ -32,16 +33,17 @@ const rosters = await Promise.all(me.rosters.map(async (r) => {
   return { r, people, multi: riotIds.length ? links.opggMulti(riotIds, people.find((p) => p.riot)?.riot?.region ?? 'euw') : null };
 }));
 const games = [...new Set(me.rosters.map((r) => r.game))];
-const keys = { riot: !!process.env.RIOT_API_KEY, osu: !!process.env.OSU_CLIENT_ID };
+// Les rangs viennent d'Oni Bot : on regarde s'il en a déjà déposé
+const seen = await rows<{ key: string }>(`SELECT key FROM stats_cache WHERE key LIKE 'lol:%' OR key LIKE 'osu:%' LIMIT 50`);
+const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.startsWith('lol:')), osu: !!process.env.OSU_CLIENT_ID || seen.some((k) => k.key.startsWith('osu:')) };
 ---
 <Base title="Joueurs · Espace équipe" description="Comptes de jeu et profils des joueurs du roster.">
   <header class="page-head eq-mini"><div class="wrap"><h1>Joueurs</h1><p>Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander.</p></div></header>
-  <EquipeNav current="joueurs" games={games} staff={me.staff} />
 
-  <section class="section">
-    <div class="wrap jo">
+  <EquipeShell current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="jo">
       <form method="post" action="/api/equipe/outils" class="jo-me">
-        <input type="hidden" name="action" value="comptes" /><input type="hidden" name="back" value="/equipe/joueurs/" />
+        <input type="hidden" name="action" value="comptes" /><input type="hidden" name="back" value={`/equipe/joueurs/${sc.active ? `?r=${sc.active}` : ''}`} />
         <h2 class="jo-h">Mes comptes</h2>
         <div class="jo-fields">
           <label>Riot ID <small>(LoL et Valorant)</small><input name="riot" value={get('riot')?.ident ?? ''} placeholder="Pseudo#TAG" maxlength="60" pattern=".+#.+" /></label>
@@ -82,10 +84,10 @@ const keys = { riot: !!process.env.RIOT_API_KEY, osu: !!process.env.OSU_CLIENT_I
       ))}
       {!me.rosters.length && <p class="eq-note">Aucun roster pour l'instant : ils apparaîtront ici dès leur création sur Discord (<code>/roster creer</code>).</p>}
       {me.staff && (!keys.riot || !keys.osu) && (
-        <p class="eq-note jo-keys">Encadrement : les rangs s'affichent automatiquement avec {!keys.riot && <>une clé <a href="https://developer.riotgames.com" rel="noopener">Riot</a> (RIOT_API_KEY)</>}{!keys.riot && !keys.osu && ' et '}{!keys.osu && <>une application <a href="https://osu.ppy.sh/home/account/edit#oauth" rel="noopener">osu!</a> (OSU_CLIENT_ID, OSU_CLIENT_SECRET)</>} dans les variables Vercel. Sans elles, les liens de profil suffisent.</p>
+        <p class="eq-note jo-keys">Encadrement : les rangs s'affichent automatiquement avec {!keys.riot && <>une clé <a href="https://developer.riotgames.com" rel="noopener">Riot</a> (RIOT_API_KEY)</>}{!keys.riot && !keys.osu && ' et '}{!keys.osu && <>une application <a href="https://osu.ppy.sh/home/account/edit#oauth" rel="noopener">osu!</a> (OSU_CLIENT_ID, OSU_CLIENT_SECRET)</>} dans le fichier <code>.env</code> d'Oni Bot. Sans elles, les liens de profil suffisent.</p>
       )}
     </div>
-  </section>
+  </EquipeShell>
 </Base>
 
 <style>

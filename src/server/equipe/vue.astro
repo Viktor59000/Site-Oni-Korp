@@ -1,0 +1,180 @@
+---
+// Vue d'ensemble (encadrement) : état du club en un écran. Santé de chaque roster, alertes à traiter,
+// candidatures et messages en attente, état d'Oni Bot. Chaque carte mène à l'environnement du roster.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { teamUser } from './outils';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me } = t;
+if (!me.staff) return Astro.redirect('/equipe/');
+
+const now = Date.now(), DAY = 86400_000;
+const ago = (ms: number) => { const m = Math.round((now - ms) / 60_000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`; };
+const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const GAMES: Record<string, { label: string; color: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#2fa877' },
+};
+
+// Club
+const meta = Object.fromEntries((await rows<{ key: string; value: string }>(`SELECT key, value FROM meta WHERE key IN ('bot:heartbeat', 'bot:version', 'club:stats')`)).map((r) => [r.key, r.value]));
+const beat = Number(meta['bot:heartbeat'] ?? 0);
+const botOnline = now - beat < 3 * 60_000;
+const stats = meta['club:stats'] ? JSON.parse(meta['club:stats']) : null;
+const guildId = process.env.DISCORD_GUILD_ID ?? '';
+const tickets = await rows<{ thread_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
+  `SELECT t.thread_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL ORDER BY t.opened_at`);
+const [contacts] = await rows<{ n: number }>(`SELECT COUNT(*) AS n FROM contacts WHERE status = 'nouveau'`);
+const upcoming = await rows<{ id: number; opponent: string; at: number; kind: string | null; caster: string | null; signup_by: number | null; roster: string | null }>(
+  `SELECT m.id, m.opponent, m.at, m.kind, m.caster, m.signup_by, r.name AS roster FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id
+   WHERE m.cancelled = 0 AND m.score_us IS NULL AND m.at > ? AND m.at < ? ORDER BY m.at`, now, now + 21 * DAY);
+
+// Rosters
+const cards = await Promise.all(me.rosters.map(async (r) => {
+  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const [next] = await rows<{ id: number; at: number; kind: string }>('SELECT id, at, kind FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 1', r.id, now);
+  const nextAnswers = next ? (await rows<{ n: number }>('SELECT COUNT(*) AS n FROM attendance WHERE training_id = ?', next.id))[0] : null;
+  const [week] = await rows<{ n: number }>('SELECT COUNT(*) AS n FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at BETWEEN ? AND ?', r.id, now, now + 7 * DAY);
+  const done = await rows<{ id: number }>('SELECT id FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at BETWEEN ? AND ?', r.id, now - 30 * DAY, now);
+  const [pres] = done.length ? await rows<{ p: number }>(`SELECT COUNT(*) AS p FROM attendance WHERE status = 'present' AND training_id IN (${done.map(() => '?').join(',')})`, ...done.map((d) => d.id)) : [{ p: 0 }];
+  const rate = done.length && members.length ? Math.round((Number(pres.p) / (done.length * members.length)) * 100) : null;
+  const [last] = await rows<{ id: number; opponent: string; us: number; them: number; kind: string | null }>('SELECT id, opponent, score_us AS us, score_them AS them, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NOT NULL ORDER BY at DESC LIMIT 1', r.id);
+  const [debrief] = last ? await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE match_id = ?', last.id) : [null];
+  const [linked] = members.length ? await rows<{ n: number }>(`SELECT COUNT(DISTINCT user_id) AS n FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [{ n: 0 }];
+
+  // Alertes : ce qui mérite une action de l'encadrement
+  const alerts: string[] = [];
+  if (!members.length) alerts.push('Aucun joueur : ajoute-les avec /roster ajouter');
+  else {
+    if (!Number(week.n)) alerts.push('Aucune séance prévue dans les 7 jours');
+    if (next && Number(next.at) - now < 36 * 3600_000 && Number(nextAnswers?.n ?? 0) < members.length / 2) alerts.push(`Prochaine séance : seulement ${nextAnswers?.n ?? 0}/${members.length} réponses`);
+    if (rate !== null && rate < 60) alerts.push(`Présence faible sur 30 jours (${rate} %)`);
+    if (last && !Number(debrief?.n ?? 0)) alerts.push(`Pas de débrief du dernier match (vs ${last.opponent})`);
+    if (Number(linked.n) < members.length) alerts.push(`${members.length - Number(linked.n)} joueur(s) sans compte de jeu relié`);
+  }
+  return { r, g: GAMES[r.game] ?? { label: r.game, color: '#e5251f' }, members, next, nextAnswers: Number(nextAnswers?.n ?? 0), week: Number(week.n), rate, last, debrief, alerts };
+}));
+
+// Alertes club
+const clubAlerts: [string, string | null][] = [];
+if (!botOnline) clubAlerts.push([beat ? `Oni Bot hors ligne depuis ${ago(beat)} : rappels et annonces en pause` : 'Oni Bot pas encore relié à la base', null]);
+for (const m of upcoming) {
+  if ((m.kind ?? 'officiel') !== 'scrim' && !m.caster) clubAlerts.push([`Pas de casteur pour vs ${m.opponent} (${fmt.format(new Date(Number(m.at)))})`, null]);
+  if (m.signup_by && Number(m.signup_by) > now && Number(m.signup_by) - now < 3 * DAY) clubAlerts.push([`Inscription à boucler pour vs ${m.opponent} avant ${fmt.format(new Date(Number(m.signup_by)))}`, null]);
+}
+const oldTickets = tickets.filter((x) => now - Number(x.opened_at) > 3 * DAY);
+if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouverte(s) depuis plus de 3 jours`, null]);
+if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, null]);
+---
+<Base title="Vue d'ensemble · Espace équipe" description="Vue d'ensemble de l'encadrement Oni Korp.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Vue d'ensemble</h1><p>Tout le club en un écran : ce qui va, ce qui demande une action.</p></div></header>
+  <EquipeShell current="vue" rosters={me.rosters} staff={me.staff}>
+    <div class="ov">
+      <ul class="ov-kpis">
+        <li class:list={{ 'is-ok': botOnline, 'is-ko': !botOnline }}><b>{botOnline ? 'En ligne' : 'Arrêté'}</b><span>Oni Bot {meta['bot:version'] ? `v${meta['bot:version']}` : ''}</span></li>
+        <li><b>{stats?.membres ?? '—'}</b><span>membres Discord{stats?.enLigne ? ` · ${stats.enLigne} en ligne` : ''}</span></li>
+        <li><b>{me.rosters.length}</b><span>roster{me.rosters.length > 1 ? 's' : ''} actif{me.rosters.length > 1 ? 's' : ''}</span></li>
+        <li><b>{tickets.length}</b><span>candidature{tickets.length > 1 ? 's' : ''} ouverte{tickets.length > 1 ? 's' : ''}</span></li>
+        <li><b>{upcoming.length}</b><span>match{upcoming.length > 1 ? 's' : ''} sur 3 semaines</span></li>
+      </ul>
+
+      <section class="ov-block">
+        <h2>À traiter</h2>
+        {clubAlerts.length || cards.some((c) => c.alerts.length) ? (
+          <ul class="ov-alerts">
+            {clubAlerts.map(([a]) => <li>{a}</li>)}
+            {cards.flatMap((c) => c.alerts.map((a) => <li><a href={`/equipe/?r=${c.r.slug}`} style={`--g:${c.g.color}`}>{c.r.name}</a> {a}</li>))}
+          </ul>
+        ) : <p class="ov-calm">Rien à signaler. Tout roule.</p>}
+      </section>
+
+      <section class="ov-block">
+        <h2>Rosters</h2>
+        {cards.length ? (
+          <ul class="ov-rosters">
+            {cards.map((c) => (
+              <li style={`--g:${c.g.color}`}>
+                <a class="ov-card" href={`/equipe/?r=${c.r.slug}`}>
+                  <header><strong>{c.r.name}</strong><span>{c.g.label}</span>{c.alerts.length > 0 && <em>{c.alerts.length}</em>}</header>
+                  <ul class="ov-faces">{c.members.slice(0, 8).map((m) => <li title={m.name}><img src={m.avatar} alt="" width="26" height="26" loading="lazy" /></li>)}</ul>
+                  <dl>
+                    <div><dt>Joueurs</dt><dd>{c.members.length}</dd></div>
+                    <div><dt>Séances 7 j</dt><dd>{c.week}</dd></div>
+                    <div><dt>Présence 30 j</dt><dd>{c.rate === null ? '—' : `${c.rate} %`}</dd></div>
+                    <div><dt>Prochaine</dt><dd>{c.next ? `${fmt.format(new Date(Number(c.next.at)))} · ${c.nextAnswers}/${c.members.length}` : '—'}</dd></div>
+                    <div><dt>Dernier match</dt><dd>{c.last ? `vs ${c.last.opponent} ${c.last.us}–${c.last.them}${c.debrief && Number(c.debrief.n) ? ` · ${Math.round(Number(c.debrief.avg) * 10) / 10}/10` : ''}` : '—'}</dd></div>
+                  </dl>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : <p class="ov-calm">Aucun roster pour l'instant. Crée le premier sur Discord avec <code>/roster creer</code> : il apparaîtra ici avec ses indicateurs.</p>}
+      </section>
+
+      <div class="ov-cols">
+        <section class="ov-block">
+          <h2>Candidatures ouvertes</h2>
+          {tickets.length ? (
+            <ul class="ov-list">
+              {tickets.map((c) => (
+                <li><a href={`https://discord.com/channels/${guildId}/${c.thread_id}`} rel="noopener">{c.name ?? 'Candidat'}</a>
+                  <span>{c.kind === 'joueur' ? GAMES[c.game]?.label ?? c.game : c.game} · {ago(Number(c.opened_at))}</span></li>
+              ))}
+            </ul>
+          ) : <p class="ov-calm">Aucune en attente.</p>}
+        </section>
+        <section class="ov-block">
+          <h2>Prochains matchs</h2>
+          {upcoming.length ? (
+            <ul class="ov-list">
+              {upcoming.map((m) => (
+                <li><strong>vs {m.opponent}</strong>
+                  <span>{fmt.format(new Date(Number(m.at)))} · {(m.kind ?? 'officiel') === 'scrim' ? 'scrim' : 'public'}{m.roster ? ` · ${m.roster}` : ''}{(m.kind ?? 'officiel') !== 'scrim' ? (m.caster ? ' · casté' : ' · sans casteur') : ''}</span></li>
+              ))}
+            </ul>
+          ) : <p class="ov-calm">Rien de prévu sur 3 semaines.</p>}
+        </section>
+      </div>
+    </div>
+  </EquipeShell>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .ov { display: grid; gap: 2.5rem; }
+  .ov-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
+  .ov-kpis li { display: grid; gap: .2rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid var(--ink); }
+  .ov-kpis b { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.1; }
+  .ov-kpis span { color: var(--muted); font-size: var(--step--1); }
+  .ov-kpis .is-ok { border-top-color: #1f8f55; } .ov-kpis .is-ok b { color: #1f8f55; }
+  .ov-kpis .is-ko { border-top-color: var(--lacquer); } .ov-kpis .is-ko b { color: var(--red-text); }
+  .ov-block h2 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: .9rem; }
+  .ov-calm { color: var(--muted); }
+  .ov-alerts { display: grid; gap: .4rem; }
+  .ov-alerts li { padding: .6rem .8rem; border-left: 4px solid var(--lacquer); background: color-mix(in srgb, var(--lacquer) 7%, transparent); }
+  .ov-alerts a { font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--g); text-decoration: none; margin-right: .3rem; }
+  .ov-rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+  .ov-card { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--line); border-top: 4px solid var(--g); color: inherit; text-decoration: none; height: 100%; box-sizing: border-box; }
+  .ov-card:hover { border-color: var(--ink); border-top-color: var(--g); }
+  .ov-card header { display: flex; align-items: baseline; gap: .6rem; }
+  .ov-card strong { font-family: var(--font-display); font-size: 1.3rem; }
+  .ov-card header span { color: var(--muted); font-size: var(--step--1); }
+  .ov-card em { margin-left: auto; font-style: normal; font-weight: 700; font-size: .75rem; color: #fff; background: var(--lacquer); border-radius: 999px; min-width: 1.4rem; text-align: center; padding: .1rem .35rem; }
+  .ov-faces { display: flex; min-height: 26px; }
+  .ov-faces li + li { margin-left: -6px; }
+  .ov-faces img { border-radius: 50%; border: 2px solid var(--surface); display: block; background: var(--line); }
+  .ov-card dl { display: grid; gap: .3rem; margin: 0; }
+  .ov-card dl div { display: flex; justify-content: space-between; gap: 1rem; font-size: .88rem; border-bottom: 1px dashed var(--line); padding-bottom: .25rem; }
+  .ov-card dt { color: var(--muted); }
+  .ov-card dd { margin: 0; font-weight: 700; text-align: right; }
+  .ov-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 2rem; }
+  .ov-list { display: grid; gap: .1rem; }
+  .ov-list li { display: flex; flex-wrap: wrap; gap: .2rem .75rem; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid var(--line); }
+  .ov-list a { font-weight: 700; color: var(--red-text); }
+  .ov-list span { color: var(--muted); font-size: var(--step--1); }
+</style>

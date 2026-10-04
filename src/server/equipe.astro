@@ -8,7 +8,8 @@ import { rows, weekKey } from './db';
 import { access } from './equipe/access';
 import { SLOTS } from './equipe/dispos';
 import { kindLabel } from './ics';
-import EquipeNav from './equipe/EquipeNav.astro';
+import EquipeShell from './equipe/EquipeShell.astro';
+import { scope } from './equipe/outils';
 
 export const prerender = false;
 
@@ -37,7 +38,8 @@ type T = { id: number; roster_id: number; at: number; duration: number; kind: st
 type A = { training_id: number; user_id: string; status: string; reason: string | null };
 type Mb = { id: string; name: string; avatar: string };
 
-const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
+const sc = me ? scope(me.rosters, Astro.url) : { active: null, list: [] };
+const spaces = me ? await Promise.all(sc.list.map(async (r) => {
   const members = await rows<Mb>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
   const byId = new Map(members.map((m) => [m.id, m]));
   const trainings = await rows<T>('SELECT * FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 8', r.id, Date.now() - 3 * 3600_000);
@@ -80,13 +82,6 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
 })) : [];
 const date = (ms: number) => new Date(Number(ms));
 
-// Encadrement : Oni Bot tourne-t-il ? Candidatures en cours ?
-const beat = me?.staff ? Number((await rows<{ value: string }>(`SELECT value FROM meta WHERE key = 'bot:heartbeat'`))[0]?.value ?? 0) : 0;
-const botOnline = Date.now() - beat < 3 * 60_000;
-const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} jours`; };
-const candidatures = me?.staff ? await rows<{ thread_id: string; user_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
-  `SELECT t.thread_id, t.user_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL ORDER BY t.opened_at`) : [];
-const guildId = process.env.DISCORD_GUILD_ID ?? '';
 ---
 <Base title="Espace équipe" description="Espace réservé aux joueurs et au staff d'Oni Korp.">
   <header class="page-head eq-head">
@@ -118,10 +113,8 @@ const guildId = process.env.DISCORD_GUILD_ID ?? '';
         : <p>Séances, présences et disponibilités de ton roster, reliées au Discord du club.</p>}
     </div>
   </header>
-  {me?.member && (me.staff || me.rosters.length > 0) && <EquipeNav current="planning" games={[...new Set(me.rosters.map((r) => r.game))]} staff={me.staff} />}
-
-  <section class="section">
-    <div class="wrap eq">
+  <EquipeShell current="planning" rosters={me?.rosters ?? []} staff={!!me?.staff} active={sc.active} bare={!(me?.member && (me.staff || me.rosters.length > 0))}>
+    <div class="eq">
       {!user && (
         <div class="eq-login">
           {erreur === 'membre' && <p class="eq-alert">Ce compte Discord n'est pas membre du serveur Oni Korp.</p>}
@@ -151,31 +144,8 @@ const guildId = process.env.DISCORD_GUILD_ID ?? '';
         </div>
       )}
 
-      {me?.staff && (
-        <aside class="eq-staff" aria-label="Tableau de bord de l'encadrement">
-          <p class:list={['eq-bot', { 'is-on': botOnline }]}>
-            <span aria-hidden="true"></span>
-            {botOnline ? 'Oni Bot en ligne' : beat ? `Oni Bot hors ligne depuis ${ago(beat)}` : 'Oni Bot pas encore relié à la base'}
-          </p>
-          <div>
-            <p class="eq-staff__title">Candidatures ouvertes · {candidatures.length}</p>
-            {candidatures.length ? (
-              <ul class="eq-cands">
-                {candidatures.map((c) => (
-                  <li><a href={`https://discord.com/channels/${guildId}/${c.thread_id}`} rel="noopener">{c.name ?? 'Candidat'}</a>
-                    <span>{c.kind === 'joueur' ? ({ rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' } as Record<string, string>)[c.game] ?? c.game : c.game} · il y a {ago(Number(c.opened_at))}</span></li>
-                ))}
-              </ul>
-            ) : <p class="eq-note">Aucune en attente.</p>}
-          </div>
-        </aside>
-      )}
+      {me?.staff && !sc.active && <p class="eq-note"><a href="/equipe/vue/">Vue d'ensemble de l'encadrement</a> : santé des rosters, alertes, candidatures.</p>}
 
-      {spaces.length > 1 && (
-        <nav class="eq-jump" aria-label="Rosters">
-          {spaces.map((s) => <a href={`#roster-${s.r.slug}`} style={`--team:${s.g.color}`}>{s.r.name}</a>)}
-        </nav>
-      )}
 
       {spaces.map((s) => (
         <article class="eq-roster" style={`--team:${s.g.color}`} id={`roster-${s.r.slug}`}>
@@ -295,7 +265,7 @@ const guildId = process.env.DISCORD_GUILD_ID ?? '';
         </article>
       ))}
     </div>
-  </section>
+  </EquipeShell>
 </Base>
 
 <style>

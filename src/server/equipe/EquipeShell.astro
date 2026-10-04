@@ -1,0 +1,85 @@
+---
+// Cadre de l'espace équipe : navigation verticale entre les environnements de roster (groupés par jeu), puis le contenu.
+// L'encadrement voit tous les rosters et la vue d'ensemble ; un joueur ne voit que les siens.
+import type { RosterRow } from './access';
+
+interface Props { current: string; rosters: RosterRow[]; staff: boolean; active?: string | null; bare?: boolean }
+const { current, rosters, staff, active = null, bare = false } = Astro.props;
+const GAMES: Record<string, { label: string; color: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#2fa877' },
+};
+const byGame = Object.entries(GAMES).map(([k, g]) => ({ key: k, ...g, list: rosters.filter((r) => r.game === k) })).filter((g) => g.list.length);
+const tools = (r: RosterRow) => [
+  ['planning', `/equipe/?r=${r.slug}`, 'Planning'],
+  ['joueurs', `/equipe/joueurs/?r=${r.slug}`, 'Joueurs'],
+  ['notes', `/equipe/notes/?r=${r.slug}`, 'Notes de match'],
+  ...(r.game === 'lol' ? [['lol', `/equipe/lol/?r=${r.slug}`, 'Drafter']] : []),
+  ...(r.game === 'valo' ? [['valo', `/equipe/valo/?r=${r.slug}`, 'Lineups']] : []),
+];
+const all = [
+  ['planning', '/equipe/', 'Planning'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['notes', '/equipe/notes/', 'Notes de match'],
+  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant']] : []),
+];
+const activeRoster = rosters.find((r) => r.slug === active);
+---
+{bare ? <div class="wrap eq-bare"><slot /></div> : (
+<div class="wrap eq-shell">
+  <details class="eq-side" open>
+    <summary>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : 'Tous les rosters'}</summary>
+    <nav aria-label="Environnements des rosters">
+      {staff && <a class:list={['eq-side__top', { 'is-on': current === 'vue' }]} href="/equipe/vue/">Vue d'ensemble</a>}
+      <p class="eq-side__group">{staff ? 'Tous les rosters' : rosters.length > 1 ? 'Mes rosters' : 'Mon espace'}</p>
+      {(rosters.length > 1 || staff) && all.map(([k, href, label]) => <a class:list={{ 'is-on': !active && current === k }} href={href}>{label}</a>)}
+      {byGame.map((g) => (
+        <>
+          <p class="eq-side__group" style={`--g:${g.color}`}><span aria-hidden="true"></span>{g.label}</p>
+          {g.list.map((r) => (
+            <div class:list={['eq-side__roster', { 'is-open': r.slug === active || (!active && rosters.length === 1) }]}>
+              <a class="eq-side__name" href={`/equipe/?r=${r.slug}`}>{r.name}</a>
+              <div class="eq-side__tools">
+                {tools(r).map(([k, href, label]) => <a class:list={{ 'is-on': (r.slug === active || rosters.length === 1) && current === k }} href={href}>{label}</a>)}
+              </div>
+            </div>
+          ))}
+        </>
+      ))}
+      {!rosters.length && <p class="eq-side__empty">Aucun roster pour l'instant.{staff && <> Crée-les sur Discord avec <code>/roster creer</code>.</>}</p>}
+    </nav>
+  </details>
+  <div class="eq-shell__main"><slot /></div>
+</div>
+)}
+
+<script>
+  // Sur grand écran la navigation reste ouverte ; sur mobile elle se replie après le chargement
+  if (matchMedia('(max-width: 900px)').matches) document.querySelector('.eq-side')?.removeAttribute('open');
+</script>
+
+<style>
+  .eq-shell { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: clamp(1.5rem, 3vw, 3rem); align-items: start; padding-block: 2rem 4rem; }
+  .eq-shell__main { min-width: 0; }
+  .eq-bare { padding-block: clamp(3rem, 6vw, 5rem); }
+  .eq-side { position: sticky; top: 85px; max-height: calc(100vh - 100px); overflow-y: auto; border-right: 1px solid var(--line); padding-right: 1rem; }
+  .eq-side summary { display: none; }
+  .eq-side nav { display: grid; gap: .1rem; }
+  .eq-side a { display: block; padding: .45rem .7rem; color: var(--muted); text-decoration: none; font-size: .92rem; border-left: 3px solid transparent; }
+  .eq-side a:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+  .eq-side a.is-on { color: var(--ink); font-weight: 700; border-left-color: var(--lacquer); background: color-mix(in srgb, var(--lacquer) 7%, transparent); }
+  .eq-side__top { font-weight: 700; color: var(--ink) !important; }
+  .eq-side__group { display: flex; align-items: center; gap: .45rem; margin: 1.1rem 0 .3rem; padding-left: .7rem; font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .eq-side__group span { width: .55rem; height: .55rem; border-radius: 50%; background: var(--g); }
+  .eq-side__name { font-weight: 700; color: var(--ink) !important; }
+  .eq-side__tools { display: none; padding-left: .8rem; }
+  .eq-side__roster.is-open .eq-side__tools { display: grid; }
+  .eq-side__tools a { font-size: .85rem; padding-block: .35rem; }
+  .eq-side__empty { font-size: var(--step--1); color: var(--muted); padding: .5rem .7rem; }
+  @media (max-width: 900px) {
+    .eq-shell { grid-template-columns: 1fr; padding-top: 1rem; }
+    .eq-side { position: static; max-height: none; border: 1px solid var(--line); padding: 0; }
+    .eq-side summary { display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 1rem; font-weight: 700; cursor: pointer; list-style: none; }
+    .eq-side summary::after { content: '▾'; color: var(--muted); }
+    .eq-side[open] summary::after { content: '▴'; }
+    .eq-side nav { padding: 0 .5rem .75rem; }
+  }
+</style>

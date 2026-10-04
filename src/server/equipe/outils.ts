@@ -29,6 +29,12 @@ export async function teamUser(cookies: AstroCookies) {
   return { user, me };
 }
 
+/** Roster choisi dans la navigation (?r=slug) : on filtre dessus, sinon tous ceux de la personne. */
+export function scope<T extends { slug: string }>(rosters: T[], url: URL) {
+  const one = rosters.find((x) => x.slug === url.searchParams.get('r'));
+  return { active: one?.slug ?? null, list: one ? [one] : rosters };
+}
+
 const clip = (v: FormDataEntryValue | null, n: number) => String(v ?? '').trim().slice(0, n);
 const num = (v: FormDataEntryValue | null) => { const x = Number(v); return Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : null; };
 export const GAMES_ACCOUNTS = ['riot', 'rl', 'osu'] as const;
