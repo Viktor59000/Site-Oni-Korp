@@ -1,9 +1,19 @@
 ---
-import { srcset, small } from '../../lib/img.js';
+import { srcset } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
+import { album } from '../../lib/album.js';
+
+// Le club en chiffres, calculé depuis les données de l'album
+const joueurs = album.games.reduce((t, g) => t + g.rosters.reduce((u, r) => u + r.cards.length, 0), 0);
+const chiffres = [
+  ['2021', 'année de création'],
+  [String(album.games.length), 'jeux en compétition'],
+  [String(joueurs), 'joueurs dans les rosters'],
+  [String(album.staff.length), 'membres du staff'],
+];
 ---
-<Base title="Le club" description="L'histoire d'Oni Korp depuis 2021, nos valeurs et nos ambitions.">
+<Base title="Le club" description="L'histoire d'Oni Korp depuis 2021 : de Rocket League à quatre jeux, et la suite.">
   <header class="page-head">
     <img class="page-head__bg" src="/img/entete-club.webp" srcset={srcset("/img/entete-club.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">志</span>
@@ -18,7 +28,7 @@ import site from '../../data/site.json';
       <div class="club__story">
         <h2 id="histoire" style="font-size:var(--step-3);margin-bottom:1.5rem">Notre histoire</h2>
         <p>Oni Korp rassemble depuis 2021 des joueurs qui ont l'ambition des plus grands. Chaque joueur est choisi avec soin, après une présentation en ticket sur notre Discord, puis intégré à un roster adapté à son niveau.</p>
-        <p>Le club a connu des succès, des défaites et des périodes difficiles. En 2024, une refonte complète a remis à plat l'organisation : nouveaux outils, procédures plus claires et quatre valeurs écrites noir sur blanc.</p>
+        <p>Le club a connu des succès, des défaites et des périodes difficiles. En 2024, une refonte complète a remis à plat l'organisation : nouveaux outils, procédures plus claires et un staff organisé pôle par pôle.</p>
         <p>Notre devise n'a pas changé : <em>Oni's never on knees</em>.</p>
       </div>
       <ol class="timeline" aria-label="Dates clés">
@@ -32,18 +42,13 @@ import site from '../../data/site.json';
     </div>
   </section>
 
-  <section class="section" aria-labelledby="valeurs">
+  <section class="section" aria-labelledby="chiffres-title">
     <div class="wrap">
-      <div class="section__head">
-        <h2 id="valeurs">Nos quatre valeurs</h2>
-        <p>Elles guident le recrutement, la vie des rosters et chaque décision du staff.</p>
-      </div>
-      <dl class="values4 values4--dark" aria-label="Nos valeurs">
-        <div><dt>Communication</dt><dd>Un dialogue ouvert et transparent avec tous les membres. Les décisions importantes sont expliquées, pas imposées.</dd></div>
-        <div><dt>Compétitivité</dt><dd>Une recherche constante de performance : entraînements planifiés, reviews de matchs, objectifs par roster.</dd></div>
-        <div><dt>Compréhension</dt><dd>Une écoute attentive des joueurs et du staff, pour collaborer sans tension.</dd></div>
-        <div><dt>Convivialité</dt><dd>Un esprit de camaraderie et de solidarité. On gagne ensemble, on perd ensemble.</dd></div>
+      <h2 id="chiffres-title" class="sr-only">Le club en chiffres</h2>
+      <dl class="stats">
+        {chiffres.map(([n, l]) => <div><dt>{l}</dt><dd>{n}</dd></div>)}
       </dl>
+      <p class="stats__link"><a href="/effectif/">Voir tout l'effectif dans l'album</a></p>
     </div>
   </section>
 

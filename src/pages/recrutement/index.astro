@@ -1,20 +1,27 @@
 ---
-import { srcset, small } from '../../lib/img.js';
+import { srcset } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import site from '../../data/site.json';
 
-const staffRoles = [
-  ['Coach', 'Prépare les entraînements, analyse les matchs et fait progresser un roster.'],
-  ['Manager roster', 'Organise le planning, les inscriptions en tournoi et la vie du roster.'],
-  ['Casteur', 'Commente nos showmatchs en direct sur Twitch et produit le contenu de l’équipe.'],
-  ['Graphiste', 'Bannières, miniatures, decals : donne un visage au club.'],
-  ['Community manager', 'Anime nos réseaux et le serveur Discord.'],
-  ['Modérateur', 'Veille à une ambiance saine sur le Discord.'],
-  ['Responsable marketing', 'Développe la visibilité du club et les partenariats.'],
+// Postes du staff, groupés par famille
+const staffGroups = [
+  ['Encadrement', [
+    ['Coach', 'Prépare les entraînements, analyse les matchs et fait progresser un roster.'],
+    ['Manager roster', 'Organise le planning, les inscriptions en tournoi et la vie du roster.'],
+  ]],
+  ['Contenu', [
+    ['Casteur', 'Commente nos showmatchs en direct sur Twitch et produit le contenu de l’équipe.'],
+    ['Graphiste', 'Bannières, miniatures, decals : donne un visage au club.'],
+  ]],
+  ['Communauté', [
+    ['Community manager', 'Anime nos réseaux et le serveur Discord.'],
+    ['Modérateur', 'Veille à une ambiance saine sur le Discord.'],
+    ['Responsable marketing', 'Développe la visibilité du club et les partenariats.'],
+  ]],
 ];
 ---
-<Base title="Recrutement" description="Rejoins Oni Korp : recrutement joueurs (Champion 1 minimum, 15 ans minimum) et staff (coach, manager, casteur, graphiste...).">
+<Base title="Recrutement" description="Rejoins Oni Korp : recrutement joueurs (Champion 1 minimum, 15 ans minimum) et staff (coach, manager, casteur, graphiste…).">
   <header class="page-head">
     <img class="page-head__bg" src="/img/entete-recrutement.webp" srcset={srcset("/img/entete-recrutement.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
     <span class="page-head__kanji" aria-hidden="true">挑</span>
@@ -62,11 +69,16 @@ const staffRoles = [
         <h2 id="staff-title">Staff</h2>
         <p>Tu t'intéresses à l'esport sans forcément jouer en compétition ? Le club cherche des profils sérieux et motivés.</p>
       </div>
-      <ul class="roles">
-        {staffRoles.map(([role, desc]) => (
-          <li><strong>{role}</strong><span>{desc}</span></li>
+      <div class="role-groups">
+        {staffGroups.map(([famille, postes]) => (
+          <section class="role-group" aria-label={famille}>
+            <h3>{famille}</h3>
+            <ul class="roles">
+              {postes.map(([role, desc]) => <li><strong>{role}</strong><span>{desc}</span></li>)}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
       <p class="roles__note">Le recrutement est géré par les managers et les coachs de chaque pôle. Côté contenu, les casteurs portent la voix de l'équipe, et chaque joueur est libre de proposer des clips ou des vidéos.</p>
       <div class="recruit__actions">
         <a class="btn" href={site.forms.staff} rel="noopener">Remplir le formulaire staff</a>

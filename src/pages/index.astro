@@ -3,13 +3,9 @@ import { srcset } from '../lib/img.js';
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import site from '../data/site.json';
-import data from '../data/rosters.json';
 import matches from '../data/matches.json';
 import PlayerCard from '../components/PlayerCard.astro';
 import { album } from '../lib/album.js';
-
-// Extrait de l'album : la première vignette de chaque pôle, puis le premier fondateur
-const teaser = [...album.games.map((g) => g.rosters[0]?.cards[0]).filter(Boolean), album.staff[0]].filter(Boolean);
 
 // Nombre de joueurs annoncés dans le pôle
 const rosterLabel = (g) => {
@@ -24,7 +20,6 @@ const rosterLabel = (g) => {
     <img class="hero__car" src="/img/decal-octane-domicile.webp" srcset={srcset("/img/decal-octane-domicile.webp")} sizes="(max-width: 860px) 125vw, 52vw" alt="" width="1600" height="900" />
     <span class="hero__motto" aria-hidden="true">Oni's never on knees</span>
     <div class="wrap hero__inner">
-      <img class="hero__logo" src="/img/oni-logo.svg" alt="Logo Oni Korp" width="112" height="112" />
       <h1 id="hero-title">Jamais à genoux.</h1>
       <p class="hero__lead">Club esport français né sur Rocket League en 2021, aujourd'hui sur quatre jeux.</p>
       <div class="hero__actions">
@@ -36,55 +31,29 @@ const rosterLabel = (g) => {
 
   <section class="section" aria-labelledby="poles-title">
     <div class="wrap">
-      <div class="section__head">
-        <h2 id="poles-title">Quatre jeux, un seul blason.</h2>
-        <p>Chaque pôle a son staff, ses entraînements et ses objectifs de compétition.</p>
+      <div class="section__head section__head--row">
+        <div>
+          <h2 id="poles-title">Quatre jeux, un seul album.</h2>
+          <p>{album.total} vignettes à collectionner : chaque joueur et chaque membre du staff a la sienne.</p>
+        </div>
+        <a class="btn" href="/effectif/">Ouvrir l'album</a>
       </div>
       <ul class="games">
-        {data.games.map((g) => (
+        {album.games.map(({ game: g, rosters }) => (
           <li>
             <a class="game" href={`/effectif/#${g.id}`}>
               <div>
-                <h3>{g.name}</h3>
+                <h3 translate="no">{g.name}</h3>
                 <div class="game__meta">{rosterLabel(g)}</div>
                 <p class="game__pitch">{g.pitch}</p>
               </div>
-              <div class="game__img"><img src={g.banner} srcset={srcset(g.banner)} sizes="(max-width: 720px) 100vw, 46vw" alt="" loading="lazy" width="1200" height="480" /></div>
+              <ul class="game__fan" aria-hidden="true">
+                {rosters.flatMap((r) => r.cards).slice(0, 3).map((c) => <li><PlayerCard {...c} /></li>)}
+              </ul>
             </a>
           </li>
         ))}
       </ul>
-    </div>
-  </section>
-
-  <section class="section album-teaser" aria-labelledby="album-title">
-    <div class="wrap album-teaser__inner">
-      <div class="section__head">
-        <h2 id="album-title">L'album du club.</h2>
-        <p>{album.total} vignettes à collectionner : chaque joueur et chaque membre du staff a la sienne.</p>
-        <p><a class="btn" href="/effectif/">Ouvrir l'album</a></p>
-      </div>
-      <ul class="album-fan" aria-label="Extrait de l'album">
-        {teaser.map((c) => <li><PlayerCard {...c} /></li>)}
-      </ul>
-    </div>
-  </section>
-
-  <section class="section section--bone" aria-labelledby="club-title">
-    <div class="wrap club">
-      <div class="club__story">
-        <h2 id="club-title" class="sr-only">Le club</h2>
-        <p class="big">Des amis, un Discord et l'envie de se surpasser chaque jour.</p>
-        <p>Oni Korp est né le 12 juillet 2021 pour rassembler des joueurs Rocket League qui visent plus haut. Des victoires, des défaites, des saisons difficiles : la volonté de progresser n'a jamais bougé.</p>
-        <p>En janvier 2024, le club a ouvert des rosters League of Legends, Valorant et osu!. Prochaine étape : le statut d'association loi 1901.</p>
-        <a class="btn btn--ink" href="/club/">Lire notre histoire</a>
-      </div>
-      <dl class="values4 values4--stack" aria-label="Nos valeurs">
-        <div><dt>Communication</dt><dd>Un dialogue ouvert entre joueurs, staff et communauté.</dd></div>
-        <div><dt>Compétitivité</dt><dd>Chaque entraînement compte, chaque match se prépare.</dd></div>
-        <div><dt>Compréhension</dt><dd>On écoute avant de juger, on progresse ensemble.</dd></div>
-        <div><dt>Convivialité</dt><dd>Une structure sérieuse où il fait bon vivre.</dd></div>
-      </dl>
     </div>
   </section>
 
@@ -97,7 +66,6 @@ const rosterLabel = (g) => {
       <ul class="ledger">
         {matches.map((m) => (
           <li>
-            <span class="ledger__date">{m.date || '—'}</span>
             <span class="ledger__opp">
               {m.event === 'Showmatch' ? `Oni Korp contre ${m.opponent}` : m.event}
               <small>{m.event === 'Showmatch' ? 'Showmatch Rocket League' : m.opponent}</small>
@@ -136,14 +104,4 @@ const rosterLabel = (g) => {
     </div>
   </section>
 
-  <section class="section" aria-labelledby="partner-title">
-    <div class="wrap partner">
-      <div>
-        <h2 id="partner-title" style="font-size:var(--step-3)">Oni Korp × Carl</h2>
-        <p style="margin-top:1rem;color:var(--ash)">Notre partenaire Carl signe avec nous les decals Octane et Fennec 2023, domicile et visiteur. Les textures sont téléchargeables gratuitement.</p>
-        <a class="btn" href="/vestiaire/">Voir les decals</a>
-      </div>
-      <img src="/img/decal-fennec-domicile.webp" srcset={srcset("/img/decal-fennec-domicile.webp")} sizes="(max-width: 860px) 100vw, 55vw" alt="Fennec aux couleurs Oni Korp × Carl, version domicile" loading="lazy" width="1600" height="900" />
-    </div>
-  </section>
 </Base>

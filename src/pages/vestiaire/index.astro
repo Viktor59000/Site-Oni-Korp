@@ -1,5 +1,5 @@
 ---
-import { srcset, small } from '../../lib/img.js';
+import { srcset } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
 
@@ -32,6 +32,10 @@ const decals = [
   </header>
 
   <div class="wrap">
+    <section class="partner-intro" aria-labelledby="partner-title">
+      <h2 id="partner-title"><span translate="no">Oni Korp</span> × <span translate="no">Carl</span></h2>
+      <p>Notre partenaire Carl signe avec nous les decals Octane et Fennec 2023, en version domicile et visiteur. Les textures sont gratuites : télécharge-les et roule aux couleurs du club.</p>
+    </section>
     {decals.map((d) => (
       <section class="decal" aria-labelledby={`${d.id}-title`} data-decal>
         <div class="decal__stage">
