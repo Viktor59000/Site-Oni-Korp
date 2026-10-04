@@ -10,7 +10,7 @@ const { total } = Astro.props;
         <div class="cv__face cv__front"></div>
         <div class="cv__face cv__back">
           <div class="cvb">
-            <img class="cvb__mark" src="/img/oni-logo.svg" alt="" width="200" height="200" />
+            <img class="cvb__mark" src="/img/oni-logo.svg" alt="" width="200" height="200" loading="lazy" />
             <p class="cvb__head"><span translate="no">Oni Korp</span><span>Album officiel</span></p>
             <p class="cvb__num"><span class="cvb__n"></span><small>sur {total}</small></p>
             <div class="cvb__body">
@@ -21,7 +21,7 @@ const { total } = Astro.props;
                 <div class="cvb__team-row"><dt>Équipe</dt><dd class="cvb__team"></dd></div>
               </dl>
             </div>
-            <p class="cvb__foot"><em>Oni's never on knees</em><img class="cvb__hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" /></p>
+            <p class="cvb__foot"><em>Oni's never on knees</em><img class="cvb__hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" loading="lazy" /></p>
           </div>
         </div>
       </div>
@@ -115,7 +115,8 @@ const { total } = Astro.props;
   const fill = (el: HTMLElement) => {
     const clone = el.cloneNode(true) as HTMLElement;
     clone.querySelector('.sticker__zoom')?.remove();
-    clone.querySelectorAll('img').forEach((img) => (img.loading = 'eager'));
+    // En grand : on demande la version haute définition de l'illustration
+    clone.querySelectorAll('img').forEach((img) => { img.loading = 'eager'; if (img.srcset) img.sizes = '(max-width: 720px) 86vw, 440px'; });
     const holo = document.createElement('div');
     holo.className = 'cv__holo';
     const glitter = document.createElement('div');

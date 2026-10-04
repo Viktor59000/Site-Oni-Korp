@@ -5,13 +5,15 @@ import { existsSync } from 'node:fs';
 const { title, sub, img, pos, overlay, logo, bg, wide, kind, num, serie, serieTitre, rarete, art, chest } = Astro.props;
 // Illustration de l'album (public/img/cartes/sp-<série>-<n>.webp) dès qu'elle existe ; sinon visuel provisoire
 const artSrc = art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null;
+// Petite version pour les grilles, grande pour la vignette en grand
+const artSet = artSrc && art && existsSync(`public/img/cartes/${art}-sm.webp`) ? `/img/cartes/${art}-sm.webp 300w, ${artSrc} 560w` : undefined;
 const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
 ---
 <article class="sticker sticker--special" data-pole="special" data-serie={serie} data-rarete={rarete}>
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
-        <img src={artSrc} alt="" loading="lazy" width="640" height="960" />
+        <img src={artSrc} srcset={artSet} sizes="(max-width: 720px) 45vw, 200px" alt="" loading="lazy" width="560" height="840" />
       ) : kind === 'blason' ? (
         <span class="sp-blason"><img src="/img/oni-logo.svg" alt="" width="200" height="200" loading="lazy" /></span>
       ) : kind === 'recrue' ? (

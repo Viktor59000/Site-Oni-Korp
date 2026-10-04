@@ -1,5 +1,6 @@
 ---
 import { album } from '../../lib/album.js';
+import { srcset } from '../../lib/img.js';
 import Base from '../../layouts/Base.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
 import SpecialCard from '../../components/SpecialCard.astro';
@@ -15,7 +16,7 @@ const cards = pages.flatMap((p) => p.cartes);
 ---
 <Base title="Boosters" description="Ouvre un booster par jour et complète l'album Oni Korp : 27 vignettes, des holos et l'édition staff en or.">
   <header class="page-head">
-    <img class="page-head__bg page-head__bg--album" src="/img/album-couverture.webp" alt="" width="1400" height="933" fetchpriority="high" />
+    <img class="page-head__bg page-head__bg--album" src="/img/album-couverture.webp" srcset={srcset("/img/album-couverture.webp")} sizes="100vw" alt="" width="1400" height="933" fetchpriority="high" />
     <div class="wrap">
       <h1>Boosters</h1>
       <p>Un booster offert chaque jour, cinq vignettes à l'intérieur. Complète l'album du club.</p>
@@ -42,8 +43,8 @@ const cards = pages.flatMap((p) => p.cartes);
 
       <div class="pack-stage">
         <button class="pack" type="button" data-pack disabled>
-          <span class="pack__body"><img src="/img/pochette.webp" alt="" width="700" height="1050" /></span>
-          <span class="pack__top" aria-hidden="true"><img src="/img/pochette.webp" alt="" width="700" height="1050" /></span>
+          <span class="pack__body"><img src="/img/pochette.webp" alt="" width="500" height="750" /></span>
+          <span class="pack__top" aria-hidden="true"><img src="/img/pochette.webp" alt="" width="500" height="750" /></span>
           <span class="pack__label" data-pack-label>Reviens demain</span>
         </button>
       </div>
@@ -112,7 +113,7 @@ const cards = pages.flatMap((p) => p.cartes);
     $('.bar').setAttribute('aria-valuenow', String(owned));
     document.querySelectorAll<HTMLElement>('.nav__badge').forEach((b) => { b.hidden = c.credits < 1; b.textContent = String(c.credits); });
     pack.disabled = c.credits < 1;
-    $('[data-pack-label]').textContent = c.credits < 1 ? 'Reviens demain' : 'Ouvrir';
+    $('[data-pack-label]').textContent = c.credits < 1 ? `Prochain booster dans ${untilMidnight()}` : 'Ouvrir';
     pack.setAttribute('aria-label', c.credits < 1 ? 'Plus de booster pour aujourd’hui' : 'Ouvrir un booster');
     for (const [n, li] of byNum) {
       const o = c.owned[n];
@@ -127,6 +128,15 @@ const cards = pages.flatMap((p) => p.cartes);
     }
     $('[data-rule="daily"]').classList.add('is-done');
   };
+
+  // Temps restant avant le booster du lendemain (minuit, heure locale)
+  const untilMidnight = () => {
+    const now = new Date(), next = new Date(now);
+    next.setHours(24, 0, 0, 0);
+    const min = Math.ceil((next.getTime() - now.getTime()) / 60000);
+    return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`;
+  };
+  setInterval(() => { if (load().credits < 1) $('[data-pack-label]').textContent = `Prochain booster dans ${untilMidnight()}`; }, 30000);
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
 
