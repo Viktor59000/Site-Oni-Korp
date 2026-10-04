@@ -45,3 +45,8 @@ L'ancien site de 2022 est conservé sur la branche `archive-v1-2022` (tag `v1-20
 
 Pour passer sur un vrai nom de domaine plus tard : changer `SITE_URL` et retirer `BASE_PATH`
 dans le workflow et dans `scripts/deploy.sh`, puis configurer le domaine dans Settings → Pages.
+
+## Logo
+
+Le kit du logo (SVG noir / rouge / blanc, avec et sans cornes, assemblages avec le nom, icônes web)
+et sa charte sont dans [`marque/`](marque/CHARTE.md).
