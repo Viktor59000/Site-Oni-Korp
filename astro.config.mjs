@@ -16,6 +16,8 @@ const api = {
       const route = (pattern, entrypoint) => injectRoute({ pattern, entrypoint, prerender: false });
       route('/api/agenda', './src/server/agenda.ts');
       route('/api/feed', './src/server/feed.ts');
+      route('/api/club', './src/server/club.ts');
+      route('/api/contact', './src/server/contact.ts');
       route('/agenda.ics', './src/server/ics.ts');
       route('/api/equipe/agenda.ics', './src/server/equipe/ics.ts');
       route('/api/auth/login', './src/server/auth/login.ts');

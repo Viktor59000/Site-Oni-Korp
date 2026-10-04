@@ -27,6 +27,7 @@ const rosterLabel = (g) => {
         <a class="btn" href="/recrutement/">Postuler</a>
         <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Rejoindre le Discord</a>
       </div>
+      <p class="hero__count" data-count hidden><span aria-hidden="true"></span><span data-count-text></span></p>
     </div>
   </section>
 
@@ -132,16 +133,26 @@ const rosterLabel = (g) => {
       </div>
       <div>
         <ol class="steps">
-          <li><div><strong>Remplis le formulaire</strong><p>Joueur ou staff, quelques minutes suffisent.</p></div></li>
-          <li><div><strong>Ouvre un ticket sur le Discord</strong><p>C'est ce qui officialise ta candidature.</p></div></li>
-          <li><div><strong>Présente-toi au staff</strong><p>Le manager ou le coach du pôle te répond et organise la suite.</p></div></li>
+          <li><div><strong>Rejoins le Discord</strong><p>C'est là que vit le club.</p></div></li>
+          <li><div><strong>Postule en deux minutes</strong><p>Connexion avec Discord, jeu, rang, disponibilités.</p></div></li>
+          <li><div><strong>Échange avec le staff</strong><p>Un fil privé s'ouvre aussitôt avec le manager et le coach du pôle.</p></div></li>
         </ol>
         <div class="recruit__actions">
-          <a class="btn btn--ink" href="/recrutement/">Voir les postes ouverts</a>
-          <a class="btn btn--ghost" href={site.discord} rel="noopener">Ouvrir un ticket</a>
+          <a class="btn btn--ink" href="/postuler/">Postuler</a>
+          <a class="btn btn--ghost" href="/recrutement/">Voir les postes ouverts</a>
         </div>
       </div>
     </div>
   </section>
 
 </Base>
+
+<script>
+  // Membres et personnes en ligne sur le Discord (relevés par Oni Bot toutes les 10 minutes)
+  fetch('/api/club').then((r) => (r.ok ? r.json() : null)).then((d) => {
+    const n = d?.discord; if (!n?.membres) return;
+    const t = `${n.membres} membres sur le Discord${n.enLigne ? ` · ${n.enLigne} en ligne` : ''}`;
+    document.querySelector('[data-count-text]')!.textContent = t;
+    document.querySelector<HTMLElement>('[data-count]')!.hidden = false;
+  }).catch(() => {});
+</script>

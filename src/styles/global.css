@@ -999,3 +999,8 @@ main { counter-reset: page; }
 @media (prefers-reduced-motion: no-preference) { .nav__live { animation: live 1.6s ease-in-out infinite; } }
 .agenda__all { grid-column: 1 / -1; font-weight: 700; }
 .agenda__all a { color: var(--red-text); }
+
+/* Accueil : membres du Discord en direct */
+.hero__count { display: flex; align-items: center; gap: .55rem; margin-top: 1.25rem; font-size: var(--step--1); font-weight: 700; color: var(--ink); }
+.hero__count[hidden] { display: none; }
+.hero__count > span:first-child { width: .55rem; height: .55rem; border-radius: 50%; background: #2fbf71; box-shadow: 0 0 0 3px rgb(47 191 113 / .25); }

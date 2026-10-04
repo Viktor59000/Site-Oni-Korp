@@ -16,6 +16,7 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
     <div class="wrap">
       <h1>Agenda</h1>
       <p>Tournois, ligues et showmatchs. Ajoute le calendrier à ton agenda : il se met à jour tout seul.</p>
+      <p class="ag-season" data-season hidden></p>
       <div class="ag-sub">
         <a class="btn" href={google} rel="noopener">Ajouter à Google Agenda</a>
         <a class="btn btn--ghost" href={`webcal://${host}/agenda.ics`}>Apple · Outlook</a>
@@ -65,7 +66,7 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
 </Base>
 
 <script>
-  type Item = { id: number; type: string; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  type Item = { id: number; type: string; cast: string | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
   type F = { auteur: string; titre: string; lien: string; image: string | null; jeu: string | null; date: string };
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   const tz = { timeZone: 'Europe/Paris' } as const;
@@ -80,7 +81,7 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
     const watch = !m.score && http(m.lien) ? `<a class="ag-watch" href="${esc(m.lien)}" rel="noopener">Regarder</a>` : '';
     return `<li class="ag-item"><time class="ag-date" datetime="${m.date}"><b>${day.format(d)}</b>${month.format(d)}</time>
       <div><p class="ag-vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(m.adversaire)}</p>
-      <p class="ag-meta">${[esc(m.type), m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format), m.score ? '' : rest.format(d)].filter(Boolean).join(' · ')}</p></div>${score}${watch}</li>`;
+      <p class="ag-meta">${[esc(m.type), m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format), m.score ? '' : rest.format(d), m.cast ? `cast ${esc(m.cast)}` : ''].filter(Boolean).join(' · ')}</p></div>${score}${watch}</li>`;
   };
 
   fetch('/api/agenda').then((r) => (r.ok ? r.json() : null)).then((d: { aVenir: Item[]; resultats: Item[] } | null) => {
@@ -90,6 +91,13 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
       const empty = document.querySelector<HTMLElement>(`[data-empty="${key}"]`);
       if (empty) empty.hidden = list.length > 0;
     }
+  }).catch(() => {});
+
+  fetch('/api/club').then((r) => (r.ok ? r.json() : null)).then((d) => {
+    const s = d?.saison; if (!s || !(s.victoires + s.defaites + s.nuls)) return;
+    const el = document.querySelector<HTMLElement>('[data-season]')!;
+    el.innerHTML = `Saison en cours : <b>${s.victoires}</b> victoire${s.victoires > 1 ? 's' : ''} · <b>${s.defaites}</b> défaite${s.defaites > 1 ? 's' : ''}${s.nuls ? ` · <b>${s.nuls}</b> nul${s.nuls > 1 ? 's' : ''}` : ''}`;
+    el.hidden = false;
   }).catch(() => {});
 
   fetch('/api/feed').then((r) => (r.ok ? r.json() : null)).then((d: { live: F[]; videos: F[] } | null) => {
@@ -113,6 +121,9 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
 </script>
 
 <style>
+  .page-head .ag-season { margin-top: 1rem; font-size: 1rem; max-width: none; }
+  .ag-season[hidden] { display: none; }
+  .ag-season :global(b) { font-family: var(--font-display); font-size: 1.3rem; color: var(--red-text); }
   .ag-sub { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1.75rem; }
   .ag-raw { font-size: var(--step--1); color: var(--muted); }
   .ag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: clamp(2.5rem, 5vw, 4.5rem); }

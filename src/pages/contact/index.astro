@@ -1,0 +1,81 @@
+---
+// Contact : partenaires, équipes (match amical, scrim), presse. Les messages arrivent au staff sur Discord via Oni Bot.
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+const TYPES = [
+  ['partenariat', 'Partenariat', 'Marque, structure, sponsor : parlons visibilité et projets communs.'],
+  ['scrim', 'Match amical ou scrim', 'Ton équipe veut se mesurer à un roster Oni Korp.'],
+  ['presse', 'Presse et contenu', 'Interview, article, cast d’un de nos matchs.'],
+  ['autre', 'Autre', 'Une question qui ne rentre dans aucune case.'],
+];
+---
+<Base title="Contact" description="Contacter Oni Korp : partenariat, match amical, presse. Réponse du staff sous quelques jours.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Contact</h1>
+      <p>Partenaires, équipes, presse : un message, et le staff te répond.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="wrap ct">
+      <div class="ct-done" data-done hidden>
+        <p class="ct-ok">Message envoyé.</p>
+        <p>Le staff le reçoit directement sur Discord et te répond à l'adresse indiquée, en général sous quelques jours.</p>
+        <a class="btn btn--ghost" href="/">Retour à l'accueil</a>
+      </div>
+
+      <form class="ct-form" method="post" action="/api/contact" data-form>
+        <p class="ct-alert" data-err="champs" hidden>Il manque quelque chose : ton nom, un moyen de te répondre et quelques mots de message.</p>
+        <p class="ct-alert" data-err="limite" hidden>Trop de messages d'un coup. Réessaie dans une heure, ou passe par le <a href={site.discord} rel="noopener">Discord</a>.</p>
+
+        <fieldset class="ct-types">
+          <legend>C'est pour</legend>
+          {TYPES.map(([v, l, d], i) => (
+            <label><input type="radio" name="type" value={v} checked={i === 0} /><span><strong>{l}</strong><small>{d}</small></span></label>
+          ))}
+        </fieldset>
+        <label class="ct-field">Ton nom ou celui de ta structure<input name="nom" required maxlength="120" autocomplete="organization" /></label>
+        <label class="ct-field">Comment te répondre<input name="reponse" required maxlength="200" placeholder="E-mail, pseudo Discord ou X" autocomplete="email" /></label>
+        <label class="ct-field">Message<textarea name="message" required minlength="10" maxlength="2000" rows="6"></textarea></label>
+        <label class="ct-trap" aria-hidden="true">Ne pas remplir<input name="site" tabindex="-1" autocomplete="off" /></label>
+        <button class="btn">Envoyer</button>
+        <p class="ct-note">Tu veux rejoindre le club ? Passe plutôt par <a href="/recrutement/">le recrutement</a>. Ton message sert uniquement à te répondre ; il est effacé au bout d'un an (<a href="/mentions-legales/#confidentialite">confidentialité</a>).</p>
+      </form>
+    </div>
+  </section>
+</Base>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  if (q.get('envoye')) {
+    document.querySelector<HTMLElement>('[data-done]')!.hidden = false;
+    document.querySelector<HTMLElement>('[data-form]')!.hidden = true;
+  }
+  const err = q.get('erreur');
+  if (err) document.querySelector<HTMLElement>(`[data-err="${CSS.escape(err)}"]`)?.removeAttribute('hidden');
+  const type = q.get('type');
+  if (type) document.querySelector<HTMLInputElement>(`input[name="type"][value="${CSS.escape(type)}"]`)?.click();
+</script>
+
+<style>
+  .ct > * { max-width: 44rem; }
+  .ct-done { display: grid; gap: 1rem; justify-items: start; }
+  .ct-ok { font-family: var(--font-display); font-size: var(--step-2); }
+  .ct-form { display: grid; gap: 1.25rem; }
+  .ct-form[hidden], .ct-done[hidden], .ct-alert[hidden] { display: none; }
+  .ct-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: color-mix(in srgb, var(--lacquer) 10%, transparent); }
+  .ct-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .6rem; border: 0; padding: 0; margin: 0; }
+  .ct-types legend { font-weight: 700; margin-bottom: .6rem; }
+  .ct-types label { display: flex; gap: .75rem; align-items: flex-start; padding: .9rem 1rem; border: 1.5px solid var(--line); cursor: pointer; }
+  .ct-types label:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .ct-types input { margin-top: .25rem; accent-color: var(--lacquer); }
+  .ct-types span { display: grid; gap: .2rem; }
+  .ct-types small { color: var(--muted); font-size: var(--step--1); }
+  .ct-field { display: grid; gap: .4rem; font-weight: 700; }
+  .ct-field input, .ct-field textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: .6rem .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
+  .ct-field :is(input, textarea):focus-visible { outline: 3px solid var(--lacquer-hi); outline-offset: 0; }
+  .ct-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .ct-form .btn { justify-self: start; }
+  .ct-note { color: var(--muted); font-size: var(--step--1); }
+</style>
