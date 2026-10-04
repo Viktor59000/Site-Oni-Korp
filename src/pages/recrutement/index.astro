@@ -23,7 +23,7 @@ const staffGroups = [
 ---
 <Base title="Recrutement" description="Rejoins Oni Korp : recrutement joueurs (Champion 1 minimum, 15 ans minimum) et staff (coach, manager, casteur, graphiste…).">
   <header class="page-head">
-    <img class="page-head__bg" src="/img/entete-recrutement.webp" srcset={srcset("/img/entete-recrutement.webp")} sizes="100vw" fetchpriority="high" alt="" width="1983" height="793" />
+    <img class="page-head__bg" src="/img/entete-recrutement.webp" srcset={srcset("/img/entete-recrutement.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <span class="page-head__kanji" aria-hidden="true">挑</span>
     <div class="wrap">
       <h1>Recrutement</h1>
@@ -65,9 +65,12 @@ const staffGroups = [
 
   <section class="section" id="staff" aria-labelledby="staff-title">
     <div class="wrap">
-      <div class="section__head">
-        <h2 id="staff-title">Staff</h2>
-        <p>Tu t'intéresses à l'esport sans forcément jouer en compétition ? Le club cherche des profils sérieux et motivés.</p>
+      <div class="staff-intro">
+        <div class="section__head">
+          <h2 id="staff-title">Staff</h2>
+          <p>Tu t'intéresses à l'esport sans forcément jouer en compétition ? Le club cherche des profils sérieux et motivés. Ta vignette t'attend.</p>
+        </div>
+        <img class="staff-intro__pack" src="/img/pochette.webp" alt="" width="700" height="1050" loading="lazy" />
       </div>
       <div class="role-groups">
         {staffGroups.map(([famille, postes]) => (

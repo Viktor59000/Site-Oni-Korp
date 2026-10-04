@@ -1,8 +1,8 @@
 [
-  { "date": "17/02/2022", "event": "Showmatch", "opponent": "Dream Team", "format": "BO7", "image": "/img/sm-dream-team.webp" },
-  { "date": "29/12", "event": "Showmatch", "opponent": "Passione", "format": "BO5", "image": "/img/sm-passione.webp" },
-  { "date": "", "event": "Showmatch", "opponent": "K-Othic MultiGaming", "format": "", "image": "/img/sm-k-othic.webp" },
-  { "date": "", "event": "Showmatch", "opponent": "Imperial", "format": "", "image": "/img/sm-imperial.webp" },
-  { "date": "", "event": "Showmatch", "opponent": "Ulitnezia", "format": "", "image": "/img/sm-ulitnezia.webp" },
-  { "date": "", "event": "IMPC Cup", "opponent": "Rosters Gamma et Epsilon engagés", "format": "Cup", "image": "/img/impc-cup-gamma.webp" }
+  { "date": "17/02/2022", "event": "Showmatch", "opponent": "Dream Team", "format": "BO7" },
+  { "date": "29/12", "event": "Showmatch", "opponent": "Passione", "format": "BO5" },
+  { "date": "", "event": "Showmatch", "opponent": "K-Othic MultiGaming", "format": "" },
+  { "date": "", "event": "Showmatch", "opponent": "Imperial", "format": "" },
+  { "date": "", "event": "Showmatch", "opponent": "Ulitnezia", "format": "" },
+  { "date": "", "event": "IMPC Cup", "opponent": "Rosters Gamma et Epsilon engagés", "format": "Cup" }
 ]

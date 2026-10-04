@@ -32,12 +32,16 @@ const rosterLabel = (g) => {
 
   <section class="section" aria-labelledby="poles-title">
     <div class="wrap">
-      <div class="section__head section__head--row">
-        <div>
-          <h2 id="poles-title">Quatre jeux, un seul album.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="300" height="300" loading="lazy" /></h2>
+      <div class="album-intro">
+        <div class="section__head">
+          <h2 id="poles-title">Quatre jeux, un seul album.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" loading="lazy" /></h2>
           <p>{album.total} vignettes à collectionner : chaque joueur et chaque membre du staff a la sienne.</p>
+          <p><a class="btn" href="/effectif/">Ouvrir l'album</a></p>
         </div>
-        <a class="btn" href="/effectif/">Ouvrir l'album</a>
+        <a class="album-intro__cover" href="/effectif/" tabindex="-1" aria-hidden="true">
+          <img class="eclat" src="/img/encre-eclat-1.webp" alt="" width="420" height="402" loading="lazy" />
+          <img src="/img/album-couverture.webp" srcset={srcset("/img/album-couverture.webp")} sizes="(max-width: 860px) 100vw, 46vw" alt="" width="1400" height="933" loading="lazy" />
+        </a>
       </div>
       <ul class="games">
         {album.games.map(({ game: g, rosters }) => (
@@ -63,6 +67,10 @@ const rosterLabel = (g) => {
       <div class="section__head">
         <h2 id="matchs-title">Sur le terrain.</h2>
         <p>Showmatchs castés en direct sur Twitch et coupes communautaires.</p>
+      </div>
+      <div class="match-visuals" aria-hidden="true">
+        <figure class="hud"><img src="/img/match-showmatch.webp" srcset={srcset("/img/match-showmatch.webp")} sizes="(max-width: 860px) 100vw, 62vw" alt="" width="1600" height="759" loading="lazy" /><figcaption>Showmatchs</figcaption></figure>
+        <figure class="hud"><img src="/img/match-cup.webp" srcset={srcset("/img/match-cup.webp")} sizes="(max-width: 860px) 100vw, 32vw" alt="" width="1600" height="684" loading="lazy" /><figcaption>Coupes</figcaption></figure>
       </div>
       <ol class="ledger">
         {matches.map((m, i) => (
