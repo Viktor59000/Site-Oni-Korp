@@ -24,6 +24,8 @@ const api = {
       route('/api/equipe/presence', './src/server/equipe/presence.ts');
       route('/api/equipe/dispos', './src/server/equipe/dispos.ts');
       route('/equipe', './src/server/equipe.astro');
+      route('/postuler', './src/server/recrutement/page.astro');
+      route('/api/postuler', './src/server/recrutement/postuler.ts');
     },
   },
 };

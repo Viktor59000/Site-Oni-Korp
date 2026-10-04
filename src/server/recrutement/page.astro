@@ -1,0 +1,122 @@
+---
+// Postuler : connexion Discord, formulaire, puis Oni Bot ouvre le fil privé avec le staff du pôle.
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+import { getSession } from '../session';
+import { rows } from '../db';
+import { JEUX, POSTES } from './postuler';
+
+export const prerender = false;
+
+const user = getSession(Astro.cookies);
+const q = Astro.url.searchParams;
+const type = q.get('type') === 'staff' ? 'staff' : 'joueur';
+const erreur = q.get('erreur');
+const guild = process.env.DISCORD_GUILD_ID ?? '';
+
+// Candidature déjà en cours ?
+type Ap = { kind: string; value: string; thread_id: string | null; status: string };
+const current = user ? (await rows<Ap>(`SELECT kind, value, thread_id, status FROM applications WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`, user.id))[0] : undefined;
+const ticket = user ? (await rows<{ thread_id: string; kind: string; game: string }>(`SELECT thread_id, kind, game FROM tickets WHERE user_id = ? AND closed_at IS NULL`, user.id))[0] : undefined;
+const threadId = ticket?.thread_id ?? (current?.status === 'ouverte' ? current.thread_id : null);
+const waiting = current?.status === 'attente';
+const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typeof JEUX] ?? ticket.game : ticket.game) : current ? (current.kind === 'joueur' ? JEUX[current.value as keyof typeof JEUX] ?? current.value : current.value) : '';
+---
+<Base title="Postuler" description="Candidature joueur ou staff chez Oni Korp : connexion Discord, un formulaire, et un fil privé avec le staff du pôle.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Postuler</h1>
+      <p>Un formulaire, puis un fil privé sur Discord avec le manager et le coach du pôle.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="wrap pz">
+      {!user && (
+        <div>
+          {erreur === 'membre' && <p class="pz-alert">Ton compte Discord n'est pas encore sur le serveur Oni Korp. Rejoins-le, puis reviens te connecter.</p>}
+          {erreur === 'connexion' && <p class="pz-alert">La connexion a échoué, réessaie.</p>}
+          <ol class="pz-steps">
+            <li><strong>Rejoins le Discord</strong><p>C'est là que le staff te répondra.</p><a class="btn btn--ghost" href={site.discord} rel="noopener">Rejoindre le serveur</a></li>
+            <li><strong>Connecte-toi avec Discord</strong><p>Aucun mot de passe : le site lit seulement ton pseudo et ton avatar.</p><a class="btn" href={`/api/auth/login?next=${encodeURIComponent(`/postuler/?type=${type}`)}`}>Se connecter avec Discord</a></li>
+            <li><strong>Remplis le formulaire</strong><p>Deux minutes. Ton fil privé s'ouvre aussitôt sur le serveur.</p></li>
+          </ol>
+        </div>
+      )}
+
+      {user && (threadId || waiting) && (
+        <div class="pz-done">
+          {q.get('envoye') && <p class="pz-ok">C'est envoyé, merci {user.name} !</p>}
+          {threadId
+            ? <><p>Ta candidature <strong>{label}</strong> est ouverte. Le staff te répond dans ton fil privé.</p>
+                <a class="btn" href={`https://discord.com/channels/${guild}/${threadId}`} rel="noopener">Ouvrir mon fil sur Discord</a></>
+            : <><p>Oni Bot ouvre ton fil privé sur Discord : ça prend moins d'une minute, tu recevras une notification.</p>
+                <a class="btn btn--ghost" href="/postuler/">Actualiser</a></>}
+        </div>
+      )}
+
+      {user && !threadId && !waiting && (
+        <form method="post" action="/api/postuler" class="pz-form">
+          {current?.status === 'refusee' && <p class="pz-note">Ta dernière candidature n'a pas été retenue. Tu peux retenter quand tu veux.</p>}
+          {current?.status === 'hors-serveur' && <p class="pz-alert">Tu dois être sur le serveur Discord pour que ton fil s'ouvre. <a href={site.discord} rel="noopener">Rejoins-le</a>, puis renvoie le formulaire.</p>}
+          {erreur === 'champs' && <p class="pz-alert">Il manque quelque chose : vérifie chaque champ (présentation : quelques lignes au moins).</p>}
+          <p class="pz-who">{user.avatar && <img src={user.avatar} alt="" width="32" height="32" />}Connecté en tant que <strong>{user.name}</strong></p>
+
+          <fieldset class="pz-kind">
+            <legend>Je postule comme</legend>
+            <label><input type="radio" name="kind" value="joueur" checked={type === 'joueur'} /> Joueur</label>
+            <label><input type="radio" name="kind" value="staff" checked={type === 'staff'} /> Staff</label>
+          </fieldset>
+
+          <label class="pz-field pz-only-joueur">Jeu
+            <select name="jeu">{Object.entries(JEUX).map(([k, l]) => <option value={k}>{l}</option>)}</select>
+          </label>
+          <label class="pz-field pz-only-staff">Poste
+            <select name="poste">{POSTES.map((p) => <option>{p}</option>)}</select>
+          </label>
+          <div class="pz-row">
+            <label class="pz-field">Pseudo en jeu<input name="pseudo" required maxlength="60" autocomplete="nickname" /></label>
+            <label class="pz-field">Âge<input name="age" required inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" /></label>
+          </div>
+          <label class="pz-field">
+            <span class="pz-only-joueur">Rang actuel et meilleur rang</span><span class="pz-only-staff">Ton expérience sur ce poste</span>
+            <input name="niveau" required maxlength="200" />
+          </label>
+          <label class="pz-field">Disponibilités<input name="dispo" required maxlength="300" placeholder="Ex. : soirs en semaine après 20 h, week-end" /></label>
+          <label class="pz-field">Présente-toi<textarea name="presentation" required minlength="20" maxlength="1000" rows="5"></textarea></label>
+          <label class="pz-field">Liens <small>(facultatif : tracker, replays, portfolio, chaîne)</small><input name="liens" maxlength="300" /></label>
+          <button class="btn">Envoyer ma candidature</button>
+          <p class="pz-note">Joueurs : Champion 1 minimum sur Rocket League, 15 ans minimum. <a href="/recrutement/">Tous les critères</a></p>
+        </form>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .pz > * { max-width: 44rem; }
+  .pz-steps { display: grid; gap: 1.5rem; counter-reset: pz; }
+  .pz-steps li { counter-increment: pz; display: grid; gap: .4rem; justify-items: start; padding-left: 3.25rem; position: relative; }
+  .pz-steps li::before { content: counter(pz); position: absolute; left: 0; top: -.2rem; font-family: var(--font-display); font-size: 2rem; color: var(--red-text); }
+  .pz-steps strong { font-size: 1.15rem; }
+  .pz-steps p { color: var(--muted); }
+  .pz-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: color-mix(in srgb, var(--lacquer) 10%, transparent); margin-bottom: 1.5rem; }
+  .pz-ok { font-family: var(--font-display); font-size: var(--step-2); }
+  .pz-done { display: grid; gap: 1.25rem; justify-items: start; }
+  .pz-note { color: var(--muted); font-size: var(--step--1); }
+  .pz-who { display: flex; align-items: center; gap: .5rem; }
+  .pz-who img { border-radius: 50%; }
+  .pz-form { display: grid; gap: 1.25rem; }
+  .pz-kind { display: flex; gap: .5rem; border: 0; padding: 0; margin: 0; flex-wrap: wrap; }
+  .pz-kind legend { font-weight: 700; margin-bottom: .5rem; }
+  .pz-kind label { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: 0 1.1rem; border: 1.5px solid var(--line); cursor: pointer; font-weight: 700; }
+  .pz-kind label:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .pz-field { display: grid; gap: .4rem; font-weight: 700; }
+  .pz-field small { font-weight: 400; color: var(--muted); }
+  .pz-field input, .pz-field select, .pz-field textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: .6rem .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
+  .pz-field :is(input, select, textarea):focus-visible { outline: 3px solid var(--lacquer-hi); outline-offset: 0; }
+  .pz-row { display: grid; grid-template-columns: 1fr 6rem; gap: 1rem; }
+  .pz-form .btn { justify-self: start; }
+  /* Champs propres au type choisi */
+  .pz-form:has([value="joueur"]:checked) .pz-only-staff, .pz-form:has([value="staff"]:checked) .pz-only-joueur { display: none; }
+</style>

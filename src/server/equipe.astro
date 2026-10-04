@@ -78,6 +78,14 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
   };
 })) : [];
 const date = (ms: number) => new Date(Number(ms));
+
+// Encadrement : Oni Bot tourne-t-il ? Candidatures en cours ?
+const beat = me?.staff ? Number((await rows<{ value: string }>(`SELECT value FROM meta WHERE key = 'bot:heartbeat'`))[0]?.value ?? 0) : 0;
+const botOnline = Date.now() - beat < 3 * 60_000;
+const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} jours`; };
+const candidatures = me?.staff ? await rows<{ thread_id: string; user_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
+  `SELECT t.thread_id, t.user_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL ORDER BY t.opened_at`) : [];
+const guildId = process.env.DISCORD_GUILD_ID ?? '';
 ---
 <Base title="Espace équipe" description="Espace réservé aux joueurs et au staff d'Oni Korp.">
   <header class="page-head eq-head">
@@ -139,6 +147,26 @@ const date = (ms: number) => new Date(Number(ms));
           <p>Cet espace est réservé aux joueurs des rosters et au staff du club.</p>
           <a class="btn" href="/recrutement/">Rejoindre un roster</a>
         </div>
+      )}
+
+      {me?.staff && (
+        <aside class="eq-staff" aria-label="Tableau de bord de l'encadrement">
+          <p class:list={['eq-bot', { 'is-on': botOnline }]}>
+            <span aria-hidden="true"></span>
+            {botOnline ? 'Oni Bot en ligne' : beat ? `Oni Bot hors ligne depuis ${ago(beat)}` : 'Oni Bot pas encore relié à la base'}
+          </p>
+          <div>
+            <p class="eq-staff__title">Candidatures ouvertes · {candidatures.length}</p>
+            {candidatures.length ? (
+              <ul class="eq-cands">
+                {candidatures.map((c) => (
+                  <li><a href={`https://discord.com/channels/${guildId}/${c.thread_id}`} rel="noopener">{c.name ?? 'Candidat'}</a>
+                    <span>{c.kind === 'joueur' ? ({ rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' } as Record<string, string>)[c.game] ?? c.game : c.game} · il y a {ago(Number(c.opened_at))}</span></li>
+                ))}
+              </ul>
+            ) : <p class="eq-note">Aucune en attente.</p>}
+          </div>
+        </aside>
       )}
 
       {spaces.length > 1 && (
@@ -284,6 +312,16 @@ const date = (ms: number) => new Date(Number(ms));
   .eq-cal__panel input { width: 100%; margin-top: .3rem; padding: .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: .75rem monospace; }
   @media (max-width: 640px) { .eq-cal { margin-left: 0; width: 100%; } .eq-cal__panel { position: static; width: auto; margin-top: .5rem; } }
 
+  .eq-staff { display: grid; grid-template-columns: auto 1fr; gap: 1rem 2.5rem; align-items: start; padding: 1.25rem; border: 1px solid var(--line); }
+  .eq-bot { display: flex; align-items: center; gap: .5rem; font-weight: 700; white-space: nowrap; }
+  .eq-bot span { width: .65rem; height: .65rem; border-radius: 50%; background: var(--lacquer); }
+  .eq-bot.is-on span { background: #1f8f55; }
+  .eq-staff__title { font-weight: 700; margin-bottom: .4rem; }
+  .eq-cands { display: grid; gap: .3rem; }
+  .eq-cands li { display: flex; flex-wrap: wrap; gap: .2rem .75rem; align-items: baseline; }
+  .eq-cands a { font-weight: 700; color: var(--red-text); }
+  .eq-cands span { color: var(--muted); font-size: var(--step--1); }
+  @media (max-width: 640px) { .eq-staff { grid-template-columns: 1fr; } }
   .eq-login { max-width: 42rem; display: grid; gap: 1.25rem; justify-items: start; }
   .eq-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: color-mix(in srgb, var(--lacquer) 10%, transparent); }
   .eq-note, .eq-empty { color: var(--muted); font-size: var(--step--1); }

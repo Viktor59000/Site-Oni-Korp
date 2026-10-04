@@ -26,7 +26,7 @@ const staffGroups = [
     <img class="page-head__bg" src="/img/entete-recrutement.webp" srcset={srcset("/img/entete-recrutement.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <div class="wrap">
       <h1>Recrutement</h1>
-      <p>Joueurs et staff : un formulaire, un ticket Discord, et on se rencontre.</p>
+      <p>Joueurs et staff : un formulaire, un fil privé sur Discord, et on se rencontre.</p>
     </div>
   </header>
 
@@ -50,13 +50,13 @@ const staffGroups = [
       </div>
       <div>
         <ol class="steps">
-          <li><div><strong>Remplis le formulaire joueur</strong><p>Rang, jeu, disponibilités. Tu peux joindre un replay.</p></div></li>
-          <li><div><strong>Ouvre un ticket sur le Discord</strong><p>Clique sur « Create ticket » dans le salon recrutement. Sans ticket, la candidature n'est pas prise en compte.</p></div></li>
-          <li><div><strong>Présente-toi au staff</strong><p>Le manager ou le coach du pôle te répond dans le ticket et organise la suite.</p></div></li>
+          <li><div><strong>Rejoins le Discord</strong><p>C'est là que tout se passe : entraînements, matchs, vie du club.</p></div></li>
+          <li><div><strong>Postule en deux minutes</strong><p>Connexion avec Discord, jeu, rang, disponibilités. Tu peux ajouter un lien de tracker ou un replay.</p></div></li>
+          <li><div><strong>Échange avec le staff</strong><p>Un fil privé s'ouvre aussitôt sur le serveur avec le manager et le coach du pôle.</p></div></li>
         </ol>
         <div class="recruit__actions">
-          <a class="btn btn--ink" href={site.forms.joueurs} rel="noopener">Remplir le formulaire joueur</a>
-          <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Ouvrir un ticket</a>
+          <a class="btn btn--ink" href="/postuler/?type=joueur">Postuler comme joueur</a>
+          <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Rejoindre le Discord</a>
         </div>
       </div>
     </div>
@@ -83,8 +83,8 @@ const staffGroups = [
       </div>
       <p class="roles__note">Le recrutement est géré par les managers et les coachs de chaque pôle. Côté contenu, les casteurs portent la voix de l'équipe, et chaque joueur est libre de proposer des clips ou des vidéos.</p>
       <div class="recruit__actions">
-        <a class="btn" href={site.forms.staff} rel="noopener">Remplir le formulaire staff</a>
-        <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Ouvrir un ticket</a>
+        <a class="btn" href="/postuler/?type=staff">Postuler au staff</a>
+        <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Rejoindre le Discord</a>
       </div>
     </div>
   </section>
