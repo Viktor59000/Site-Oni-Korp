@@ -79,7 +79,20 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
     const main = fields[0].key;
     return { m, lines, averages, trend: spark(lines.slice().reverse().map((l) => Number(l[main]))) };
   });
-  return { r, kind: 'manual' as const, fields, matches, players };
+  // Rocket League : parties classées relevées par Oni Bot via ballchasing.com, et replays de match importés
+  let auto: { m: M; n: number; win: number | null; a: Record<string, number | null>; trend: string; last: any[] }[] = [];
+  let replays: { match_id: number; replay: string; status: string }[] = [];
+  if (r.game === 'rl') {
+    const perfs = ids.length ? await rows<{ user_id: string; data: string; at: number }>(`SELECT user_id, data, at FROM perf WHERE game = 'rl' AND user_id IN (${inIds}) ORDER BY at DESC`, ...ids) : [];
+    auto = members.map((m) => {
+      const g = perfs.filter((p) => p.user_id === m.id).slice(0, 15).map((p) => ({ ...JSON.parse(p.data), at: Number(p.at) }));
+      const keys = ['score', 'buts', 'arrets', 'precision', 'bpm', 'boostMoy', 'sansBoost', 'supersonique', 'defense', 'derriere', 'demos'];
+      return { m, n: g.length, win: g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null,
+        a: Object.fromEntries(keys.map((k) => [k, avg(g.map((x) => Number(x[k])).filter(Number.isFinite))])), trend: spark(g.slice().reverse().map((x) => Number(x.score))), last: g.slice(0, 8) };
+    });
+    replays = matches.length ? await rows(`SELECT match_id, replay, status FROM match_replays WHERE match_id IN (${matches.map(() => '?').join(',')})`, ...matches.map((x) => x.id)) : [];
+  }
+  return { r, kind: 'manual' as const, fields, matches, players, auto, replays };
 }));
 const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${c}.png`;
 ---
@@ -174,6 +187,54 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
             </>
           )}
 
+          {b.kind === 'manual' && b.r.game === 'rl' && (
+            <>
+              <h3 class="st-sub">Parties classées <small>(ballchasing.com, relevé chaque heure)</small></h3>
+              {b.auto.some((p) => p.n) ? (
+                <div class="st-scroll">
+                  <table class="st-table">
+                    <thead><tr><th>Joueur</th><th>Parties</th><th>Tendance</th><th>Victoires</th><th title="Score moyen">Score</th><th>Buts</th><th>Arrêts</th><th title="Précision des tirs">Tirs %</th><th title="Boost ramassé par minute">Boost/min</th><th title="Boost moyen en réserve">Boost moy.</th><th title="Temps passé à 0 boost">Sans boost</th><th title="Temps à vitesse supersonique">Supersonique</th><th title="Temps dans son tiers défensif">Tiers déf.</th><th title="Temps derrière la balle">Derrière balle</th><th>Démos</th></tr></thead>
+                    <tbody>
+                      {b.auto.map((p) => (
+                        <tr>
+                          <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                          <td>{p.n || '—'}</td><td set:html={p.trend || '—'} /><td>{pct(p.win)}</td>
+                          <td>{r1(p.a.score, 0)}</td><td>{r1(p.a.buts)}</td><td>{r1(p.a.arrets)}</td><td>{pct(p.a.precision)}</td>
+                          <td>{r1(p.a.bpm, 0)}</td><td>{r1(p.a.boostMoy, 0)}</td><td>{pct(p.a.sansBoost)}</td><td>{pct(p.a.supersonique)}</td>
+                          <td>{pct(p.a.defense)}</td><td>{pct(p.a.derriere)}</td><td>{r1(p.a.demos)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <p class="eq-note">Pas encore de partie trouvée. Les joueurs relient leur pseudo Rocket League dans <a href="/equipe/joueurs/">Joueurs</a> ; il faut que leurs replays soient sur ballchasing.com (envoi automatique avec BakkesMod, extension « ballchasing »).</p>}
+              {b.auto.filter((p) => p.last.length).map((p) => (
+                <details class="st-games">
+                  <summary>Parties de {p.m.name}</summary>
+                  <ul>
+                    {p.last.map((g) => (
+                      <li class:list={{ 'is-win': g.win }}>
+                        <strong>{g.win ? 'Victoire' : 'Défaite'} {g.us}-{g.them}</strong>
+                        <span>{g.score} pts</span><span>{g.buts} buts · {g.passes} passes · {g.arrets} arrêts</span><span>{g.bpm} boost/min</span><span>{g.supersonique} % supersonique</span>
+                        <small>{g.playlist} · {fmtD.format(new Date(g.at))} · <a href={g.link} rel="noopener" target="_blank">replay</a></small>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+              <h3 class="st-sub">Matchs du roster</h3>
+              {b.matches.length > 0 && (
+                <form method="post" action="/api/equipe/outils" class="st-replay">
+                  <input type="hidden" name="action" value="replay" /><input type="hidden" name="back" value={back} />
+                  <label>Match<select name="match">{b.matches.map((x) => <option value={x.id}>vs {x.opponent} · {fmtD.format(new Date(Number(x.at)))}</option>)}</select></label>
+                  <label class="st-wide">Replays ballchasing <small>(un lien par partie, séparés par des espaces)</small><input name="replays" required placeholder="https://ballchasing.com/replay/…" /></label>
+                  <button class="btn">Importer les stats</button>
+                  {b.replays.length > 0 && <p class="eq-note st-wide">{b.replays.filter((x) => x.status === 'ok').length} replay(s) importé(s), {b.replays.filter((x) => x.status === 'attente').length} en cours{b.replays.some((x) => x.status !== 'ok' && x.status !== 'attente') ? ', certains introuvables ou sans joueur reconnu' : ''}.</p>}
+                </form>
+              )}
+            </>
+          )}
+
           {b.kind === 'manual' && (
             <>
               <p class="eq-note">Après chaque match ou scrim, chacun saisit ses stats (tableau de fin de partie). Courbe : {b.fields[0].label} au fil des matchs.</p>
@@ -241,6 +302,15 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
   .st-best li { font-size: .88rem; }
   .st-best a { color: inherit; font-weight: 700; }
   .st-best span { display: block; color: var(--muted); font-size: .8rem; }
+  .st-sub { font-family: var(--font-body); font-size: 1rem; font-weight: 700; margin-top: 1rem; }
+  .st-sub small { font-weight: 400; color: var(--muted); font-size: var(--step--1); }
+  .st-replay { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .75rem; align-items: end; padding: 1rem; border: 1px solid var(--line); }
+  .st-replay label { display: grid; gap: .3rem; font-weight: 700; font-size: .8rem; }
+  .st-replay small { font-weight: 400; color: var(--muted); }
+  .st-replay .st-wide { grid-column: span 2; }
+  .st-replay :is(input, select) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .35rem .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .st-replay .btn { justify-self: start; }
+  .st-games a { color: var(--red-text); }
   .st-entry form { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .75rem; align-items: end; margin-top: .75rem; padding: 1rem; border: 1px solid var(--line); }
   .st-entry label { display: grid; gap: .3rem; font-weight: 700; font-size: .8rem; }
   .st-entry label:first-of-type { grid-column: span 2; }

@@ -1,6 +1,7 @@
 ---
-// Tableau tactique partagé (Valorant, League of Legends) : on pose les agents ou champions, on dessine les rotations,
-// le roster voit les changements en quasi direct. Plusieurs tableaux par roster (une strat par carte, un plan de jeu…).
+// Tableau blanc du roster (tous les jeux) : un fond (carte du jeu, tableau blanc, quadrillage ou image),
+// des éléments (repères, agents, champions, pings), des formes, des flèches, des post-it, le crayon par-dessus,
+// des étapes pour dérouler une strat et des notes. Synchronisé en quasi direct pour tout le roster.
 import Base from '../../layouts/Base.astro';
 import EquipeShell from './EquipeShell.astro';
 import { scope, teamUser } from './outils';
@@ -13,30 +14,50 @@ if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 await ensureBoards();
 const sc = scope(me.rosters, Astro.url);
-const usable = sc.list.filter((r) => ['valo', 'lol', 'rl'].includes(r.game) || (me.staff && !sc.active));
+const usable = sc.list;
 const boardId = Number(Astro.url.searchParams.get('b')) || null;
 type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null };
 const list = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.map, b.title, b.updated_at, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by
   WHERE b.roster_id IN (${usable.map(() => '?').join(',')}) ORDER BY b.updated_at DESC`, ...usable.map((r) => r.id)) : [];
 const current = boardId ? list.find((b) => Number(b.id) === boardId) : null;
+// État du tableau envoyé avec la page : personne ne part d'un tableau vide (et ne l'écrase) avant la première synchro
+const initial = current ? (await rows<{ state: string; updated_at: number }>('SELECT state, updated_at FROM boards WHERE id = ?', current.id))[0] : null;
 const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+const rosterGame = new Map(me.rosters.map((r) => [Number(r.id), r.game]));
 const q = sc.active ? `&r=${sc.active}` : '';
+const listUrl = `/equipe/tactique/${sc.active ? `?r=${sc.active}` : ''}`;
 const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 2880 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+const BG_LABEL = (m: string) => m === 'Faille' ? 'Faille de l\'invocateur' : m === 'Terrain' ? 'Terrain Rocket League' : m === 'blanc' ? 'Tableau blanc' : m === 'grille' ? 'Quadrillage' : m.startsWith('http') ? 'Image' : m;
+const COLORS = ['#ff4655', '#2f6bff', '#ffd23f', '#2fbf71', '#ffffff', '#111111'];
+const TOOLS: [string, string, string][] = [
+  ['select', 'Sélection', 'M4 3l14 8-6 2-2 6z'], ['pen', 'Crayon', 'M4 20l4-1 11-11-3-3L5 16z'], ['arrow', 'Flèche', 'M4 20L19 5M19 5h-7M19 5v7'],
+  ['line', 'Ligne', 'M4 20L20 4'], ['rect', 'Rectangle', 'M4 6h16v12H4z'], ['circle', 'Cercle', 'M12 4a8 8 0 100 16 8 8 0 000-16z'],
+  ['zone', 'Zone (fumée, contrôle…)', 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12h8'], ['note', 'Post-it', 'M5 4h14v11l-5 5H5z'], ['text', 'Texte', 'M5 5h14M12 5v14'],
+  ['erase', 'Gomme', 'M16 4l4 4-10 10H6l-2-2z'],
+];
+const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ['vision', '◉', 'Vision / ward'], ['balle', '●', 'Balle / spike']];
 ---
-<Base title="Tableau tactique · Espace équipe" description="Tableau tactique partagé du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Tableau tactique</h1><p>Pose les agents, dessine les rotations : ton roster voit tout en direct.</p></div></header>
+<Base title="Tableau blanc · Espace équipe" description="Tableau blanc partagé du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Tableau blanc</h1><p>Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct.</p></div></header>
   <EquipeShell current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active}>
     {!current ? (
       <div class="tb-home">
-        {!usable.length && <p class="eq-note">Le tableau tactique sert aux rosters Valorant et League of Legends. Il s'ouvrira dès qu'un tel roster existe.</p>}
+        {!usable.length && <p class="eq-note">Aucun roster pour l'instant : le tableau blanc s'ouvrira dès la création d'un roster sur Discord.</p>}
         {usable.length > 0 && (
-          <form method="post" action="/api/equipe/outils" class="tb-new">
+          <form method="post" action="/api/equipe/outils" class="tb-new" data-new>
             <h2>Nouveau tableau</h2>
-            <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={`/equipe/tactique/?${q.slice(1)}`} />
-            <label>Titre<input name="title" required maxlength="60" placeholder="Ex. : Ascent · retake B" /></label>
-            <label>Roster<select name="roster">{usable.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
-            <label>Jeu<select name="game" data-game><option value="valo">Valorant</option><option value="lol">League of Legends</option><option value="rl">Rocket League</option></select></label>
-            <label data-map-field>Carte<select name="map" data-map-select><option value="">Chargement…</option></select></label>
+            <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={listUrl} />
+            <input type="hidden" name="game" data-game />
+            <label>Titre<input name="title" required maxlength="60" placeholder="Ex. : Ascent · retake B, kickoff, plan de jeu" /></label>
+            <label>Roster<select name="roster" data-roster>{usable.map((r) => <option value={r.id} data-g={r.game}>{r.name}</option>)}</select></label>
+            <label>Fond<select name="map" data-bg>
+              <optgroup label="Neutre"><option value="blanc">Tableau blanc</option><option value="grille">Quadrillage</option></optgroup>
+              <optgroup label="Rocket League"><option value="Terrain">Terrain</option></optgroup>
+              <optgroup label="League of Legends"><option value="Faille">Faille de l'invocateur</option></optgroup>
+              <optgroup label="Valorant" data-valo></optgroup>
+              <optgroup label="Autre"><option value="url">Image (lien)…</option></optgroup>
+            </select></label>
+            <label data-url hidden>Lien de l'image<input name="url" type="url" placeholder="https://…" /></label>
             <button class="btn">Créer et ouvrir</button>
           </form>
         )}
@@ -45,49 +66,74 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
             <h2>Tableaux du roster</h2>
             <ul>
               {list.map((b) => (
-                <li><a href={`/equipe/tactique/?b=${b.id}${q}`}><strong>{b.title}</strong><span>{b.game === 'lol' ? 'Faille de l\'invocateur' : b.game === 'rl' ? 'Terrain Rocket League' : b.map} · {rosterName.get(Number(b.roster_id))} · modifié {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span></a></li>
+                <li><a href={`/equipe/tactique/?b=${b.id}${q}`}><strong>{b.title}</strong><span>{BG_LABEL(b.map)} · {rosterName.get(Number(b.roster_id))} · modifié {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span></a></li>
               ))}
             </ul>
           </section>
         )}
       </div>
     ) : (
-      <div class="tb" data-board={current.id} data-game={current.game} data-map={current.map} data-me={user.id}>
-        <div class="tb-bar">
-          <a class="tb-back" href={`/equipe/tactique/${q ? `?${q.slice(1)}` : ''}`}>← Tableaux</a>
+      <div class="wb" data-board={current.id} data-game={rosterGame.get(Number(current.roster_id)) ?? current.game} data-map={current.map} data-me={user.id} data-state={initial?.state ?? '{}'} data-at={initial?.updated_at ?? 0}>
+        <div class="wb-bar">
+          <a class="wb-back" href={listUrl}>← Tableaux</a>
           <h2>{current.title}</h2>
-          <p class="tb-live" data-live><span aria-hidden="true"></span>En direct</p>
+          <p class="wb-live" data-live><span aria-hidden="true"></span><em>En direct</em></p>
         </div>
-        <div class="tb-tools" role="toolbar" aria-label="Outils">
-          <button type="button" data-tool="move" aria-pressed="true">Déplacer</button>
-          <button type="button" data-tool="draw" aria-pressed="false">Dessiner</button>
-          <button type="button" data-tool="erase" aria-pressed="false">Gomme</button>
-          <span class="tb-colors">{['#ff4655', '#2f6bff', '#ffd23f', '#ffffff'].map((c, i) => <button type="button" data-color={c} aria-pressed={i === 0 ? 'true' : 'false'} style={`--c:${c}`} aria-label={`Couleur ${c}`}></button>)}</span>
-          <button type="button" data-clear>Tout effacer</button>
-        </div>
-        <div class="tb-main">
-          <div class="tb-stage" data-stage>
-            <img data-mapimg alt="" />
-            <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg></svg>
-            <div class="tb-tokens" data-tokens></div>
-            <p class="tb-hint" data-hint hidden></p>
+
+        <div class="wb-frames" data-frames></div>
+
+        <div class="wb-tools" role="toolbar" aria-label="Outils">
+          <div class="wb-group">
+            {TOOLS.map(([k, label, d], i) => <button type="button" data-tool={k} aria-pressed={i === 0 ? 'true' : 'false'} title={label} aria-label={label}><svg viewBox="0 0 24 24"><path d={d} /></svg></button>)}
           </div>
-          <aside class="tb-palette">
-            <p class="tb-pal-h">Repères</p>
-            <div class="tb-markers">
-              {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally">{n}</button>)}
-              {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy">{n}</button>)}
-            </div>
-            <p class="tb-pal-h">{current.game === 'lol' ? 'Champions' : current.game === 'rl' ? 'Balle' : 'Agents'}</p>
-            <input type="search" placeholder="Chercher" data-pal-search aria-label="Chercher" />
-            <div class="tb-pal" data-pal></div>
-            <p class="eq-note">Clique sur un élément puis sur la carte pour le poser. Glisse pour déplacer, gomme pour retirer.</p>
+          <div class="wb-group wb-colors">{COLORS.map((c, i) => <button type="button" data-color={c} aria-pressed={i === 0 ? 'true' : 'false'} style={`--c:${c}`} aria-label={`Couleur ${c}`}></button>)}</div>
+          <div class="wb-group">{[[3, 'Fin'], [6, 'Moyen'], [12, 'Épais']].map(([w, l], i) => <button type="button" data-width={w} aria-pressed={i === 1 ? 'true' : 'false'} title={String(l)} aria-label={`Trait ${l}`}><span style={`height:${Number(w) / 2 + 1}px`}></span></button>)}</div>
+          <div class="wb-group">
+            <button type="button" data-undo title="Annuler (Ctrl+Z)" aria-label="Annuler"><svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10h-3" /></svg></button>
+            <button type="button" data-redo title="Rétablir (Ctrl+Y)" aria-label="Rétablir"><svg viewBox="0 0 24 24"><path d="M15 7l5 5-5 5M20 12H9a5 5 0 000 10h3" /></svg></button>
+            <button type="button" data-clear-ink>Effacer le crayon</button>
+            <button type="button" data-clear>Vider l'étape</button>
+          </div>
+        </div>
+
+        <div class="wb-main">
+          <div class="wb-stage" data-stage>
+            <div class="wb-bg" data-bg></div>
+            <svg class="wb-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg>
+              <defs>{COLORS.map((c) => <marker id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={c} /></marker>)}</defs>
+              <g data-layer></g>
+            </svg>
+            <div class="wb-items" data-items></div>
+            <p class="wb-hint" data-hint hidden></p>
+          </div>
+
+          <aside class="wb-side">
+            <details open><summary>Éléments</summary>
+              <div class="wb-markers">
+                {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" aria-label={`Allié ${n}`}>{n}</button>)}
+                {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" aria-label={`Adversaire ${n}`}>{n}</button>)}
+              </div>
+              <div class="wb-pings">
+                {PINGS.map(([k, s, l]) => <button type="button" data-add="ping" data-ref={k} data-label={s}><span class={`is-${k}`}>{s}</span>{l}</button>)}
+              </div>
+              <p class="wb-pal-h" data-pal-title hidden></p>
+              <input type="search" placeholder="Chercher" data-pal-search aria-label="Chercher" hidden />
+              <div class="wb-pal" data-pal></div>
+            </details>
+            <details open><summary>Notes de la strat</summary>
+              <textarea data-notes rows="8" maxlength="5000" placeholder="Le plan, les appels, qui fait quoi… Visible par tout le roster."></textarea>
+            </details>
+            <details><summary>Fond</summary>
+              <select data-bg-select aria-label="Fond"></select>
+              <p class="eq-note">Change le fond pour tout le monde. « Image » : colle le lien d'une capture ou d'un schéma.</p>
+            </details>
+            <p class="eq-note wb-help">Sélection : glisser pour déplacer, double-clic sur un post-it ou un texte pour le modifier, Suppr pour retirer. Ctrl+Z / Ctrl+Y.</p>
           </aside>
         </div>
-        <form method="post" action="/api/equipe/outils" class="tb-del" onsubmit="return confirm('Supprimer ce tableau pour tout le roster ?')">
-          <input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="boards" /><input type="hidden" name="id" value={current.id} />
-          <input type="hidden" name="back" value={`/equipe/tactique/${q ? `?${q.slice(1)}` : ''}`} />
-          <button class="tb-link">Supprimer ce tableau</button>
+
+        <form method="post" action="/api/equipe/outils" class="wb-del" onsubmit="return confirm('Supprimer ce tableau pour tout le roster ?')">
+          <input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="boards" /><input type="hidden" name="id" value={current.id} /><input type="hidden" name="back" value={listUrl} />
+          <button class="wb-link">Supprimer ce tableau</button>
         </form>
       </div>
     )}
@@ -96,143 +142,252 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
 
 <script>
   const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
-  const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  let valoMaps: { name: string; icon: string }[] = [];
+  const loadValo = () => fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
+    valoMaps = d.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ name: m.displayName, icon: m.displayIcon })).sort((a: any, b: any) => a.name.localeCompare(b.name, 'fr'));
+  }).catch(() => {});
+  const RL_PITCH = (() => {
+    const pads = [[.08, .5], [.92, .5], [.08, .1], [.92, .1], [.08, .9], [.92, .9]].map(([x, y]) => `<circle cx="${x * 600}" cy="${y * 1000}" r="16" fill="#ffb020" opacity=".85"/>`).join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1000"><rect width="600" height="1000" fill="#1d5a2f"/><rect x="20" y="40" width="560" height="920" rx="70" fill="#247038" stroke="#fff" stroke-width="5"/><line x1="20" y1="500" x2="580" y2="500" stroke="#fff" stroke-width="4"/><circle cx="300" cy="500" r="90" fill="none" stroke="#fff" stroke-width="4"/><rect x="210" y="8" width="180" height="34" fill="#ff7a1a" stroke="#fff" stroke-width="4"/><rect x="210" y="958" width="180" height="34" fill="#2f6bff" stroke="#fff" stroke-width="4"/><rect x="150" y="40" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/><rect x="150" y="820" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>${pads}</svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  })();
 
-  // ---------- Création : liste des cartes Valorant ----------
-  const newForm = document.querySelector<HTMLFormElement>('.tb-new');
-  if (newForm) {
-    const sel = newForm.querySelector<HTMLSelectElement>('[data-map-select]')!;
-    const field = newForm.querySelector<HTMLElement>('[data-map-field]')!;
-    let valoMaps: string[] = [];
-    const sync = () => {
-      const g = newForm.querySelector<HTMLSelectElement>('[data-game]')!.value;
-      field.hidden = g !== 'valo';
-      sel.innerHTML = g === 'lol' ? '<option value="Faille">Faille</option>' : g === 'rl' ? '<option value="Terrain">Terrain</option>' : valoMaps.map((m) => `<option>${esc(m)}</option>`).join('');
-    };
-    newForm.querySelector('[data-game]')!.addEventListener('change', sync);
-    fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
-      valoMaps = d.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => m.displayName).sort((a: string, b: string) => a.localeCompare(b, 'fr'));
+  // ---------- Création ----------
+  const form = document.querySelector<HTMLFormElement>('[data-new]');
+  if (form) {
+    const bg = form.querySelector<HTMLSelectElement>('[data-bg]')!, roster = form.querySelector<HTMLSelectElement>('[data-roster]')!;
+    const sync = () => { form.querySelector<HTMLElement>('[data-url]')!.hidden = bg.value !== 'url'; };
+    const pick = () => {
+      const g = roster.selectedOptions[0]?.dataset.g ?? '';
+      bg.value = g === 'rl' ? 'Terrain' : g === 'lol' ? 'Faille' : g === 'valo' && valoMaps[0] ? valoMaps[0].name : 'blanc';
+      form.querySelector<HTMLInputElement>('[data-game]')!.value = g;
       sync();
-    }).catch(() => { sel.innerHTML = '<option>Ascent</option>'; });
+    };
+    bg.addEventListener('change', sync); roster.addEventListener('change', pick);
+    loadValo().then(() => { form.querySelector('[data-valo]')!.innerHTML = valoMaps.map((m) => `<option>${esc(m.name)}</option>`).join(''); pick(); });
+    pick();
   }
 
   // ---------- Tableau ----------
   const root = document.querySelector<HTMLElement>('[data-board]');
   if (root) {
-    type Tok = { id: string; kind: 'ally' | 'enemy' | 'pic'; ref: string; label?: string; x: number; y: number };
-    type Stroke = { id: string; color: string; pts: [number, number][] };
-    type State = { tokens: Tok[]; strokes: Stroke[] };
+    type Item = { id: string; type: 'tok' | 'ping' | 'note' | 'text' | 'arrow' | 'line' | 'rect' | 'circle' | 'zone'; x: number; y: number; x2?: number; y2?: number; color?: string; w?: number; label?: string; ref?: string; kind?: string };
+    type Stroke = { id: string; color: string; w: number; pts: [number, number][] };
+    type Frame = { name: string; items: Item[]; strokes: Stroke[] };
+    type State = { bg: string; notes: string; frames: Frame[] };
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
-    const id = Number(root.dataset.board), game = root.dataset.game!, map = root.dataset.map!;
-    let state: State = { tokens: [], strokes: [] };
-    let at = 0, tool: 'move' | 'draw' | 'erase' = 'move', color = '#ff4655', pending: Omit<Tok, 'id' | 'x' | 'y'> | null = null;
-    let dragging: string | null = null, drawing: Stroke | null = null, dirty = false, saveTimer = 0;
+    const id = Number(root.dataset.board), game = root.dataset.game ?? '';
+    let state: State = { bg: root.dataset.map ?? 'blanc', notes: '', frames: [{ name: 'Étape 1', items: [], strokes: [] }] };
+    let fi = 0, at = 0, tool = 'select', color = '#ff4655', width = 6, dirty = false, saveTimer = 0, editingNotes = false;
+    let pending: Partial<Item> | null = null, sel: string | null = null;
+    let drag: { id: string; dx: number; dy: number; dx2?: number; dy2?: number } | null = null;
+    let drawing: Stroke | null = null, shape: Item | null = null;
+    const undo: string[] = [], redo: string[] = [];
     const icons = new Map<string, string>();
     const uid = () => Math.random().toString(36).slice(2, 9);
+    const frame = () => state.frames[Math.min(fi, state.frames.length - 1)];
     const stage = $('[data-stage]');
-    const pos = (e: PointerEvent): [number, number] => { const r = $('[data-mapimg]').getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
 
-    function render() {
-      $('[data-svg]').innerHTML = state.strokes.map((s) => `<polyline data-stroke="${s.id}" points="${s.pts.map(([x, y]) => `${x * 1000},${y * 1000}`).join(' ')}" stroke="${esc(s.color)}" />`).join('')
-        + (drawing ? `<polyline points="${drawing.pts.map(([x, y]) => `${x * 1000},${y * 1000}`).join(' ')}" stroke="${esc(drawing.color)}" />` : '');
-      $('[data-tokens]').innerHTML = state.tokens.map((t) => `<div class="tb-tok is-${t.kind}" data-tok="${t.id}" style="left:${t.x * 100}%;top:${t.y * 100}%">${t.kind === 'pic' ? `<img src="${esc(icons.get(t.ref) ?? '')}" alt="${esc(t.ref)}" title="${esc(t.ref)}" draggable="false" />` : esc(t.label ?? '')}</div>`).join('');
-    }
-    function changed() { dirty = true; render(); clearTimeout(saveTimer); saveTimer = window.setTimeout(save, 300); }
+    // Ancien format (tokens / strokes) → étapes
+    const upgrade = (s: any): State => s?.frames
+      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
+      : { bg: s?.bg ?? state.bg, notes: '', frames: [{ name: 'Étape 1', items: (s?.tokens ?? []).map((t: any) => ({ id: t.id, type: 'tok', kind: t.kind, ref: t.ref, label: t.label, x: t.x, y: t.y })), strokes: (s?.strokes ?? []).map((k: any) => ({ ...k, w: 6 })) }] };
+
+    try { const s0 = JSON.parse(root.dataset.state || '{}'); if (s0 && (s0.frames || s0.tokens)) state = upgrade(s0); at = Number(root.dataset.at) || 0; } catch {}
+    const snapshot = () => { undo.push(JSON.stringify(state)); if (undo.length > 50) undo.shift(); redo.length = 0; };
+    function changed() { dirty = true; render(); clearTimeout(saveTimer); saveTimer = window.setTimeout(save, 350); }
     async function save() {
       const r = await fetch('/api/equipe/tableau', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, state }) }).then((x) => x.json()).catch(() => null);
       if (r?.at) { at = r.at; dirty = false; }
     }
     async function poll() {
-      if (document.hidden || dragging || drawing || dirty) return;
+      if (document.hidden || drag || drawing || shape || dirty || editingNotes) return;
       const r = await fetch(`/api/equipe/tableau?id=${id}&depuis=${at}`).then((x) => x.json()).catch(() => null);
-      const live = $('[data-live]');
-      live.classList.toggle('is-off', !r);
-      if (r?.changed && !dragging && !drawing && !dirty) {
-        state = { tokens: r.state.tokens ?? [], strokes: r.state.strokes ?? [] }; at = r.at; render();
-        if (r.by !== root!.dataset.me && r.byName) live.lastChild!.textContent = ` ${r.byName} modifie…`;
-        setTimeout(() => { live.lastChild!.textContent = ' En direct'; }, 2500);
+      $('[data-live]').classList.toggle('is-off', !r);
+      if (r?.changed && !drag && !drawing && !shape && !dirty) {
+        state = upgrade(r.state); at = r.at; if (fi >= state.frames.length) fi = 0; render();
+        if (r.by !== root!.dataset.me && r.byName) { $('[data-live] em').textContent = `${r.byName} modifie…`; setTimeout(() => ($('[data-live] em').textContent = 'En direct'), 2500); }
       }
     }
-    setInterval(poll, 1500); poll();
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 
-    // Outils
-    root.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.addEventListener('click', () => {
-      tool = b.dataset.tool as typeof tool; pending = null; hint(null);
-      root.querySelectorAll('[data-tool]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      stage.dataset.tool = tool;
-    }));
+    // ---------- Fond ----------
+    function background() {
+      const bg = state.bg, el = $('[data-bg]');
+      stage.style.aspectRatio = bg === 'Terrain' ? '3 / 5' : '1 / 1';
+      el.className = 'wb-bg'; el.style.backgroundImage = '';
+      if (bg === 'blanc') el.classList.add('is-blank');
+      else if (bg === 'grille') el.classList.add('is-grid');
+      else if (bg === 'Terrain') el.style.backgroundImage = `url("${RL_PITCH}")`;
+      else if (bg === 'Faille') el.style.backgroundImage = `url("${LOL_MAP}")`;
+      else if (/^https?:\/\//.test(bg)) el.style.backgroundImage = `url("${bg.replace(/["()\\]/g, '')}")`;
+      else { const m = valoMaps.find((x) => x.name === bg); if (m) el.style.backgroundImage = `url("${m.icon}")`; }
+      const s = $<HTMLSelectElement>('[data-bg-select]');
+      const opts: string[][] = [['blanc', 'Tableau blanc'], ['grille', 'Quadrillage'], ['Terrain', 'Terrain Rocket League'], ['Faille', "Faille de l'invocateur"], ...valoMaps.map((m) => [m.name, `Valorant · ${m.name}`]), ['url', 'Image (lien)…']];
+      if (/^https?:\/\//.test(bg)) opts.unshift([bg, 'Image actuelle']);
+      if (document.activeElement !== s) s.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}" ${v === bg ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    }
+
+    // ---------- Rendu ----------
+    const P = (v: number) => v * 1000;
+    const shapeSvg = (it: Item, extra = '') => {
+      const c = esc(it.color ?? '#ff4655'), w = it.w ?? 6, cls = `wb-shape${sel === it.id ? ' is-sel' : ''}`;
+      if (it.type === 'arrow' || it.type === 'line') return `<line data-id="${it.id}" class="${cls}" x1="${P(it.x)}" y1="${P(it.y)}" x2="${P(it.x2!)}" y2="${P(it.y2!)}" stroke="${c}" stroke-width="${w}" ${it.type === 'arrow' ? `marker-end="url(#ah${c.slice(1)})"` : ''} ${extra}/>`;
+      const x = Math.min(it.x, it.x2!), y = Math.min(it.y, it.y2!), wd = Math.abs(it.x2! - it.x), ht = Math.abs(it.y2! - it.y);
+      if (it.type === 'rect') return `<rect data-id="${it.id}" class="${cls}" x="${P(x)}" y="${P(y)}" width="${P(wd)}" height="${P(ht)}" stroke="${c}" stroke-width="${w}" fill="none" ${extra}/>`;
+      return `<ellipse data-id="${it.id}" class="${cls}" cx="${P(x + wd / 2)}" cy="${P(y + ht / 2)}" rx="${P(wd / 2)}" ry="${P(ht / 2)}" stroke="${c}" stroke-width="${it.type === 'zone' ? 2 : w}" fill="${it.type === 'zone' ? c : 'none'}" fill-opacity="${it.type === 'zone' ? .35 : 0}" ${extra}/>`;
+    };
+    function render() {
+      background();
+      const f = frame();
+      $('[data-frames]').innerHTML = state.frames.map((fr, i) => `<button type="button" data-frame="${i}" aria-pressed="${i === fi}">${esc(fr.name)}</button>`).join('')
+        + `<button type="button" data-frame-add title="Nouvelle étape (copie de l'étape actuelle)">+ Étape</button>`
+        + `<button type="button" data-frame-rename>Renommer</button>`
+        + (state.frames.length > 1 ? `<button type="button" data-frame-del>Supprimer l'étape</button>` : '');
+      $('[data-layer]').innerHTML = f.strokes.map((s) => `<polyline data-stroke="${s.id}" points="${s.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(s.color)}" stroke-width="${s.w}" />`).join('')
+        + f.items.filter((it) => ['arrow', 'line', 'rect', 'circle', 'zone'].includes(it.type)).map((it) => shapeSvg(it)).join('')
+        + (drawing ? `<polyline points="${drawing.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(drawing.color)}" stroke-width="${drawing.w}" />` : '')
+        + (shape ? shapeSvg(shape, 'opacity=".7"') : '');
+      $('[data-items]').innerHTML = f.items.filter((it) => ['tok', 'ping', 'note', 'text'].includes(it.type)).map((it) => {
+        const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
+        if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${it.id}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
+        if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${it.id}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
+        if (it.type === 'ping') return `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${it.id}" style="${s}">${esc(it.label)}</div>`;
+        return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${it.id}" style="${s}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
+      }).join('');
+      const n = $<HTMLTextAreaElement>('[data-notes]');
+      if (document.activeElement !== n) n.value = state.notes ?? '';
+    }
+
+    const pos = (e: PointerEvent | MouseEvent): [number, number] => { const r = stage.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
+    const hint = (t: string | null) => { const h = $('[data-hint]'); h.hidden = !t; h.textContent = t ?? ''; };
+    const setTool = (k: string) => {
+      tool = k; pending = null; hint(null); sel = null; stage.dataset.tool = k;
+      root.querySelectorAll('[data-tool]').forEach((x) => x.setAttribute('aria-pressed', String((x as HTMLElement).dataset.tool === k)));
+      render();
+    };
+    root.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool!)));
     root.querySelectorAll<HTMLElement>('[data-color]').forEach((b) => b.addEventListener('click', () => {
       color = b.dataset.color!; root.querySelectorAll('[data-color]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      const it = frame().items.find((x) => x.id === sel); if (it) { snapshot(); it.color = color; changed(); }
     }));
-    $('[data-clear]').addEventListener('click', () => { if (confirm('Effacer tout le tableau pour tout le roster ?')) { state = { tokens: [], strokes: [] }; changed(); } });
-    const hint = (t: string | null) => { const h = $('[data-hint]'); h.hidden = !t; h.textContent = t ?? ''; };
+    root.querySelectorAll<HTMLElement>('[data-width]').forEach((b) => b.addEventListener('click', () => {
+      width = Number(b.dataset.width); root.querySelectorAll('[data-width]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    }));
+    const doUndo = () => { const s = undo.pop(); if (s) { redo.push(JSON.stringify(state)); state = JSON.parse(s); if (fi >= state.frames.length) fi = 0; changed(); } };
+    const doRedo = () => { const s = redo.pop(); if (s) { undo.push(JSON.stringify(state)); state = JSON.parse(s); if (fi >= state.frames.length) fi = 0; changed(); } };
+    $('[data-undo]').addEventListener('click', doUndo); $('[data-redo]').addEventListener('click', doRedo);
+    $('[data-clear-ink]').addEventListener('click', () => { snapshot(); frame().strokes = []; changed(); });
+    $('[data-clear]').addEventListener('click', () => { if (confirm("Vider l'étape pour tout le roster ?")) { snapshot(); frame().items = []; frame().strokes = []; changed(); } });
+
+    // Étapes
+    $('[data-frames]').addEventListener('click', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('button'); if (!b) return;
+      if (b.dataset.frame !== undefined) { fi = Number(b.dataset.frame); sel = null; render(); return; }
+      if (b.hasAttribute('data-frame-rename')) { const n = prompt("Nom de l'étape", frame().name); if (!n) return; snapshot(); frame().name = n.slice(0, 30); changed(); return; }
+      snapshot();
+      if (b.hasAttribute('data-frame-add')) { const copy = JSON.parse(JSON.stringify(frame())); copy.name = `Étape ${state.frames.length + 1}`; state.frames.splice(fi + 1, 0, copy); fi++; }
+      else if (b.hasAttribute('data-frame-del') && confirm(`Supprimer « ${frame().name} » ?`)) { state.frames.splice(fi, 1); fi = Math.max(0, fi - 1); }
+      changed();
+    });
+
+    // Palette : repères, pings, portraits du jeu
     root.addEventListener('click', (e) => {
       const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b) return;
-      pending = { kind: b.dataset.add as Tok['kind'], ref: b.dataset.ref ?? '', label: b.dataset.label };
-      hint(`Clique sur la carte pour poser ${b.dataset.ref ?? (b.dataset.add === 'ally' ? `l'allié ${b.dataset.label}` : `l'adversaire ${b.dataset.label}`)}`);
+      const k = b.dataset.add!;
+      pending = k === 'ping' ? { type: 'ping', ref: b.dataset.ref, label: b.dataset.label } : { type: 'tok', kind: k, ref: b.dataset.ref, label: b.dataset.label };
+      hint("Clique sur la carte pour poser l'élément");
     });
 
-    // Carte : poser, déplacer, dessiner, gommer
+    // Carte
     stage.addEventListener('pointerdown', (e) => {
       const [x, y] = pos(e);
-      const tok = (e.target as Element).closest<HTMLElement>('[data-tok]');
-      const stroke = (e.target as Element).closest<SVGElement>('[data-stroke]');
-      if (pending) { state.tokens.push({ id: uid(), ...pending, x, y }); pending = null; hint(null); changed(); return; }
+      const tid = (e.target as Element).closest('[data-id]')?.getAttribute('data-id') ?? null;
+      const f = frame();
+      if (pending) { snapshot(); f.items.push({ id: uid(), x, y, ...pending } as Item); pending = null; hint(null); changed(); return; }
       if (tool === 'erase') {
-        if (tok) state.tokens = state.tokens.filter((t) => t.id !== tok.dataset.tok);
-        else if (stroke) state.strokes = state.strokes.filter((s) => s.id !== stroke.dataset.stroke);
-        else return;
-        changed(); return;
+        const st = (e.target as Element).closest('[data-stroke]')?.getAttribute('data-stroke');
+        if (tid) { snapshot(); f.items = f.items.filter((it) => it.id !== tid); changed(); }
+        else if (st) { snapshot(); f.strokes = f.strokes.filter((s) => s.id !== st); changed(); }
+        return;
       }
-      if (tool === 'move' && tok) { dragging = tok.dataset.tok!; stage.setPointerCapture(e.pointerId); return; }
-      if (tool === 'draw') { drawing = { id: uid(), color, pts: [[x, y]] }; stage.setPointerCapture(e.pointerId); }
+      if (tool === 'select') {
+        sel = tid;
+        const it = f.items.find((i) => i.id === tid);
+        if (it) { snapshot(); drag = { id: it.id, dx: x - it.x, dy: y - it.y, dx2: it.x2 !== undefined ? x - it.x2 : undefined, dy2: it.y2 !== undefined ? y - it.y2 : undefined }; stage.setPointerCapture(e.pointerId); }
+        render(); return;
+      }
+      if (tool === 'pen') { drawing = { id: uid(), color, w: width, pts: [[x, y]] }; stage.setPointerCapture(e.pointerId); return; }
+      if (tool === 'note' || tool === 'text') {
+        const txt = prompt(tool === 'note' ? 'Texte du post-it' : 'Texte'); if (!txt) return;
+        snapshot(); f.items.push({ id: uid(), type: tool, x, y, color: tool === 'note' && ['#111111', '#ffffff'].includes(color) ? '#ffd23f' : color, label: txt.slice(0, 200) }); changed(); setTool('select'); return;
+      }
+      if (['arrow', 'line', 'rect', 'circle', 'zone'].includes(tool)) { shape = { id: uid(), type: tool as Item['type'], x, y, x2: x, y2: y, color, w: width }; stage.setPointerCapture(e.pointerId); }
     });
     stage.addEventListener('pointermove', (e) => {
-      if (dragging) { const [x, y] = pos(e); const t = state.tokens.find((k) => k.id === dragging); if (t) { t.x = x; t.y = y; render(); } }
-      else if (drawing) { const p = pos(e); const l = drawing.pts[drawing.pts.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > 0.004) { drawing.pts.push(p); render(); } }
+      const [x, y] = pos(e);
+      if (drag) {
+        const it = frame().items.find((i) => i.id === drag!.id); if (!it) return;
+        it.x = x - drag.dx; it.y = y - drag.dy;
+        if (drag.dx2 !== undefined) { it.x2 = x - drag.dx2; it.y2 = y - drag.dy2!; }
+        render();
+      } else if (drawing) { const l = drawing.pts[drawing.pts.length - 1]; if (Math.hypot(x - l[0], y - l[1]) > .003) { drawing.pts.push([Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000]); render(); } }
+      else if (shape) { shape.x2 = x; shape.y2 = y; render(); }
     });
     const end = () => {
-      if (dragging) { dragging = null; changed(); }
-      if (drawing) { if (drawing.pts.length > 1) state.strokes.push(drawing); drawing = null; changed(); }
+      if (drag) { drag = null; changed(); }
+      if (drawing) { if (drawing.pts.length > 1) { snapshot(); frame().strokes.push(drawing); } drawing = null; changed(); }
+      if (shape) { if (Math.hypot(shape.x2! - shape.x, shape.y2! - shape.y) > .01) { snapshot(); frame().items.push(shape); } shape = null; changed(); }
     };
     stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+    stage.addEventListener('dblclick', (e) => {
+      const tid = (e.target as Element).closest('[data-id]')?.getAttribute('data-id');
+      const it = frame().items.find((i) => i.id === tid && (i.type === 'note' || i.type === 'text'));
+      if (!it) return;
+      const txt = prompt('Modifier le texte', it.label); if (txt === null) return;
+      snapshot(); it.label = txt.slice(0, 200); changed();
+    });
+    document.addEventListener('keydown', (e) => {
+      if ((e.target as HTMLElement).matches('input, textarea, select')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doUndo(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); }
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { snapshot(); frame().items = frame().items.filter((i) => i.id !== sel); sel = null; changed(); }
+    });
 
-    // Palette (agents ou champions) et fond de carte
+    // Notes et fond
+    const notes = $<HTMLTextAreaElement>('[data-notes]');
+    notes.addEventListener('focus', () => (editingNotes = true));
+    notes.addEventListener('blur', () => { editingNotes = false; });
+    notes.addEventListener('input', () => { state.notes = notes.value; dirty = true; clearTimeout(saveTimer); saveTimer = window.setTimeout(save, 600); });
+    $('[data-bg-select]').addEventListener('change', (e) => {
+      let v = (e.target as HTMLSelectElement).value;
+      if (v === 'url') { const u = prompt("Lien de l'image (https://…)"); if (!u || !/^https?:\/\//.test(u)) { background(); return; } v = u; }
+      snapshot(); state.bg = v; (e.target as HTMLSelectElement).blur(); changed();
+    });
+
+    // Portraits selon le jeu du roster
     const pal = $('[data-pal]');
-    const fill = (items: { name: string; icon: string }[]) => {
+    const fill = (title: string, items: { name: string; icon: string }[]) => {
       items.forEach((i) => icons.set(i.name, i.icon));
+      $('[data-pal-title]').textContent = title; $('[data-pal-title]').hidden = false; $('[data-pal-search]').hidden = false;
       const draw = () => {
         const q = $<HTMLInputElement>('[data-pal-search]').value.toLowerCase();
         pal.innerHTML = items.filter((i) => !q || i.name.toLowerCase().includes(q)).map((i) => `<button type="button" data-add="pic" data-ref="${esc(i.name)}" title="${esc(i.name)}"><img src="${esc(i.icon)}" alt="${esc(i.name)}" width="36" height="36" loading="lazy" /></button>`).join('');
       };
       $('[data-pal-search]').addEventListener('input', draw); draw(); render();
     };
-    if (game === 'rl') {
-      // Terrain vu du dessus : buts en haut et en bas, cercle central, surfaces, pastilles de boost
-      const pads = [[.08, .5], [.92, .5], [.08, .1], [.92, .1], [.08, .9], [.92, .9]].map(([x, y]) => `<circle cx="${x * 600}" cy="${y * 1000}" r="16" fill="#ffb020" opacity=".85"/>`).join('');
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1000"><rect width="600" height="1000" fill="#1d5a2f"/>`
-        + `<rect x="20" y="40" width="560" height="920" rx="70" fill="#247038" stroke="#fff" stroke-width="5"/>`
-        + `<line x1="20" y1="500" x2="580" y2="500" stroke="#fff" stroke-width="4"/><circle cx="300" cy="500" r="90" fill="none" stroke="#fff" stroke-width="4"/>`
-        + `<rect x="210" y="8" width="180" height="34" fill="#ff7a1a" stroke="#fff" stroke-width="4"/><rect x="210" y="958" width="180" height="34" fill="#2f6bff" stroke="#fff" stroke-width="4"/>`
-        + `<rect x="150" y="40" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/><rect x="150" y="820" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>`
-        + pads + `</svg>`;
-      $<HTMLImageElement>('[data-mapimg]').src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      // Pas de portraits en Rocket League : les repères numérotés et la balle suffisent
-      fill([{ name: 'Balle', icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#eee" stroke="#555" stroke-width="3"/><path d="M8 14h24M8 26h24M20 2v36" stroke="#999" stroke-width="2"/></svg>')}` }]);
-    } else if (game === 'lol') {
-      $<HTMLImageElement>('[data-mapimg]').src = LOL_MAP;
-      fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()).then(async (v) => {
-        const d = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v[0]}/data/fr_FR/champion.json`).then((r) => r.json());
-        fill(Object.values<any>(d.data).map((c) => ({ name: c.name, icon: `https://ddragon.leagueoflegends.com/cdn/${v[0]}/img/champion/${c.id}.png` })).sort((a, b) => a.name.localeCompare(b.name, 'fr')));
-      });
-    } else {
-      Promise.all([fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()), fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=fr-FR').then((r) => r.json())]).then(([m, a]) => {
-        $<HTMLImageElement>('[data-mapimg]').src = m.data.find((x: any) => x.displayName === map)?.displayIcon ?? '';
-        fill(a.data.map((x: any) => ({ name: x.displayName, icon: x.displayIcon })).sort((p: any, q: any) => p.name.localeCompare(q.name, 'fr')));
-      });
-    }
+    if (game === 'lol') fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()).then(async (v) => {
+      const d = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v[0]}/data/fr_FR/champion.json`).then((r) => r.json());
+      fill('Champions', Object.values<any>(d.data).map((c) => ({ name: c.name, icon: `https://ddragon.leagueoflegends.com/cdn/${v[0]}/img/champion/${c.id}.png` })).sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+    }).catch(() => {});
+    if (game === 'valo') fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=fr-FR').then((r) => r.json())
+      .then((a) => fill('Agents', a.data.map((x: any) => ({ name: x.displayName, icon: x.displayIcon })).sort((p: any, q: any) => p.name.localeCompare(q.name, 'fr')))).catch(() => {});
+
     stage.dataset.tool = tool;
+    loadValo().then(render);
+    render();
+    setInterval(poll, 1500); poll();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
   }
 </script>
 
@@ -251,43 +406,76 @@ const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); 
   .tb-list a { display: grid; gap: .2rem; padding: .8rem 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; }
   .tb-list a:hover { border-color: var(--ink); }
   .tb-list span { color: var(--muted); font-size: var(--step--1); }
-  .tb-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem; }
-  .tb-bar h2 { font-size: var(--step-1); }
-  .tb-back { color: var(--muted); font-weight: 700; }
-  .tb-live { margin: 0 0 0 auto; display: flex; align-items: center; gap: .4rem; font-size: .82rem; font-weight: 700; color: #1f8f55; }
-  .tb-live span { width: .55rem; height: .55rem; border-radius: 50%; background: currentColor; }
-  .tb-live.is-off { color: var(--muted); }
-  .tb-tools { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .75rem; }
-  .tb-tools > button { min-height: 40px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
-  .tb-tools > button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-  .tb-colors { display: flex; gap: .3rem; padding: 0 .5rem; }
-  .tb-colors button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: var(--c); cursor: pointer; }
-  .tb-colors button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 1px; }
-  .tb-main { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: 1rem; align-items: start; }
-  .tb-stage { position: relative; aspect-ratio: 1; max-width: 48rem; background: #0f1923; border: 1px solid var(--line); touch-action: none; user-select: none; overflow: hidden; }
-  .tb-stage[data-tool="draw"] { cursor: crosshair; }
-  .tb-stage[data-tool="erase"] { cursor: not-allowed; }
-  .tb-stage img[data-mapimg] { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-  .tb-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .tb-stage :global(polyline) { fill: none; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
-  .tb-tokens { position: absolute; inset: 0; pointer-events: none; }
-  .tb-tokens :global(.tb-tok) { position: absolute; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; pointer-events: auto;
-    font: 700 .85rem var(--font-body); color: #fff; border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .5); cursor: grab; background: #0f1923; overflow: hidden; }
-  .tb-tokens :global(.tb-tok img) { width: 100%; height: 100%; object-fit: cover; }
-  .tb-tokens :global(.is-ally) { background: #2f6bff; } .tb-tokens :global(.is-enemy) { background: #e5251f; }
-  .tb-hint { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); margin: 0; padding: .4rem .8rem; background: var(--lacquer); color: #fff; font-weight: 700; font-size: .85rem; white-space: nowrap; }
-  .tb-hint[hidden] { display: none; }
-  .tb-palette { display: grid; gap: .5rem; align-content: start; }
-  .tb-pal-h { font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .5rem 0 0; }
-  .tb-markers { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
-  .tb-markers button { aspect-ratio: 1; border-radius: 50%; border: 2px solid #fff; color: #fff; font-weight: 700; cursor: pointer; }
-  .tb-markers .is-ally { background: #2f6bff; } .tb-markers .is-enemy { background: #e5251f; }
-  .tb-palette input { min-height: 38px; padding: 0 .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
-  .tb-pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; max-height: 22rem; overflow-y: auto; }
-  .tb-pal :global(button) { padding: 0; border: 2px solid transparent; background: none; cursor: pointer; }
-  .tb-pal :global(button:hover) { border-color: var(--lacquer); }
-  .tb-pal :global(img) { width: 100%; height: auto; display: block; }
-  .tb-del { margin-top: 1.5rem; }
-  .tb-link { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: var(--step--1); }
-  @media (max-width: 900px) { .tb-main { grid-template-columns: 1fr; } }
+
+  .wb-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: .6rem; }
+  .wb-bar h2 { font-size: var(--step-1); }
+  .wb-back { color: var(--muted); font-weight: 700; }
+  .wb-live { margin: 0 0 0 auto; display: flex; align-items: center; gap: .4rem; font-size: .82rem; font-weight: 700; color: #1f8f55; }
+  .wb-live em { font-style: normal; }
+  .wb-live span { width: .55rem; height: .55rem; border-radius: 50%; background: currentColor; }
+  .wb-live.is-off { color: var(--muted); }
+  .wb-frames { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .6rem; }
+  .wb-frames :global(button) { min-height: 34px; padding: 0 .8rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .8rem var(--font-body); cursor: pointer; }
+  .wb-frames :global(button[aria-pressed="true"]) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .wb-frames :global([data-frame-add]), .wb-frames :global([data-frame-del]), .wb-frames :global([data-frame-rename]) { border-style: dashed; color: var(--muted); }
+  .wb-tools { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; padding: .5rem; border: 1px solid var(--line); margin-bottom: .75rem; background: var(--surface); position: sticky; top: 76px; z-index: 3; }
+  .wb-group { display: flex; gap: .25rem; align-items: center; }
+  .wb-group + .wb-group { padding-left: .9rem; border-left: 1px solid var(--line); }
+  .wb-tools button { min-width: 38px; min-height: 38px; padding: 0 .5rem; border: 1.5px solid transparent; background: none; color: var(--ink); font: 700 .78rem var(--font-body); cursor: pointer; display: grid; place-items: center; }
+  .wb-tools button:hover { border-color: var(--line); }
+  .wb-tools button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .wb-tools svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .wb-colors button { min-width: 26px; min-height: 26px; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); border: 2px solid var(--line); }
+  .wb-colors button[aria-pressed="true"] { background: var(--c); outline: 3px solid var(--ink); outline-offset: 1px; }
+  .wb-group [data-width] span { display: block; width: 18px; background: currentColor; border-radius: 2px; }
+  .wb-main { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1rem; align-items: start; }
+  .wb-stage { position: relative; aspect-ratio: 1; max-width: 52rem; margin-inline: auto; width: 100%; border: 1px solid var(--line); touch-action: none; user-select: none; overflow: hidden; background: #0f1923; }
+  .wb-stage[data-tool="pen"], .wb-stage[data-tool="arrow"], .wb-stage[data-tool="line"], .wb-stage[data-tool="rect"], .wb-stage[data-tool="circle"], .wb-stage[data-tool="zone"] { cursor: crosshair; }
+  .wb-stage[data-tool="note"], .wb-stage[data-tool="text"] { cursor: text; }
+  .wb-stage[data-tool="erase"] { cursor: not-allowed; }
+  .wb-bg { position: absolute; inset: 0; background: #0f1923 center / contain no-repeat; }
+  .wb-bg.is-blank { background-color: #fbfaf7; }
+  .wb-bg.is-grid { background-color: #fbfaf7; background-image: linear-gradient(#e3e0d8 1px, transparent 1px), linear-gradient(90deg, #e3e0d8 1px, transparent 1px); background-size: 5% 5%; }
+  .wb-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .wb-svg :global(polyline) { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .wb-svg :global(.wb-shape) { vector-effect: non-scaling-stroke; stroke-linecap: round; }
+  .wb-svg :global(.wb-shape.is-sel) { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 3px #000); }
+  .wb-items { position: absolute; inset: 0; pointer-events: none; }
+  .wb-items :global(> *) { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; }
+  .wb-stage:is([data-tool="pen"], [data-tool="arrow"], [data-tool="line"], [data-tool="rect"], [data-tool="circle"], [data-tool="zone"]) .wb-items :global(> *) { pointer-events: none; }
+  .wb-items :global(.is-sel) { outline: 3px solid #ffd23f; outline-offset: 2px; }
+  .wb-items :global(.wb-tok) { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 .85rem var(--font-body); color: #fff; border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .5); cursor: grab; background: #0f1923; overflow: hidden; }
+  .wb-items :global(.wb-tok img) { width: 100%; height: 100%; object-fit: cover; }
+  .wb-items :global(.wb-tok.is-ally) { background: #2f6bff; } .wb-items :global(.wb-tok.is-enemy) { background: #e5251f; }
+  .wb-items :global(.wb-ping), .wb-pings span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 .9rem var(--font-body); color: #111; background: #ffd23f; border: 2px solid #111; }
+  .wb-items :global(.wb-ping) { cursor: grab; }
+  .wb-items :global(.is-danger), .wb-pings .is-danger { background: #ff4655; color: #fff; }
+  .wb-items :global(.is-vision), .wb-pings .is-vision { background: #fff; }
+  .wb-items :global(.is-balle), .wb-pings .is-balle { background: #eee; color: #555; }
+  .wb-items :global(.wb-note) { max-width: 12rem; padding: .5rem .65rem; background: var(--c); color: #111; font: 700 .8rem/1.3 var(--font-body); box-shadow: 0 3px 8px rgb(0 0 0 / .35); cursor: grab; white-space: pre-wrap; transform: translate(-50%, -50%) rotate(-1.5deg); }
+  .wb-items :global(.wb-text) { font: 700 1rem var(--font-body); text-shadow: 0 1px 3px rgb(0 0 0 / .6); cursor: grab; white-space: pre-wrap; max-width: 16rem; }
+  .wb-hint { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); margin: 0; padding: .4rem .8rem; background: var(--lacquer); color: #fff; font-weight: 700; font-size: .85rem; white-space: nowrap; z-index: 2; }
+  .wb-hint[hidden] { display: none; }
+  .wb-side { display: grid; gap: .75rem; align-content: start; }
+  .wb-side details { border: 1px solid var(--line); padding: .6rem .7rem; }
+  .wb-side summary { cursor: pointer; font-weight: 700; font-size: .85rem; }
+  .wb-side details[open] summary { margin-bottom: .6rem; }
+  .wb-markers { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+  .wb-markers button { aspect-ratio: 1; border-radius: 50%; border: 2px solid #fff; color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
+  .wb-markers .is-ally { background: #2f6bff; } .wb-markers .is-enemy { background: #e5251f; }
+  .wb-pings { display: grid; gap: .25rem; margin-top: .6rem; }
+  .wb-pings button { display: flex; align-items: center; gap: .5rem; padding: .25rem .4rem; border: 1px solid var(--line); background: none; color: var(--ink); font: 400 .8rem var(--font-body); cursor: pointer; text-align: left; }
+  .wb-pings span { width: 22px; height: 22px; flex: none; font-size: .75rem; }
+  .wb-pal-h { font-weight: 700; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .7rem 0 .3rem; }
+  .wb-pal-h[hidden], .wb-side input[hidden] { display: none; }
+  .wb-side input, .wb-side select, .wb-side textarea { width: 100%; box-sizing: border-box; min-height: 36px; padding: .35rem .55rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .9rem var(--font-body); }
+  .wb-side textarea { line-height: 1.45; resize: vertical; }
+  .wb-pal { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 3px; max-height: 15rem; overflow-y: auto; margin-top: .4rem; }
+  .wb-pal :global(button) { padding: 0; border: 2px solid transparent; background: none; cursor: pointer; }
+  .wb-pal :global(button:hover) { border-color: var(--lacquer); }
+  .wb-pal :global(img) { width: 100%; height: auto; display: block; }
+  .wb-help { margin: 0; }
+  .wb-del { margin-top: 1.5rem; }
+  .wb-link { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: var(--step--1); }
+  @media (max-width: 1000px) { .wb-main { grid-template-columns: 1fr; } .wb-tools { top: 70px; } }
 </style>

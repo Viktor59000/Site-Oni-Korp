@@ -19,15 +19,15 @@ const tools = (r: RosterRow) => [
   ...(r.game === 'lol' ? [['lol', `/equipe/lol/?r=${r.slug}`, 'Drafter']] : []),
   ...(r.game === 'valo' ? [['valo', `/equipe/valo/?r=${r.slug}`, 'Lineups']] : []),
   ...(r.game === 'osu' ? [['osu', `/equipe/osu/?r=${r.slug}`, 'Défis et maps']] : []),
-  ...(['valo', 'lol', 'rl'].includes(r.game) ? [['tactique', `/equipe/tactique/?r=${r.slug}`, 'Tableau tactique']] : []),
+  ['tactique', `/equipe/tactique/?r=${r.slug}`, 'Tableau blanc'],
   ['setup', `/equipe/setup/?r=${r.slug}`, 'Setups'],
   ['joueurs', `/equipe/joueurs/?r=${r.slug}`, 'Joueurs'],
   ['docs', `/equipe/docs/?r=${r.slug}`, 'Docs'],
 ];
 const all = [
   ['planning', '/equipe/', 'Planning'], ['stats', '/equipe/stats/', 'Stats'], ['objectifs', '/equipe/objectifs/', 'Objectifs'], ['notes', '/equipe/notes/', 'Notes de match'],
-  ['vod', '/equipe/vod/', 'VOD'], ['setup', '/equipe/setup/', 'Setups'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['docs', '/equipe/docs/', 'Docs'],
-  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['osu', '/equipe/osu/', 'osu!'], ['tactique', '/equipe/tactique/', 'Tableau tactique']] : []),
+  ['vod', '/equipe/vod/', 'VOD'], ['tactique', '/equipe/tactique/', 'Tableau blanc'], ['setup', '/equipe/setup/', 'Setups'], ['joueurs', '/equipe/joueurs/', 'Joueurs'], ['docs', '/equipe/docs/', 'Docs'],
+  ...(staff ? [['lol', '/equipe/lol/', 'Drafter LoL'], ['valo', '/equipe/valo/', 'Lineups Valorant'], ['osu', '/equipe/osu/', 'osu!']] : []),
 ];
 const activeRoster = rosters.find((r) => r.slug === active);
 ---

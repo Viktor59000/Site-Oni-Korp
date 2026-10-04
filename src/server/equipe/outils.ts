@@ -161,6 +161,17 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(n ? `/equipe/docs/?d=${n.id}${qs}` : back);
   }
 
+  if (action === 'replay') {
+    const id = Number(f.get('match'));
+    const [m] = await rows<{ roster_id: number }>('SELECT roster_id FROM matches WHERE id = ?', id);
+    if (!m || !canRoster(Number(m.roster_id))) return redirect(back);
+    await exec(`CREATE TABLE IF NOT EXISTS match_replays (match_id INTEGER, replay TEXT, status TEXT DEFAULT 'attente', at INTEGER, PRIMARY KEY (match_id, replay))`).catch(() => {});
+    // Liens ballchasing.com/replay/<uuid> : Oni Bot importe les stats dans la minute
+    const ids = [...String(f.get('replays') ?? '').matchAll(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi)].map((x) => x[1].toLowerCase()).slice(0, 7);
+    for (const r of ids) await exec(`INSERT OR IGNORE INTO match_replays (match_id, replay, status, at) VALUES (?,?, 'attente', ?)`, id, r, Date.now());
+    return redirect(back);
+  }
+
   if (action === 'osu-map') {
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
@@ -198,11 +209,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (action === 'tableau') {
     const roster = Number(f.get('roster'));
-    const game = ['lol', 'rl'].includes(clip(f.get('game'), 5)) ? clip(f.get('game'), 5) : 'valo';
+    const game = ['lol', 'rl', 'valo', 'osu'].includes(clip(f.get('game'), 5)) ? clip(f.get('game'), 5) : '';
+    const url = clip(f.get('url'), 400);
+    const bgRaw = clip(f.get('map'), 40);
+    const bg = bgRaw === 'url' ? (/^https?:\/\//.test(url) ? url : 'blanc') : bgRaw || 'blanc';
     if (!canRoster(roster)) return redirect(back);
     await exec(`CREATE TABLE IF NOT EXISTS boards (id INTEGER PRIMARY KEY, roster_id INTEGER, game TEXT, map TEXT, title TEXT, state TEXT, updated_at INTEGER, updated_by TEXT)`).catch(() => {});
     const [b] = await rows<{ id: number }>('INSERT INTO boards (roster_id, game, map, title, state, updated_at, updated_by) VALUES (?,?,?,?,?,?,?) RETURNING id',
-      roster, game, game === 'lol' ? 'Faille' : game === 'rl' ? 'Terrain' : clip(f.get('map'), 40) || 'Ascent', clip(f.get('title'), 60) || 'Tableau', '{}', Date.now(), user.id);
+      roster, game, bg, clip(f.get('title'), 60) || 'Tableau', JSON.stringify({ bg, notes: '', frames: [{ name: 'Étape 1', items: [], strokes: [] }] }), Date.now(), user.id);
     const r = new URL(back, 'http://x').searchParams.get('r');
     return redirect(b ? `/equipe/tactique/?b=${b.id}${r ? `&r=${r}` : ''}` : back);
   }
