@@ -8,7 +8,8 @@ export const GET: APIRoute = async () => {
   const url = process.env.TURSO_DATABASE_URL;
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' };
   if (!url) return new Response(JSON.stringify({ aVenir: [], resultats: [] }), { headers });
-  const db = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
+  // Noms posés par l'intégration Turso de Vercel (préfixe TURSO_DATABASE) ou à la main
+  const db = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN ?? process.env.TURSO_DATABASE_AUTH_TOKEN });
   const q = `SELECT m.id, m.game, m.opponent, m.format, m.at, m.link, m.score_us, m.score_them, r.name AS roster
              FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id WHERE m.cancelled = 0`;
   const now = Date.now();
