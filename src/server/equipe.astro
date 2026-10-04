@@ -1,11 +1,13 @@
 ---
-// Espace équipe (connexion Discord) : séances à venir avec réponse en un clic, disponibilités, et pour l'encadrement le bilan de présence.
+// Espace équipe (connexion Discord) : matchs et scrims du roster, séances avec réponse en un clic, disponibilités,
+// agenda perso à synchroniser, et pour l'encadrement le bilan de présence.
 // Les données viennent de la base partagée avec Oni Bot ; une réponse ici met à jour le message Discord dans la minute.
 import Base from '../layouts/Base.astro';
-import { getSession } from './session';
+import { getSession, icsKey } from './session';
 import { rows, weekKey } from './db';
 import { access } from './equipe/access';
 import { SLOTS } from './equipe/dispos';
+import { kindLabel } from './ics';
 
 export const prerender = false;
 
@@ -13,28 +15,39 @@ const user = getSession(Astro.cookies);
 const erreur = Astro.url.searchParams.get('erreur');
 const me = user ? await access(user.id) : null;
 
-const GAME: Record<string, { label: string; color: string }> = {
-  rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
-  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#72d3a8' },
+const GAME: Record<string, { label: string; color: string; img: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff', img: 'pole-rocket-league-600' }, lol: { label: 'League of Legends', color: '#0f8a9b', img: 'pole-lol-600' },
+  valo: { label: 'Valorant', color: '#ff4655', img: 'pole-valorant-600' }, osu: { label: 'osu!', color: '#72d3a8', img: 'pole-osu-600' },
 };
 const DAYS: [string, string][] = [['lun', 'Lun'], ['mar', 'Mar'], ['mer', 'Mer'], ['jeu', 'Jeu'], ['ven', 'Ven'], ['sam', 'Sam'], ['dim', 'Dim']];
-const when = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+const tz = { timeZone: 'Europe/Paris' } as const;
+const fDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', ...tz });
+const fMonth = new Intl.DateTimeFormat('fr-FR', { month: 'short', ...tz });
+const fWhen = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', ...tz });
 const week = weekKey(true);
 const weekLabel = week.split('-').reverse().join('/');
 
+// Agenda perso : lien secret à ajouter une fois dans Google / Apple / Outlook
+const host = Astro.url.host;
+const icsPath = user && process.env.SESSION_SECRET ? `/api/equipe/agenda.ics?u=${user.id}&k=${icsKey(user.id)}` : null;
+const icsGoogle = icsPath ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`webcal://${host}${icsPath}`)}` : null;
+
 type T = { id: number; roster_id: number; at: number; duration: number; kind: string; note: string | null };
 type A = { training_id: number; user_id: string; status: string; reason: string | null };
+type Mb = { id: string; name: string; avatar: string };
 
 const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
-  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
-  const names = new Map(members.map((m) => [m.id, m.name]));
+  const members = await rows<Mb>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const byId = new Map(members.map((m) => [m.id, m]));
   const trainings = await rows<T>('SELECT * FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 8', r.id, Date.now() - 3 * 3600_000);
+  const games = await rows<{ id: number; opponent: string; format: string; at: number; kind: string | null; link: string | null }>(
+    'SELECT id, opponent, format, at, kind, link FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 6', r.id, Date.now() - 3 * 3600_000);
   const answers = trainings.length ? await rows<A>(`SELECT * FROM attendance WHERE training_id IN (${trainings.map(() => '?').join(',')})`, ...trainings.map((t) => t.id)) : [];
   const dispo = await rows<{ user_id: string; slots: string }>('SELECT user_id, slots FROM availability WHERE roster_id = ? AND week = ?', r.id, week);
   const mySlots: string[] = JSON.parse(dispo.find((d) => d.user_id === user!.id)?.slots ?? '[]');
   const counts = new Map(SLOTS.map((s) => [s, dispo.filter((d) => (JSON.parse(d.slots) as string[]).includes(s)).length]));
   // Bilan 30 jours (encadrement)
-  let bilan: { name: string; rate: number; p: number; a: number; m: number; n: number }[] = [];
+  let bilan: { name: string; avatar: string; rate: number; p: number; a: number; m: number; n: number }[] = [];
   let past = 0;
   if (me.staff) {
     const done = await rows<{ id: number }>('SELECT id FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at BETWEEN ? AND ?', r.id, Date.now() - 30 * 86400_000, Date.now());
@@ -43,25 +56,56 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
     bilan = members.map((m) => {
       const mine = ans.filter((x) => x.user_id === m.id);
       const p = mine.filter((x) => x.status === 'present').length;
-      return { name: m.name, p, a: mine.filter((x) => x.status === 'absent').length, m: mine.filter((x) => x.status === 'peut-etre').length, n: past - mine.length, rate: past ? Math.round((p / past) * 100) : 0 };
+      return { name: m.name, avatar: m.avatar, p, a: mine.filter((x) => x.status === 'absent').length, m: mine.filter((x) => x.status === 'peut-etre').length, n: past - mine.length, rate: past ? Math.round((p / past) * 100) : 0 };
     }).sort((x, y) => y.rate - x.rate);
   }
   return {
-    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f' }, members, past, bilan, mySlots, counts, total: members.length || 1,
+    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f', img: '' }, members, past, bilan, mySlots, counts, total: members.length || 1, games,
     trainings: trainings.map((t) => {
       const list = answers.filter((a) => a.training_id === t.id);
-      const by = (s: string) => list.filter((a) => a.status === s).map((a) => (names.get(a.user_id) ?? 'Membre') + (a.reason ? ` (${a.reason})` : ''));
-      return { ...t, mine: list.find((a) => a.user_id === user!.id)?.status ?? null, present: by('present'), maybe: by('peut-etre'), absent: by('absent'), waiting: members.filter((m) => !list.some((a) => a.user_id === m.id)).map((m) => m.name) };
+      const who = (s: string) => list.filter((a) => a.status === s).map((a) => ({ ...(byId.get(a.user_id) ?? { id: a.user_id, name: 'Membre', avatar: '' }), reason: a.reason }));
+      return {
+        ...t, mine: list.find((a) => a.user_id === user!.id)?.status ?? null,
+        groups: [
+          { key: 'ok', label: 'Présents', people: who('present') },
+          { key: 'maybe', label: 'Peut-être', people: who('peut-etre') },
+          { key: 'ko', label: 'Absents', people: who('absent') },
+          { key: 'wait', label: 'Sans réponse', people: members.filter((m) => !list.some((a) => a.user_id === m.id)).map((m) => ({ ...m, reason: null })) },
+        ],
+        answered: list.length,
+      };
     }),
   };
 })) : [];
+const date = (ms: number) => new Date(Number(ms));
 ---
 <Base title="Espace équipe" description="Espace réservé aux joueurs et au staff d'Oni Korp.">
-  <header class="page-head">
+  <header class="page-head eq-head">
     <div class="wrap">
       <h1>Espace équipe</h1>
       {user
-        ? <p class="eq-who">{user.avatar && <img src={user.avatar} alt="" width="40" height="40" />}Connecté en tant que <strong>{me?.member?.name ?? user.name}</strong>{me?.staff && <span class="eq-tag">Encadrement</span>} · <a href="/api/auth/logout">Se déconnecter</a></p>
+        ? (
+          <div class="eq-who">
+            {(me?.member?.avatar ?? user.avatar) && <img src={me?.member?.avatar ?? user.avatar!} alt="" width="48" height="48" />}
+            <div>
+              <p><strong>{me?.member?.name ?? user.name}</strong>{me?.staff && <span class="eq-tag">Encadrement</span>}</p>
+              <p class="eq-note"><a href="/api/auth/logout">Se déconnecter</a></p>
+            </div>
+            {icsPath && me?.rosters.length ? (
+              <details class="eq-cal">
+                <summary class="btn btn--ghost">Mon agenda perso</summary>
+                <div class="eq-cal__panel">
+                  <p>Séances, scrims et matchs de {me.staff ? 'tous les rosters' : 'ton roster'}, dans ton agenda. À ajouter une seule fois : il se met à jour tout seul.</p>
+                  <a class="btn" href={icsGoogle!} rel="noopener">Google Agenda</a>
+                  <a class="btn btn--ghost" href={`webcal://${host}${icsPath}`}>Apple · Outlook</a>
+                  <label class="eq-note">Lien personnel (ne le partage pas)
+                    <input type="text" readonly value={`https://${host}${icsPath}`} onfocus="this.select()" />
+                  </label>
+                </div>
+              </details>
+            ) : null}
+          </div>
+        )
         : <p>Séances, présences et disponibilités de ton roster, reliées au Discord du club.</p>}
     </div>
   </header>
@@ -97,34 +141,74 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
         </div>
       )}
 
+      {spaces.length > 1 && (
+        <nav class="eq-jump" aria-label="Rosters">
+          {spaces.map((s) => <a href={`#roster-${s.r.slug}`} style={`--team:${s.g.color}`}>{s.r.name}</a>)}
+        </nav>
+      )}
+
       {spaces.map((s) => (
         <article class="eq-roster" style={`--team:${s.g.color}`} id={`roster-${s.r.slug}`}>
-          <h2>{s.r.name} <span>{s.g.label} · {s.members.length} joueur{s.members.length > 1 ? 's' : ''}</span></h2>
+          <header class="eq-roster__head">
+            {s.g.img && <img src={`/img/${s.g.img}.webp`} alt="" width="72" height="72" loading="lazy" />}
+            <div>
+              <h2>{s.r.name}</h2>
+              <p>{s.g.label} · {s.members.length} joueur{s.members.length > 1 ? 's' : ''}</p>
+            </div>
+            <ul class="eq-faces" aria-label="Joueurs du roster">
+              {s.members.map((m) => <li title={m.name}><img src={m.avatar} alt="" width="32" height="32" loading="lazy" /><span class="sr-only">{m.name}</span></li>)}
+            </ul>
+          </header>
+
+          {s.games.length > 0 && (
+            <>
+              <h3>Matchs et scrims</h3>
+              <ol class="eq-games">
+                {s.games.map((m) => (
+                  <li>
+                    <time class="eq-date" datetime={date(m.at).toISOString()}><b>{fDay.format(date(m.at))}</b>{fMonth.format(date(m.at))}</time>
+                    <div>
+                      <p class="eq-games__vs">vs {m.opponent}</p>
+                      <p class="eq-note">{fWhen.format(date(m.at))} · {m.format}</p>
+                    </div>
+                    <span class:list={['eq-kind', { 'is-public': (m.kind ?? 'officiel') !== 'scrim' }]}>{kindLabel(m.kind)}</span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
 
           <h3>Prochaines séances</h3>
           {s.trainings.length ? (
             <ol class="eq-list">
               {s.trainings.map((t) => (
                 <li class="eq-seance" id={`seance-${t.id}`}>
-                  <div class="eq-seance__head">
-                    <strong>{t.kind}</strong>
-                    <time datetime={new Date(Number(t.at)).toISOString()}>{when.format(new Date(Number(t.at)))}</time>
-                    <span>{t.duration} min</span>
+                  <time class="eq-date" datetime={date(t.at).toISOString()}><b>{fDay.format(date(t.at))}</b>{fMonth.format(date(t.at))}</time>
+                  <div class="eq-seance__body">
+                    <p class="eq-seance__title"><strong>{t.kind}</strong> <span>{fWhen.format(date(t.at))} · {t.duration} min</span></p>
+                    {t.note && <p class="eq-seance__note">{t.note}</p>}
+                    <form method="post" action="/api/equipe/presence" class="eq-answer">
+                      <input type="hidden" name="training" value={t.id} />
+                      <div class="eq-seg" role="group" aria-label="Ma réponse">
+                        <button name="status" value="present" class:list={['is-ok', { 'is-on': t.mine === 'present' }]} aria-pressed={t.mine === 'present'}>Présent</button>
+                        <button name="status" value="peut-etre" class:list={['is-maybe', { 'is-on': t.mine === 'peut-etre' }]} aria-pressed={t.mine === 'peut-etre'}>Peut-être</button>
+                        <button name="status" value="absent" class:list={['is-ko', { 'is-on': t.mine === 'absent' }]} aria-pressed={t.mine === 'absent'}>Absent</button>
+                      </div>
+                      <input name="reason" type="text" maxlength="100" placeholder="Raison (si absent ou peut-être)" aria-label="Raison" />
+                    </form>
+                    <div class="eq-who-list">
+                      <span class="eq-count"><b>{t.answered}</b>/{s.members.length} réponses</span>
+                      {t.groups.filter((g) => g.people.length).map((g) => (
+                        <ul class={`eq-chips is-${g.key}`} aria-label={g.label}>
+                          {g.people.map((p) => (
+                            <li title={p.reason ? `${p.name} · ${p.reason}` : p.name}>
+                              {p.avatar && <img src={p.avatar} alt="" width="24" height="24" loading="lazy" />}{p.name}{p.reason && <small>{p.reason}</small>}
+                            </li>
+                          ))}
+                        </ul>
+                      ))}
+                    </div>
                   </div>
-                  {t.note && <p class="eq-seance__note">{t.note}</p>}
-                  <form method="post" action="/api/equipe/presence" class="eq-answer">
-                    <input type="hidden" name="training" value={t.id} />
-                    <button name="status" value="present" class:list={['eq-btn', 'is-ok', { 'is-on': t.mine === 'present' }]}>Présent</button>
-                    <button name="status" value="peut-etre" class:list={['eq-btn', { 'is-on': t.mine === 'peut-etre' }]}>Peut-être</button>
-                    <input name="reason" type="text" maxlength="100" placeholder="Raison si absent" aria-label="Raison de l'absence" />
-                    <button name="status" value="absent" class:list={['eq-btn', 'is-ko', { 'is-on': t.mine === 'absent' }]}>Absent</button>
-                  </form>
-                  <p class="eq-seance__who">
-                    <span>✅ {t.present.join(', ') || '—'}</span>
-                    <span>❔ {t.maybe.join(', ') || '—'}</span>
-                    <span>❌ {t.absent.join(', ') || '—'}</span>
-                    <span>⏳ {t.waiting.join(', ') || 'tout le monde a répondu'}</span>
-                  </p>
                 </li>
               ))}
             </ol>
@@ -140,13 +224,15 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
                 {[['aprem', 'Après-midi'], ['soir', 'Soir']].map(([k, label]) => (
                   <tr>
                     <th scope="row">{label}</th>
-                    {DAYS.map(([d]) => {
+                    {DAYS.map(([d, dl]) => {
                       const slot = `${d}-${k}`;
+                      const n = s.counts.get(slot) ?? 0;
                       return (
                         <td>
-                          <label class="eq-slot" style={`--fill:${(s.counts.get(slot) ?? 0) / s.total}`}>
-                            <input type="checkbox" name="slot" value={slot} checked={s.mySlots.includes(slot)} />
-                            <span>{s.counts.get(slot) ?? 0}</span>
+                          <label class="eq-slot" style={`--fill:${n / s.total}`}>
+                            <input type="checkbox" name="slot" value={slot} checked={s.mySlots.includes(slot)} aria-label={`${dl} ${label.toLowerCase()} · ${n} dispo`} />
+                            <span class="eq-slot__mark" aria-hidden="true">✓</span>
+                            <span class="eq-slot__n">{n}/{s.members.length}</span>
                           </label>
                         </td>
                       );
@@ -155,18 +241,24 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
                 ))}
               </tbody>
             </table>
-            <p class="eq-note">Coche tes créneaux ; le chiffre indique combien de joueurs du roster sont disponibles.</p>
-            <button class="btn btn--ghost">Enregistrer</button>
+            <p class="eq-note">Coche tes créneaux. Plus la case est colorée, plus il y a de joueurs disponibles.</p>
+            <button class="btn">Enregistrer mes dispos</button>
           </form>
 
           {me!.staff && (
             <>
-              <h3>Présences · 30 derniers jours ({s.past} séance{s.past > 1 ? 's' : ''})</h3>
+              <h3>Présences · 30 derniers jours <span>({s.past} séance{s.past > 1 ? 's' : ''})</span></h3>
               {s.past ? (
-                <table class="eq-bilan">
-                  <thead><tr><th scope="col">Joueur</th><th scope="col">Taux</th><th scope="col">✅</th><th scope="col">❔</th><th scope="col">❌</th><th scope="col">⏳</th></tr></thead>
-                  <tbody>{s.bilan.map((b) => <tr><td>{b.name}</td><td><strong>{b.rate} %</strong></td><td>{b.p}</td><td>{b.m}</td><td>{b.a}</td><td>{b.n}</td></tr>)}</tbody>
-                </table>
+                <ul class="eq-bilan">
+                  {s.bilan.map((b) => (
+                    <li>
+                      <span class="eq-bilan__name">{b.avatar && <img src={b.avatar} alt="" width="24" height="24" loading="lazy" />}{b.name}</span>
+                      <span class="eq-bilan__bar" style={`--rate:${b.rate}%`}><span></span></span>
+                      <strong>{b.rate} %</strong>
+                      <span class="eq-note">{b.p} présent · {b.m} peut-être · {b.a} absent · {b.n} sans réponse</span>
+                    </li>
+                  ))}
+                </ul>
               ) : <p class="eq-empty">Pas encore de séance passée sur cette période.</p>}
             </>
           )}
@@ -177,39 +269,108 @@ const spaces = me ? await Promise.all(me.rosters.map(async (r) => {
 </Base>
 
 <style>
-  .eq { display: grid; gap: clamp(2.5rem, 5vw, 4rem); }
-  .eq-who { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .eq { display: grid; gap: clamp(3rem, 6vw, 5rem); }
+  .eq-head h1 { font-size: clamp(2.4rem, 7vw, 4.5rem); }
+  .eq-who { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
   .eq-who img { border-radius: 50%; }
-  .eq-tag { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--lacquer); color: #fff; padding: .15rem .5rem; }
+  .eq-who p { margin: 0; max-width: none; font-size: 1rem; }
+  .eq-who strong { font-size: 1.15rem; }
+  .eq-tag { margin-left: .6rem; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--lacquer); color: #fff; padding: .15rem .5rem; vertical-align: .2em; }
+  .eq-cal { margin-left: auto; position: relative; }
+  .eq-cal summary { list-style: none; cursor: pointer; }
+  .eq-cal summary::-webkit-details-marker { display: none; }
+  .eq-cal__panel { position: absolute; right: 0; top: calc(100% + .5rem); z-index: 5; width: min(24rem, 90vw); display: grid; gap: .75rem; padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgb(0 0 0 / .25); }
+  .eq-cal__panel p { font-size: var(--step--1); color: var(--ink); max-width: none; margin: 0; }
+  .eq-cal__panel input { width: 100%; margin-top: .3rem; padding: .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: .75rem monospace; }
+  @media (max-width: 640px) { .eq-cal { margin-left: 0; width: 100%; } .eq-cal__panel { position: static; width: auto; margin-top: .5rem; } }
+
   .eq-login { max-width: 42rem; display: grid; gap: 1.25rem; justify-items: start; }
   .eq-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: color-mix(in srgb, var(--lacquer) 10%, transparent); }
   .eq-note, .eq-empty { color: var(--muted); font-size: var(--step--1); }
-  .eq-roster { border-top: 4px solid var(--team); padding-top: 1.25rem; }
-  .eq-roster h2 { font-size: var(--step-2); display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
-  .eq-roster h2 span { font-family: var(--font-body); font-size: var(--step--1); color: var(--muted); font-weight: 400; }
-  .eq-roster h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; margin: 2rem 0 .8rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
-  .eq-list { display: grid; gap: .75rem; }
-  .eq-seance { border: 1px solid var(--line); padding: 1rem; scroll-margin-top: 90px; }
-  .eq-seance__head { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
-  .eq-seance__head time { color: var(--red-text); font-weight: 700; }
-  .eq-seance__head span, .eq-seance__note { color: var(--muted); font-size: var(--step--1); }
-  .eq-answer { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0 .4rem; }
-  .eq-answer input { flex: 1 1 10rem; min-width: 0; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
-  .eq-btn { min-height: 44px; padding: 0 1rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .9rem var(--font-body); cursor: pointer; }
-  .eq-btn:hover { border-color: var(--ink); }
-  .eq-btn.is-on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-  .eq-btn.is-ok.is-on { background: #1f8f55; border-color: #1f8f55; color: #fff; }
-  .eq-btn.is-ko.is-on { background: var(--lacquer); border-color: var(--lacquer); color: #fff; }
-  .eq-seance__who { display: grid; gap: .2rem; font-size: var(--step--1); color: var(--muted); }
-  .eq-dispos table, .eq-bilan { border-collapse: collapse; width: 100%; max-width: 44rem; }
-  .eq-dispos th, .eq-dispos td, .eq-bilan th, .eq-bilan td { padding: .35rem; text-align: center; font-size: var(--step--1); }
-  .eq-dispos th[scope="row"], .eq-bilan td:first-child, .eq-bilan th:first-child { text-align: left; }
-  .eq-slot { display: grid; place-items: center; position: relative; min-height: 44px; border: 1px solid var(--line); cursor: pointer;
-    background: color-mix(in srgb, var(--team) calc(var(--fill) * 45%), transparent); }
-  .eq-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .eq-slot:has(input:checked) { outline: 3px solid var(--ink); outline-offset: -3px; font-weight: 700; }
+  .eq-jump { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: -1.5rem; }
+  .eq-jump a { padding: .4rem .9rem; border: 1.5px solid var(--line); border-left: 4px solid var(--team); font-weight: 700; color: var(--ink); text-decoration: none; }
+  .eq-jump a:hover { border-color: var(--ink); border-left-color: var(--team); }
+
+  .eq-roster { border-top: 4px solid var(--team); padding-top: 1.5rem; scroll-margin-top: 90px; }
+  .eq-roster__head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .eq-roster__head > img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; }
+  .eq-roster__head h2 { font-size: var(--step-2); line-height: 1; }
+  .eq-roster__head p { color: var(--muted); font-size: var(--step--1); padding-top: .3rem; }
+  .eq-faces { display: flex; margin-left: auto; }
+  .eq-faces li + li { margin-left: -8px; }
+  .eq-faces img { border-radius: 50%; border: 2px solid var(--surface); display: block; background: var(--line); font-size: 0; }
+  .eq-chips img, .eq-bilan__name img { background: var(--line); font-size: 0; }
+  .eq-roster h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; margin: 2.25rem 0 .8rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+  .eq-roster h3 span { font-weight: 400; color: var(--muted); }
+
+  .eq-date { display: grid; align-content: start; text-align: center; line-height: 1; color: var(--red-text); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .eq-date b { font-family: var(--font-display); font-size: 1.9rem; color: var(--ink); letter-spacing: 0; }
+
+  .eq-games li { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 1rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid var(--line); }
+  .eq-games li p, .eq-who p, .eq-roster__head p { margin: 0; }
+  .eq-games li .eq-games__vs { margin-bottom: .2rem; line-height: 1.15; }
+  .eq-games__vs { font-family: var(--font-display); font-size: 1.15rem; }
+  .eq-games .eq-note::first-letter { text-transform: uppercase; }
+  .eq-kind { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: .2rem .55rem; border: 1.5px solid var(--line); color: var(--muted); }
+  .eq-kind.is-public { border-color: var(--team); color: var(--ink); }
+
+  .eq-list { display: grid; gap: .9rem; }
+  .eq-seance { display: grid; grid-template-columns: 3.5rem 1fr; gap: 1rem; border: 1px solid var(--line); border-left: 4px solid var(--team); padding: 1.1rem 1.25rem; scroll-margin-top: 90px; }
+  .eq-seance:target { box-shadow: 0 0 0 3px var(--team); }
+  .eq-seance__title strong { font-size: 1.1rem; }
+  .eq-seance__title span { color: var(--muted); font-size: var(--step--1); margin-left: .4rem; }
+  .eq-seance__title span::first-letter { text-transform: uppercase; }
+  .eq-seance__note { color: var(--muted); font-size: var(--step--1); margin-top: .3rem; font-style: italic; }
+  .eq-answer { display: flex; flex-wrap: wrap; gap: .6rem; margin: .9rem 0 .8rem; }
+  .eq-seg { display: inline-flex; border: 1.5px solid var(--line); }
+  .eq-seg button { min-height: 44px; padding: 0 1.1rem; border: 0; background: none; color: var(--ink); font: 700 .9rem var(--font-body); cursor: pointer; }
+  .eq-seg button + button { border-left: 1.5px solid var(--line); }
+  .eq-seg button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .eq-seg button:focus-visible { outline: 3px solid var(--lacquer-hi); outline-offset: -3px; }
+  .eq-seg .is-ok.is-on { background: #1f8f55; color: #fff; }
+  .eq-seg .is-maybe.is-on { background: #c98a16; color: #fff; }
+  .eq-seg .is-ko.is-on { background: var(--lacquer); color: #fff; }
+  .eq-answer input { flex: 1 1 12rem; min-width: 0; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; font-size: .9rem; }
+  .eq-who-list { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; }
+  .eq-count { font-size: var(--step--1); color: var(--muted); margin-right: .25rem; }
+  .eq-count b { color: var(--ink); }
+  .eq-chips { display: contents; }
+  .eq-chips li { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem .15rem .2rem; border-radius: 999px; font-size: .82rem; border: 1.5px solid var(--line); }
+  .eq-chips img { border-radius: 50%; }
+  .eq-chips small { color: var(--muted); }
+  .eq-chips.is-ok li { border-color: #1f8f55; }
+  .eq-chips.is-maybe li { border-color: #c98a16; }
+  .eq-chips.is-ko li { border-color: var(--lacquer); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); }
+  .eq-chips.is-wait li { border-style: dashed; opacity: .65; }
+
+  .eq-dispos table { border-collapse: separate; border-spacing: 4px; width: 100%; max-width: 44rem; }
+  .eq-dispos th { font-size: var(--step--1); font-weight: 700; padding: .2rem; }
+  .eq-dispos th[scope="row"] { text-align: left; font-weight: 400; color: var(--muted); }
+  .eq-dispos td { padding: 0; }
+  .eq-slot { display: grid; place-items: center; position: relative; min-height: 48px; border: 1.5px solid var(--line); cursor: pointer;
+    background: color-mix(in srgb, var(--team) calc(var(--fill) * 55%), transparent); }
+  .eq-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+  .eq-slot__mark { display: none; font-weight: 700; font-size: 1.1rem; line-height: 1; }
+  .eq-slot__n { font-size: .7rem; color: var(--muted); }
+  .eq-slot:has(input:checked) { border-color: var(--ink); border-width: 2.5px; }
+  .eq-slot:has(input:checked) .eq-slot__mark { display: block; }
   .eq-slot:has(input:focus-visible) { outline: 3px solid var(--lacquer-hi); }
-  .eq-dispos .btn { margin-top: .75rem; }
-  .eq-bilan tr { border-bottom: 1px solid var(--line); }
-  @media (max-width: 560px) { .eq-dispos table { font-size: .75rem; } .eq-dispos th, .eq-dispos td { padding: .15rem; } }
+  .eq-slot:hover { border-color: var(--ink); }
+  .eq-dispos .btn { margin-top: 1rem; }
+
+  .eq-bilan { display: grid; gap: .1rem; max-width: 52rem; }
+  .eq-bilan li { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr 3.5rem; gap: .2rem 1rem; align-items: center; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .eq-bilan__name { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+  .eq-bilan__name img { border-radius: 50%; }
+  .eq-bilan__bar { height: .5rem; background: var(--line); }
+  .eq-bilan__bar span { display: block; height: 100%; width: var(--rate); background: var(--team); }
+  .eq-bilan strong { text-align: right; }
+  .eq-bilan .eq-note { grid-column: 1 / -1; }
+  @media (max-width: 560px) {
+    .eq-faces { margin-left: 0; width: 100%; }
+    .eq-seance { grid-template-columns: 2.5rem 1fr; gap: .75rem; padding: 1rem .9rem; }
+    .eq-date b { font-size: 1.5rem; }
+    .eq-seg { width: 100%; } .eq-seg button { flex: 1; padding: 0 .5rem; }
+    .eq-dispos table { border-spacing: 2px; } .eq-slot__n { font-size: .6rem; }
+  }
 </style>

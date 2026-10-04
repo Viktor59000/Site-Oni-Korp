@@ -31,3 +31,6 @@ export const sameOrigin = (request: Request) => {
   const o = request.headers.get('origin'); if (!o) return true;
   return o === new URL(request.url).origin;
 };
+
+/** Clé du calendrier perso d'un membre (lien secret à coller dans son agenda, sans connexion). */
+export const icsKey = (userId: string) => sign(`ics:${userId}`).slice(0, 32);

@@ -992,3 +992,10 @@ main { counter-reset: page; }
 @media (max-width: 520px) { .agenda__item { grid-template-columns: 1fr auto; } .agenda__item time { grid-column: 1 / -1; } .agenda__meta { grid-column: 1; } }
 .ledger__video { font-weight: 700; color: var(--red-text); white-space: nowrap; }
 .ledger__video::before { content: "▶ "; font-size: .8em; }
+
+/* Live en cours : point rouge sur le lien Agenda */
+.nav__live { display: inline-block; width: .5rem; height: .5rem; margin-left: .35rem; border-radius: 50%; background: var(--lacquer); vertical-align: .15em; }
+.nav__live[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) { .nav__live { animation: live 1.6s ease-in-out infinite; } }
+.agenda__all { grid-column: 1 / -1; font-weight: 700; }
+.agenda__all a { color: var(--red-text); }

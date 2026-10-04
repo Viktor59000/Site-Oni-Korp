@@ -1,0 +1,158 @@
+---
+// Agenda public : rendez-vous officiels (tournois, ligues, showmatchs), résultats, live en cours et vidéos.
+// Données en direct : /api/agenda et /api/feed (Oni Bot). Les scrims n'apparaissent jamais ici.
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import site from '../../data/site.json';
+import history from '../../data/matches.json';
+
+const host = (Astro.site?.host ?? 'oni-korp.vercel.app');
+const ics = `https://${host}/agenda.ics`;
+const google = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`webcal://${host}/agenda.ics`)}`;
+const socials = site.socials.filter((s) => s.icon !== 'discord');
+---
+<Base title="Agenda" description="Les prochains matchs officiels d'Oni Korp, les résultats, les lives et les dernières vidéos. Ajoute le calendrier du club à ton agenda.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Agenda</h1>
+      <p>Tournois, ligues et showmatchs. Ajoute le calendrier à ton agenda : il se met à jour tout seul.</p>
+      <div class="ag-sub">
+        <a class="btn" href={google} rel="noopener">Ajouter à Google Agenda</a>
+        <a class="btn btn--ghost" href={`webcal://${host}/agenda.ics`}>Apple · Outlook</a>
+        <a class="ag-raw" href={ics}>Lien .ics</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="ag-live" data-live hidden aria-label="En direct">
+    <div class="wrap ag-live__inner" data-live-list></div>
+  </section>
+
+  <section class="section">
+    <div class="wrap ag-grid">
+      <div>
+        <h2 class="ag-h"><span class="agenda__live" aria-hidden="true"></span>Prochains rendez-vous</h2>
+        <ol class="ag-list" data-list="aVenir"></ol>
+        <p class="ag-empty" data-empty="aVenir">Rien d'annoncé pour l'instant. Abonne-toi au calendrier : les prochains matchs s'y ajouteront d'eux-mêmes, et Discord te prévient avec le rôle <b>Notif matchs</b>.</p>
+      </div>
+      <div>
+        <h2 class="ag-h">Résultats</h2>
+        <ol class="ag-list" data-list="resultats"></ol>
+        <ol class="ag-hist">
+          {history.filter((m) => m.event !== 'Scrim' && m.opponent).map((m) => (
+            <li>
+              <span><span translate="no">Oni Korp</span> <i>vs</i> {m.opponent}</span>
+              <span class="ag-hist__meta">{[m.event, m.format, m.date].filter(Boolean).join(' · ')}{m.video && <> · <a href={m.video} rel="noopener">Revoir</a></>}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="videos-title">
+    <div class="wrap">
+      <div class="section__head section__head--row">
+        <h2 id="videos-title">Dernières vidéos.</h2>
+        <ul class="ag-socials">
+          {socials.map((s) => <li><a href={s.url} rel="noopener" aria-label={s.label}><Icon name={s.icon} /></a></li>)}
+        </ul>
+      </div>
+      <ul class="ag-videos" data-videos></ul>
+      <p class="ag-empty" data-videos-empty>Les vidéos de la chaîne <a href={site.socials[1].url} rel="noopener">YouTube</a> apparaissent ici dès leur sortie.</p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  type Item = { id: number; type: string; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  type F = { auteur: string; titre: string; lien: string; image: string | null; jeu: string | null; date: string };
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const tz = { timeZone: 'Europe/Paris' } as const;
+  const day = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', ...tz });
+  const month = new Intl.DateTimeFormat('fr-FR', { month: 'short', ...tz });
+  const rest = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', ...tz });
+  const http = (u: string | null): u is string => !!u && /^https?:\/\//.test(u);
+
+  const row = (m: Item) => {
+    const d = new Date(m.date);
+    const score = m.score ? `<b class="ag-score ${m.score[0] > m.score[1] ? 'is-win' : m.score[0] < m.score[1] ? 'is-loss' : ''}">${m.score[0]} – ${m.score[1]}</b>` : '';
+    const watch = !m.score && http(m.lien) ? `<a class="ag-watch" href="${esc(m.lien)}" rel="noopener">Regarder</a>` : '';
+    return `<li class="ag-item"><time class="ag-date" datetime="${m.date}"><b>${day.format(d)}</b>${month.format(d)}</time>
+      <div><p class="ag-vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(m.adversaire)}</p>
+      <p class="ag-meta">${[esc(m.type), m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format), m.score ? '' : rest.format(d)].filter(Boolean).join(' · ')}</p></div>${score}${watch}</li>`;
+  };
+
+  fetch('/api/agenda').then((r) => (r.ok ? r.json() : null)).then((d: { aVenir: Item[]; resultats: Item[] } | null) => {
+    for (const key of ['aVenir', 'resultats'] as const) {
+      const list = d?.[key] ?? [];
+      document.querySelector<HTMLElement>(`[data-list="${key}"]`)!.innerHTML = list.map(row).join('');
+      const empty = document.querySelector<HTMLElement>(`[data-empty="${key}"]`);
+      if (empty) empty.hidden = list.length > 0;
+    }
+  }).catch(() => {});
+
+  fetch('/api/feed').then((r) => (r.ok ? r.json() : null)).then((d: { live: F[]; videos: F[] } | null) => {
+    if (!d) return;
+    if (d.live.length) {
+      document.querySelector<HTMLElement>('[data-live-list]')!.innerHTML = d.live.map((l) => `
+        <a class="ag-live__card" href="${esc(l.lien)}" rel="noopener">
+          ${l.image ? `<img src="${esc(l.image)}" alt="" width="320" height="180" loading="lazy" />` : ''}
+          <span><span class="ag-live__tag"><span class="agenda__live" aria-hidden="true"></span>En direct</span>
+          <strong>${esc(l.titre)}</strong>${l.jeu ? `<small>${esc(l.jeu)}</small>` : ''}</span>
+        </a>`).join('');
+      document.querySelector<HTMLElement>('[data-live]')!.hidden = false;
+    }
+    if (d.videos.length) {
+      document.querySelector<HTMLElement>('[data-videos]')!.innerHTML = d.videos.map((v) => `
+        <li><a href="${esc(v.lien)}" rel="noopener">${v.image ? `<img src="${esc(v.image)}" alt="" width="480" height="360" loading="lazy" />` : ''}
+          <span>${esc(v.titre)}</span><small>${esc(v.auteur)} · ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(v.date))}</small></a></li>`).join('');
+      document.querySelector<HTMLElement>('[data-videos-empty]')!.hidden = true;
+    }
+  }).catch(() => {});
+</script>
+
+<style>
+  .ag-sub { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1.75rem; }
+  .ag-raw { font-size: var(--step--1); color: var(--muted); }
+  .ag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: clamp(2.5rem, 5vw, 4.5rem); }
+  .ag-h { display: flex; align-items: center; gap: .6rem; font-family: var(--font-body); font-weight: 700; font-size: 1rem; padding-bottom: .6rem; border-bottom: 2px solid var(--ink); }
+  .ag-list :global(.ag-item) { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+  .ag-list :global(.ag-date) { display: grid; text-align: center; line-height: 1; color: var(--red-text); font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .ag-list :global(.ag-date b) { font-family: var(--font-display); font-size: 1.9rem; color: var(--ink); letter-spacing: 0; }
+  .ag-list :global(.ag-vs) { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.15; }
+  .ag-list :global(.ag-vs i), .ag-hist i { font-family: var(--font-body); font-style: normal; font-size: .75em; color: var(--muted); }
+  .ag-list :global(.ag-meta) { color: var(--muted); font-size: var(--step--1); margin-top: .25rem; }
+  .ag-list :global(.ag-meta::first-letter) { text-transform: uppercase; }
+  .ag-list :global(.ag-score) { font-family: var(--font-display); font-size: 1.3rem; padding: .1em .45em; border: 2px solid var(--line); white-space: nowrap; }
+  .ag-list :global(.ag-score.is-win) { border-color: #1f8f55; color: #1f8f55; }
+  .ag-list :global(.ag-score.is-loss) { color: var(--muted); }
+  .ag-list :global(.ag-watch) { font-weight: 700; color: var(--red-text); white-space: nowrap; }
+  .ag-empty { color: var(--muted); padding: 1.25rem 0; max-width: 40ch; }
+  .ag-empty[hidden] { display: none; }
+  .ag-hist { margin-top: 1rem; }
+  .ag-hist li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); font-size: .95rem; }
+  .ag-hist__meta { color: var(--muted); font-size: var(--step--1); }
+  .ag-hist__meta a { color: var(--red-text); font-weight: 700; }
+
+  .ag-live { background: var(--black); color: var(--bone); border-bottom: 3px solid var(--lacquer); }
+  .ag-live__inner { display: grid; gap: 1rem; padding-block: 1.25rem; }
+  .ag-live :global(.ag-live__card) { display: flex; align-items: center; gap: 1.25rem; color: inherit; text-decoration: none; }
+  .ag-live :global(.ag-live__card img) { width: min(40vw, 13rem); height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+  .ag-live :global(.ag-live__card > span) { display: grid; gap: .3rem; }
+  .ag-live :global(.ag-live__tag) { display: inline-flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #ff6b66; }
+  .ag-live :global(strong) { font-family: var(--font-display); font-size: clamp(1.1rem, 2.5vw, 1.5rem); line-height: 1.15; }
+  .ag-live :global(small) { color: rgb(255 255 255 / .7); }
+  .ag-live :global(.ag-live__card:hover strong) { text-decoration: underline; }
+
+  .ag-socials { display: flex; gap: .5rem; }
+  .ag-socials a { display: grid; place-items: center; width: 44px; height: 44px; border: 1.5px solid var(--line); color: var(--ink); }
+  .ag-socials a:hover { border-color: var(--ink); }
+  .ag-socials :global(svg) { width: 20px; height: 20px; fill: currentColor; }
+  .ag-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1.5rem; }
+  .ag-videos :global(a) { display: grid; gap: .5rem; color: inherit; text-decoration: none; }
+  .ag-videos :global(img) { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+  .ag-videos :global(span) { font-weight: 700; line-height: 1.3; }
+  .ag-videos :global(small) { color: var(--muted); font-size: var(--step--1); }
+  .ag-videos :global(a:hover span) { text-decoration: underline; }
+</style>
