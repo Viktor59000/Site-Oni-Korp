@@ -8,6 +8,7 @@ import { rows, weekKey } from './db';
 import { access } from './equipe/access';
 import { SLOTS } from './equipe/dispos';
 import { kindLabel } from './ics';
+import EquipeNav from './equipe/EquipeNav.astro';
 
 export const prerender = false;
 
@@ -117,6 +118,7 @@ const guildId = process.env.DISCORD_GUILD_ID ?? '';
         : <p>Séances, présences et disponibilités de ton roster, reliées au Discord du club.</p>}
     </div>
   </header>
+  {me?.member && (me.staff || me.rosters.length > 0) && <EquipeNav current="planning" games={[...new Set(me.rosters.map((r) => r.game))]} staff={me.staff} />}
 
   <section class="section">
     <div class="wrap eq">

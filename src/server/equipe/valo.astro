@@ -1,0 +1,228 @@
+---
+// Lineups Valorant : la bibliothèque du roster, posée sur les cartes. Deux clics (position du lanceur, point d'impact),
+// un titre, un clip : tout le roster la retrouve. Cartes et agents : valorant-api.com (données officielles du jeu).
+import Base from '../../layouts/Base.astro';
+import EquipeNav from './EquipeNav.astro';
+import { teamUser } from './outils';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me } = t;
+const valoRosters = me.rosters.filter((r) => r.game === 'valo' || me.staff);
+const games = [...new Set(me.rosters.map((r) => r.game))];
+---
+<Base title="Lineups Valorant · Espace équipe" description="La bibliothèque de lineups Valorant du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Lineups Valorant</h1><p>Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une.</p></div></header>
+  <EquipeNav current="valo" games={games} staff={me.staff} />
+
+  <section class="section lu" data-lineups>
+    <div class="wrap">
+      {!valoRosters.length ? <p class="eq-note">Aucun roster Valorant pour l'instant : la bibliothèque s'ouvrira dès sa création sur Discord.</p> : (
+        <>
+          <div class="lu-bar">
+            <label>Roster<select data-roster>{valoRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+            <label>Agent<select data-agent-filter><option value="">Tous</option></select></label>
+            <div class="lu-side" role="group" aria-label="Côté">
+              <button type="button" data-side="" aria-pressed="true">Les deux</button>
+              <button type="button" data-side="attaque" aria-pressed="false">Attaque</button>
+              <button type="button" data-side="defense" aria-pressed="false">Défense</button>
+            </div>
+          </div>
+          <div class="lu-maps" role="tablist" aria-label="Cartes" data-maps><span class="eq-note">Chargement des cartes…</span></div>
+
+          <div class="lu-main">
+            <div class="lu-mapbox" data-mapbox>
+              <img alt="" data-mapimg />
+              <svg class="lu-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg></svg>
+              <p class="lu-hint" data-hint hidden></p>
+            </div>
+            <aside class="lu-side-panel">
+              <button type="button" class="btn" data-add>Ajouter une lineup</button>
+              <div class="lu-detail" data-detail><p class="eq-note">Clique sur un point pour voir la lineup. Les lignes vont du lanceur au point d'impact.</p></div>
+              <form class="lu-form" method="post" action="/api/equipe/outils" data-form hidden>
+                <h2>Nouvelle lineup</h2>
+                <input type="hidden" name="action" value="lineup" /><input type="hidden" name="back" value="/equipe/valo/" />
+                <input type="hidden" name="roster" data-f-roster /><input type="hidden" name="map" data-f-map />
+                <input type="hidden" name="x" data-f-x /><input type="hidden" name="y" data-f-y /><input type="hidden" name="tx" data-f-tx /><input type="hidden" name="ty" data-f-ty />
+                <label>Titre<input name="title" required maxlength="80" placeholder="Ex. : molly default A depuis le spawn" /></label>
+                <label>Agent<select name="agent" data-f-agent required></select></label>
+                <label>Côté<select name="side"><option value="attaque">Attaque</option><option value="defense">Défense</option></select></label>
+                <label>Clip ou vidéo <small>(lien YouTube, Medal, Outplayed…)</small><input name="url" type="url" maxlength="300" /></label>
+                <label>Repères <small>(où viser, quel saut…)</small><textarea name="note" rows="3" maxlength="500"></textarea></label>
+                <div class="lu-form__actions"><button class="btn">Enregistrer</button><button type="button" class="dr-btn" data-cancel>Annuler</button></div>
+              </form>
+            </aside>
+          </div>
+          <ul class="lu-list" data-list></ul>
+        </>
+      )}
+    </div>
+  </section>
+</Base>
+
+<script>
+  type Map = { uuid: string; name: string; icon: string };
+  type Agent = { name: string; icon: string };
+  type L = { id: number; map: string; agent: string; side: string; title: string; x: number; y: number; tx: number | null; ty: number | null; url: string | null; note: string; author: string; author_name: string | null; at: number };
+  const root = document.querySelector<HTMLElement>('[data-lineups]');
+  if (root?.querySelector('[data-roster]')) {
+    const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
+    const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    let maps: Map[] = [], agents: Agent[] = [], items: L[] = [], meta = { me: '', staff: false };
+    let map = '', side = '', agent = '', mode: 'idle' | 'from' | 'to' = 'idle', sel: number | null = null;
+    let draft: { x: number; y: number; tx?: number; ty?: number } | null = null;
+    const agentIcon = (n: string) => agents.find((a) => a.name === n)?.icon ?? '';
+
+    function draw() {
+      const shown = items.filter((l) => l.map === map && (!side || l.side === side) && (!agent || l.agent === agent));
+      const svg = $('[data-svg]');
+      const P = (v: number) => v * 1000;
+      svg.innerHTML = shown.map((l) => `
+        ${l.tx !== null ? `<line x1="${P(l.x)}" y1="${P(l.y)}" x2="${P(l.tx!)}" y2="${P(l.ty!)}" class="lu-line${sel === l.id ? ' is-sel' : ''}" />
+        <circle cx="${P(l.tx!)}" cy="${P(l.ty!)}" r="9" class="lu-target${sel === l.id ? ' is-sel' : ''}" />` : ''}
+        <g class="lu-pin${sel === l.id ? ' is-sel' : ''}" data-id="${l.id}" tabindex="0" role="button" aria-label="${esc(l.title)}">
+          <circle cx="${P(l.x)}" cy="${P(l.y)}" r="20" />
+          <image href="${esc(agentIcon(l.agent))}" x="${P(l.x) - 16}" y="${P(l.y) - 16}" width="32" height="32" />
+        </g>`).join('') + (draft ? `
+        ${draft.tx !== undefined ? `<line x1="${P(draft.x)}" y1="${P(draft.y)}" x2="${P(draft.tx)}" y2="${P(draft.ty!)}" class="lu-line is-draft" /><circle cx="${P(draft.tx)}" cy="${P(draft.ty!)}" r="9" class="lu-target is-draft" />` : ''}
+        <circle cx="${P(draft.x)}" cy="${P(draft.y)}" r="16" class="lu-draft" />` : '');
+      $('[data-list]').innerHTML = shown.length ? shown.map((l) => `<li><button type="button" data-id="${l.id}" class="${sel === l.id ? 'is-sel' : ''}">
+        <img src="${esc(agentIcon(l.agent))}" alt="" width="28" height="28" /><span><strong>${esc(l.title)}</strong><small>${esc(l.agent)} · ${l.side === 'defense' ? 'défense' : 'attaque'}</small></span></button></li>`).join('')
+        : `<li class="eq-note">Aucune lineup sur cette carte${agent ? ` pour ${esc(agent)}` : ''}. Sois le premier à en ajouter une.</li>`;
+    }
+
+    function showDetail(id: number) {
+      sel = id; const l = items.find((x) => x.id === id); if (!l) return;
+      const canDel = l.author === meta.me || meta.staff;
+      $('[data-detail]').innerHTML = `<h2>${esc(l.title)}</h2>
+        <p class="lu-meta"><img src="${esc(agentIcon(l.agent))}" alt="" width="24" height="24" /> ${esc(l.agent)} · ${l.side === 'defense' ? 'Défense' : 'Attaque'}</p>
+        ${l.note ? `<p>${esc(l.note)}</p>` : ''}
+        ${l.url ? `<a class="btn btn--ghost" href="${esc(l.url)}" rel="noopener" target="_blank">Voir le clip</a>` : ''}
+        <p class="eq-note">Ajoutée par ${esc(l.author_name ?? 'un membre')} · ${new Date(Number(l.at)).toLocaleDateString('fr-FR')}</p>
+        ${canDel ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="lineups" /><input type="hidden" name="id" value="${l.id}" /><input type="hidden" name="back" value="/equipe/valo/" /><button class="dr-btn">Supprimer</button></form>` : ''}`;
+      draw();
+    }
+
+    const hint = (t: string | null) => { const h = $('[data-hint]'); h.hidden = !t; h.textContent = t ?? ''; };
+    function setMode(m: typeof mode) {
+      mode = m;
+      $('[data-mapbox]').classList.toggle('is-placing', m !== 'idle');
+      hint(m === 'from' ? '1/2 · Clique où se place le lanceur' : m === 'to' ? '2/2 · Clique sur le point d\'impact' : null);
+    }
+
+    $('[data-mapbox]').addEventListener('click', (e) => {
+      const pin = (e.target as Element).closest<SVGGElement>('.lu-pin');
+      if (mode === 'idle') { if (pin) showDetail(Number(pin.dataset.id)); return; }
+      const r = $('[data-mapimg]').getBoundingClientRect();
+      const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      if (mode === 'from') { draft = { x, y }; setMode('to'); }
+      else if (draft) {
+        draft.tx = x; draft.ty = y; setMode('idle');
+        $<HTMLInputElement>('[data-f-x]').value = String(draft.x); $<HTMLInputElement>('[data-f-y]').value = String(draft.y);
+        $<HTMLInputElement>('[data-f-tx]').value = String(x); $<HTMLInputElement>('[data-f-ty]').value = String(y);
+        $<HTMLInputElement>('[data-f-map]').value = map; $<HTMLInputElement>('[data-f-roster]').value = $<HTMLSelectElement>('[data-roster]').value;
+        $('[data-form]').hidden = false; $('[data-detail]').hidden = true;
+        $<HTMLInputElement>('[name="title"]').focus();
+      }
+      draw();
+    });
+    $('[data-svg]').addEventListener('keydown', (e) => {
+      const pin = (e.target as Element).closest<SVGGElement>('.lu-pin');
+      if (pin && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showDetail(Number(pin.dataset.id)); }
+    });
+    $('[data-add]').addEventListener('click', () => { draft = null; sel = null; setMode('from'); draw(); });
+    $('[data-cancel]').addEventListener('click', () => { draft = null; $('[data-form]').hidden = true; $('[data-detail]').hidden = false; setMode('idle'); draw(); });
+    $('[data-list]').addEventListener('click', (e) => { const b = (e.target as Element).closest<HTMLElement>('[data-id]'); if (b) showDetail(Number(b.dataset.id)); });
+    root.querySelectorAll<HTMLElement>('[data-side]').forEach((b) => b.addEventListener('click', () => {
+      side = b.dataset.side!; root.querySelectorAll('[data-side]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw();
+    }));
+    $('[data-agent-filter]').addEventListener('change', (e) => { agent = (e.target as HTMLSelectElement).value; draw(); });
+
+    function selectMap(uuid: string) {
+      map = uuid; sel = null; draft = null; setMode('idle');
+      const m = maps.find((x) => x.uuid === uuid)!;
+      $<HTMLImageElement>('[data-mapimg]').src = m.icon;
+      root.querySelectorAll('[data-map]').forEach((b) => b.setAttribute('aria-selected', String((b as HTMLElement).dataset.map === uuid)));
+      $('[data-detail]').innerHTML = '<p class="eq-note">Clique sur un point pour voir la lineup.</p>';
+      draw();
+    }
+    $('[data-maps]').addEventListener('click', (e) => { const b = (e.target as Element).closest<HTMLElement>('[data-map]'); if (b) selectMap(b.dataset.map!); });
+
+    async function loadLineups() {
+      const d = await fetch(`/api/equipe/outils?type=lineups&roster=${$<HTMLSelectElement>('[data-roster]').value}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      items = (d?.items ?? []).map((l: any) => ({ ...l, id: Number(l.id), x: Number(l.x), y: Number(l.y), tx: l.tx === null ? null : Number(l.tx), ty: l.ty === null ? null : Number(l.ty) }));
+      meta = { me: d?.me ?? '', staff: !!d?.staff };
+      draw();
+    }
+    $('[data-roster]').addEventListener('change', loadLineups);
+
+    (async () => {
+      const [mp, ag] = await Promise.all([
+        fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()),
+        fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=fr-FR').then((r) => r.json()),
+      ]);
+      // Cartes de compétition uniquement (celles qui ont des sites et une minicarte)
+      maps = mp.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ uuid: m.displayName, name: m.displayName, icon: m.displayIcon }))
+        .sort((a: Map, b: Map) => a.name.localeCompare(b.name, 'fr'));
+      agents = ag.data.map((a: any) => ({ name: a.displayName, icon: a.displayIcon })).sort((a: Agent, b: Agent) => a.name.localeCompare(b.name, 'fr'));
+      $('[data-maps]').innerHTML = maps.map((m) => `<button type="button" role="tab" data-map="${esc(m.uuid)}" aria-selected="false">${esc(m.name)}</button>`).join('');
+      const opts = agents.map((a) => `<option>${esc(a.name)}</option>`).join('');
+      $('[data-agent-filter]').insertAdjacentHTML('beforeend', opts);
+      $('[data-f-agent]').innerHTML = opts;
+      selectMap(maps[0].uuid);
+      await loadLineups();
+    })().catch(() => { $('[data-maps]').innerHTML = '<span class="eq-note">Impossible de charger les cartes (valorant-api.com). Réessaie plus tard.</span>'; });
+  }
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .lu { padding-top: 2rem; }
+  .lu-bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; margin-bottom: 1rem; }
+  .lu-bar label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .lu-bar select { min-height: 40px; padding: 0 .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
+  .lu-side { display: flex; }
+  .lu-side button, .lu-maps :global(button) { min-height: 40px; padding: 0 .85rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .82rem var(--font-body); cursor: pointer; }
+  .lu-side button + button { border-left: 0; }
+  .lu-side button[aria-pressed="true"], .lu-maps :global(button[aria-selected="true"]) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .lu-maps { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1.25rem; }
+  .lu-main { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1.5rem; align-items: start; }
+  .lu-mapbox { position: relative; aspect-ratio: 1; max-width: 46rem; background: #0f1923; border: 1px solid var(--line); }
+  .lu-mapbox.is-placing { cursor: crosshair; outline: 3px solid var(--lacquer); }
+  .lu-mapbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .lu-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .lu-svg :global(.lu-line) { stroke: #fff; stroke-width: 3; stroke-dasharray: 10 6; opacity: .75; }
+  .lu-svg :global(.lu-line.is-sel), .lu-svg :global(.lu-line.is-draft) { stroke: #ff4655; opacity: 1; stroke-width: 4; }
+  .lu-svg :global(.lu-target) { fill: #ff4655; stroke: #fff; stroke-width: 3; }
+  .lu-svg :global(.lu-pin) { cursor: pointer; }
+  .lu-svg :global(.lu-pin circle) { fill: #0f1923; stroke: #fff; stroke-width: 3; }
+  .lu-svg :global(.lu-pin.is-sel circle), .lu-svg :global(.lu-pin:focus circle) { stroke: #ff4655; stroke-width: 5; outline: none; }
+  .lu-svg :global(.lu-draft) { fill: #ff4655; stroke: #fff; stroke-width: 3; }
+  .lu-hint { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); margin: 0; padding: .4rem .8rem; background: var(--lacquer); color: #fff; font-weight: 700; font-size: .85rem; white-space: nowrap; }
+  .lu-hint[hidden] { display: none; }
+  .lu-side-panel { display: grid; gap: 1rem; align-content: start; }
+  .lu-side-panel .btn { justify-self: start; }
+  .lu-detail { display: grid; gap: .6rem; padding: 1rem; border: 1px solid var(--line); }
+  .lu-detail[hidden] { display: none; }
+  .lu-detail :global(h2) { font-size: 1.2rem; }
+  .lu-detail :global(p) { margin: 0; }
+  .lu-detail :global(.lu-meta) { display: flex; gap: .4rem; align-items: center; font-weight: 700; }
+  .lu-detail :global(.btn) { justify-self: start; }
+  .lu-form { display: grid; gap: .7rem; padding: 1rem; border: 2px solid var(--lacquer); }
+  .lu-form[hidden] { display: none; }
+  .lu-form h2 { font-size: 1.1rem; }
+  .lu-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .lu-form small { font-weight: 400; color: var(--muted); }
+  .lu-form :is(input, select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .45rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .lu-form__actions { display: flex; gap: .5rem; }
+  .dr-btn { min-height: 40px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
+  .lu-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: .5rem; margin-top: 1.5rem; }
+  .lu-list :global(button) { display: flex; gap: .6rem; align-items: center; width: 100%; padding: .6rem; border: 1px solid var(--line); background: none; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+  .lu-list :global(button.is-sel), .lu-list :global(button:hover) { border-color: var(--ink); }
+  .lu-list :global(span) { display: grid; }
+  .lu-list :global(small) { color: var(--muted); font-size: var(--step--1); }
+  @media (max-width: 900px) { .lu-main { grid-template-columns: 1fr; } }
+</style>

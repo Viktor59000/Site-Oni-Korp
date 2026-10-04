@@ -1,0 +1,114 @@
+---
+// Joueurs : chacun relie ses comptes de jeu ; le roster voit les profils (op.gg, tracker.gg, osu!) et les rangs quand une clé d'API est configurée.
+import Base from '../../layouts/Base.astro';
+import EquipeNav from './EquipeNav.astro';
+import { teamUser } from './outils';
+import { rows } from '../db';
+import { REGIONS, TIERS_FR, links, lolRank, osuStats } from './stats';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { user, me } = t;
+
+type Acc = { user_id: string; game: string; ident: string; region: string | null };
+const mine = await rows<Acc>('SELECT * FROM accounts WHERE user_id = ?', user.id);
+const get = (g: string) => mine.find((a) => a.game === g);
+
+const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
+const rosters = await Promise.all(me.rosters.map(async (r) => {
+  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const accs = members.length ? await rows<Acc>(`SELECT * FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [];
+  const people = await Promise.all(members.map(async (m) => {
+    const a = (g: string) => accs.find((x) => x.user_id === m.id && x.game === g);
+    const riot = a('riot'), rl = a('rl'), osu = a('osu');
+    return {
+      ...m, riot, rl, osu,
+      lol: riot && r.game === 'lol' ? await lolRank(riot.ident, riot.region ?? 'euw') : null,
+      osuS: osu && r.game === 'osu' ? await osuStats(osu.ident) : null,
+    };
+  }));
+  const riotIds = people.map((p) => p.riot?.ident).filter((x): x is string => !!x);
+  return { r, people, multi: riotIds.length ? links.opggMulti(riotIds, people.find((p) => p.riot)?.riot?.region ?? 'euw') : null };
+}));
+const games = [...new Set(me.rosters.map((r) => r.game))];
+const keys = { riot: !!process.env.RIOT_API_KEY, osu: !!process.env.OSU_CLIENT_ID };
+---
+<Base title="Joueurs · Espace équipe" description="Comptes de jeu et profils des joueurs du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Joueurs</h1><p>Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander.</p></div></header>
+  <EquipeNav current="joueurs" games={games} staff={me.staff} />
+
+  <section class="section">
+    <div class="wrap jo">
+      <form method="post" action="/api/equipe/outils" class="jo-me">
+        <input type="hidden" name="action" value="comptes" /><input type="hidden" name="back" value="/equipe/joueurs/" />
+        <h2 class="jo-h">Mes comptes</h2>
+        <div class="jo-fields">
+          <label>Riot ID <small>(LoL et Valorant)</small><input name="riot" value={get('riot')?.ident ?? ''} placeholder="Pseudo#TAG" maxlength="60" pattern=".+#.+" /></label>
+          <label>Région<select name="region">{Object.entries(REGIONS).map(([k, v]) => <option value={k} selected={(get('riot')?.region ?? 'euw') === k}>{v.label}</option>)}</select></label>
+          <label>Rocket League <small>(pseudo Epic)</small><input name="rl" value={get('rl')?.ident ?? ''} maxlength="60" /></label>
+          <label>osu! <small>(pseudo)</small><input name="osu" value={get('osu')?.ident ?? ''} maxlength="60" /></label>
+        </div>
+        <button class="btn">Enregistrer</button>
+      </form>
+
+      {rosters.map(({ r, people, multi }) => (
+        <article class="jo-roster">
+          <div class="jo-roster__head">
+            <h2 class="jo-h">{r.name} <span>{GAME_LABEL[r.game] ?? r.game}</span></h2>
+            {multi && r.game === 'lol' && <a class="btn btn--ghost" href={multi} rel="noopener">op.gg du roster</a>}
+          </div>
+          {people.length ? (
+            <ul class="jo-list">
+              {people.map((p) => (
+                <li>
+                  <span class="jo-who">{p.avatar && <img src={p.avatar} alt="" width="36" height="36" loading="lazy" />}<strong>{p.name}</strong></span>
+                  <span class="jo-stat">
+                    {p.lol && (p.lol.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.lol.tier] ?? p.lol.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.lol.tier) ? '' : p.lol.rank} · ${p.lol.lp} LP · ${p.lol.wins}V ${p.lol.losses}D`)}
+                    {p.osuS && `#${p.osuS.rank?.toLocaleString('fr-FR') ?? '—'} · ${p.osuS.pp} pp · ${p.osuS.acc} %`}
+                  </span>
+                  <span class="jo-links">
+                    {p.riot && <a href={links.opgg(p.riot.ident, p.riot.region ?? 'euw')} rel="noopener">op.gg</a>}
+                    {p.riot && <a href={links.valo(p.riot.ident)} rel="noopener">tracker Valorant</a>}
+                    {p.rl && <a href={links.rl(p.rl.ident)} rel="noopener">tracker RL</a>}
+                    {p.osu && <a href={links.osu(p.osu.ident)} rel="noopener">osu!</a>}
+                    {!p.riot && !p.rl && !p.osu && <em>pas encore de compte relié</em>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : <p class="eq-note">Personne dans ce roster pour l'instant.</p>}
+        </article>
+      ))}
+      {!me.rosters.length && <p class="eq-note">Aucun roster pour l'instant : ils apparaîtront ici dès leur création sur Discord (<code>/roster creer</code>).</p>}
+      {me.staff && (!keys.riot || !keys.osu) && (
+        <p class="eq-note jo-keys">Encadrement : les rangs s'affichent automatiquement avec {!keys.riot && <>une clé <a href="https://developer.riotgames.com" rel="noopener">Riot</a> (RIOT_API_KEY)</>}{!keys.riot && !keys.osu && ' et '}{!keys.osu && <>une application <a href="https://osu.ppy.sh/home/account/edit#oauth" rel="noopener">osu!</a> (OSU_CLIENT_ID, OSU_CLIENT_SECRET)</>} dans les variables Vercel. Sans elles, les liens de profil suffisent.</p>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .jo { display: grid; gap: 3rem; }
+  .jo-h { font-family: var(--font-body); font-weight: 700; font-size: 1.05rem; display: flex; gap: .75rem; align-items: baseline; }
+  .jo-h span { color: var(--muted); font-weight: 400; font-size: var(--step--1); }
+  .jo-me { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--line); max-width: 56rem; }
+  .jo-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 1rem; }
+  .jo-fields label { display: grid; gap: .35rem; font-weight: 700; font-size: .9rem; }
+  .jo-fields small { font-weight: 400; color: var(--muted); }
+  .jo-fields :is(input, select) { width: 100%; box-sizing: border-box; min-height: 44px; padding: .5rem .7rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
+  .jo-me .btn { justify-self: start; }
+  .jo-roster__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; padding-bottom: .6rem; border-bottom: 2px solid var(--ink); }
+  .jo-list li { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 1.2fr) auto; gap: .5rem 1.5rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid var(--line); }
+  .jo-who { display: flex; align-items: center; gap: .6rem; }
+  .jo-who img { border-radius: 50%; background: var(--line); }
+  .jo-stat { color: var(--ink); font-size: .92rem; }
+  .jo-links { display: flex; flex-wrap: wrap; gap: .4rem .9rem; justify-content: flex-end; font-size: .9rem; }
+  .jo-links a { font-weight: 700; color: var(--red-text); }
+  .jo-links em { color: var(--muted); font-size: var(--step--1); }
+  .jo-keys { max-width: 60ch; }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  @media (max-width: 640px) { .jo-list li { grid-template-columns: 1fr; } .jo-links { justify-content: flex-start; } }
+</style>

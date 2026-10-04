@@ -1,0 +1,113 @@
+---
+// Notes de match : après chaque match ou scrim, chacun note ce qui a marché, ce qui est à travailler, et une note sur 10.
+// Le roster voit le débrief de tous ; les notes de l'encadrement sont mises en avant.
+import Base from '../../layouts/Base.astro';
+import EquipeNav from './EquipeNav.astro';
+import { teamUser } from './outils';
+import { rows } from '../db';
+import { STAFF_ROLES } from './access';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { user, me } = t;
+
+const ids = me.rosters.map((r) => Number(r.id));
+type M = { id: number; roster_id: number; opponent: string; format: string; at: number; kind: string | null; score_us: number | null; score_them: number | null };
+const matches = ids.length ? await rows<M>(`SELECT id, roster_id, opponent, format, at, kind, score_us, score_them FROM matches
+  WHERE cancelled = 0 AND roster_id IN (${ids.map(() => '?').join(',')}) AND at < ? AND at > ? ORDER BY at DESC LIMIT 20`,
+  ...ids, Date.now(), Date.now() - 120 * 86400_000) : [];
+type N = { match_id: number; user_id: string; good: string; work: string; rating: number; at: number; name: string | null; avatar: string | null; roles: string | null };
+const notes = matches.length ? await rows<N>(`SELECT n.*, g.name, g.avatar, g.roles FROM match_notes n LEFT JOIN guild_members g ON g.id = n.user_id
+  WHERE n.match_id IN (${matches.map(() => '?').join(',')}) ORDER BY n.at`, ...matches.map((m) => m.id)) : [];
+const staffIds = (await rows<{ id: string }>(`SELECT id FROM guild_roles WHERE name IN (${STAFF_ROLES.map(() => '?').join(',')})`, ...STAFF_ROLES)).map((r) => r.id);
+const isCoach = (n: N) => (JSON.parse(n.roles ?? '[]') as string[]).some((r) => staffIds.includes(r));
+const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+const games = [...new Set(me.rosters.map((r) => r.game))];
+---
+<Base title="Notes de match · Espace équipe" description="Débriefs des matchs et scrims du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Notes de match</h1><p>Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster.</p></div></header>
+  <EquipeNav current="notes" games={games} staff={me.staff} />
+
+  <section class="section">
+    <div class="wrap nt">
+      {!matches.length && <p class="nt-empty">Pas encore de match joué ces quatre derniers mois. Dès qu'un match ou un scrim de ton roster est passé (<code>/match ajouter</code> sur Discord), il apparaît ici pour le débrief.</p>}
+      {matches.map((m) => {
+        const list = notes.filter((n) => Number(n.match_id) === Number(m.id));
+        const mine = list.find((n) => n.user_id === user.id);
+        const avg = list.length ? Math.round((list.reduce((s, n) => s + Number(n.rating), 0) / list.length) * 10) / 10 : null;
+        return (
+          <article class="nt-match" id={`match-${m.id}`}>
+            <header class="nt-head">
+              <div>
+                <h2>vs {m.opponent} {m.score_us !== null && <b class:list={['nt-score', { 'is-win': Number(m.score_us) > Number(m.score_them) }]}>{m.score_us} – {m.score_them}</b>}</h2>
+                <p>{fmt.format(new Date(Number(m.at)))} · {(m.kind ?? 'officiel') === 'scrim' ? 'Scrim' : 'Match officiel'} · {m.format} · {rosterName.get(Number(m.roster_id))}</p>
+              </div>
+              {avg !== null && <p class="nt-avg"><b>{avg}</b>/10<span>{list.length} débrief{list.length > 1 ? 's' : ''}</span></p>}
+            </header>
+
+            {list.length > 0 && (
+              <ul class="nt-list">
+                {list.sort((a, b) => Number(isCoach(b)) - Number(isCoach(a))).map((n) => (
+                  <li class:list={{ 'is-coach': isCoach(n) }}>
+                    <p class="nt-who">{n.avatar && <img src={n.avatar} alt="" width="28" height="28" loading="lazy" />}<strong>{n.name ?? 'Membre'}</strong>{isCoach(n) && <span class="nt-tag">Encadrement</span>}<span class="nt-rate">{n.rating}/10</span></p>
+                    {n.good && <p><span class="nt-k is-good">Ça a marché</span>{n.good}</p>}
+                    {n.work && <p><span class="nt-k is-work">À travailler</span>{n.work}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <details class="nt-form" open={!mine}>
+              <summary>{mine ? 'Modifier mon débrief' : 'Écrire mon débrief'}</summary>
+              <form method="post" action="/api/equipe/outils">
+                <input type="hidden" name="action" value="note" /><input type="hidden" name="match" value={m.id} /><input type="hidden" name="back" value="/equipe/notes/" />
+                <label>Ce qui a marché<textarea name="good" rows="3" maxlength="1000">{mine?.good}</textarea></label>
+                <label>À travailler<textarea name="work" rows="3" maxlength="1000">{mine?.work}</textarea></label>
+                <label class="nt-rating">Note de la perf de l'équipe <output>{mine?.rating ?? 5}</output>/10
+                  <input type="range" name="rating" min="1" max="10" value={mine?.rating ?? 5} oninput="this.previousElementSibling.value = this.value" />
+                </label>
+                <button class="btn">Enregistrer</button>
+              </form>
+            </details>
+          </article>
+        );
+      })}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .nt { display: grid; gap: 2.5rem; max-width: 60rem; }
+  .nt-empty { color: var(--muted); max-width: 52ch; }
+  .nt-match { border-top: 3px solid var(--ink); padding-top: 1rem; scroll-margin-top: 130px; }
+  .nt-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+  .nt-head h2 { font-size: var(--step-1); display: flex; gap: .75rem; align-items: baseline; flex-wrap: wrap; }
+  .nt-head p { color: var(--muted); font-size: var(--step--1); margin: .25rem 0 0; }
+  .nt-head p::first-letter { text-transform: uppercase; }
+  .nt-score { font-size: .8em; padding: .05em .4em; border: 2px solid var(--line); }
+  .nt-score.is-win { border-color: #1f8f55; color: #1f8f55; }
+  .nt-avg { text-align: right; margin: 0; }
+  .nt-avg b { font-family: var(--font-display); font-size: 2rem; color: var(--red-text); }
+  .nt-avg span { display: block; color: var(--muted); font-size: var(--step--1); }
+  .nt-list { display: grid; gap: .75rem; margin: 1rem 0; }
+  .nt-list li { padding: .9rem 1rem; border: 1px solid var(--line); display: grid; gap: .5rem; }
+  .nt-list li.is-coach { border-left: 4px solid var(--lacquer); background: color-mix(in srgb, var(--lacquer) 6%, transparent); }
+  .nt-list p { margin: 0; }
+  .nt-who { display: flex; align-items: center; gap: .5rem; }
+  .nt-who img { border-radius: 50%; background: var(--line); }
+  .nt-tag { font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--lacquer); color: #fff; padding: .1rem .4rem; }
+  .nt-rate { margin-left: auto; font-weight: 700; }
+  .nt-k { display: inline-block; margin-right: .5rem; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .nt-k.is-good { color: #1f8f55; } .nt-k.is-work { color: var(--red-text); }
+  .nt-form { margin-top: 1rem; }
+  .nt-form summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
+  .nt-form form { display: grid; gap: .9rem; margin-top: .9rem; }
+  .nt-form label { display: grid; gap: .35rem; font-weight: 700; font-size: .9rem; }
+  .nt-form textarea { width: 100%; box-sizing: border-box; padding: .6rem .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
+  .nt-rating input { accent-color: var(--lacquer); }
+  .nt-form .btn { justify-self: start; }
+</style>

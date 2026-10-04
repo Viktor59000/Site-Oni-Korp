@@ -1,0 +1,239 @@
+---
+// Drafter League of Legends : ordre de draft de tournoi, mode fearless (séries), drafts sauvegardés pour le roster,
+// op.gg multi de notre équipe et de l'adversaire. Champions et icônes : Data Dragon (Riot), à jour automatiquement.
+import Base from '../../layouts/Base.astro';
+import EquipeNav from './EquipeNav.astro';
+import { teamUser } from './outils';
+import { rows } from '../db';
+import { links } from './stats';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me } = t;
+const lolRosters = me.rosters.filter((r) => r.game === 'lol' || me.staff);
+const rosterIds = me.rosters.filter((r) => r.game === 'lol').map((r) => r.role_id);
+// Riot ID de nos joueurs LoL → op.gg multi
+const ours = rosterIds.length ? await rows<{ ident: string; region: string }>(`SELECT a.ident, a.region FROM accounts a JOIN guild_members g ON g.id = a.user_id
+  WHERE a.game = 'riot' AND (${rosterIds.map(() => 'g.roles LIKE ?').join(' OR ')})`, ...rosterIds.map((id) => `%"${id}"%`)) : [];
+const oursMulti = ours.length ? links.opggMulti(ours.map((o) => o.ident), ours[0].region ?? 'euw') : null;
+const games = [...new Set(me.rosters.map((r) => r.game))];
+---
+<Base title="Drafter LoL · Espace équipe" description="Préparer les drafts League of Legends du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Drafter LoL</h1><p>Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless.</p></div></header>
+  <EquipeNav current="lol" games={games} staff={me.staff} />
+
+  <section class="section dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))}>
+    <div class="wrap">
+      <div class="dr-top">
+        <p class="dr-step" data-step aria-live="polite">Chargement des champions…</p>
+        <div class="dr-actions">
+          <button type="button" class="dr-btn" data-undo>Annuler</button>
+          <button type="button" class="dr-btn" data-next-game title="Les champions joués sont bloqués pour la partie suivante">Partie suivante (fearless)</button>
+          <button type="button" class="dr-btn" data-reset>Tout effacer</button>
+        </div>
+      </div>
+
+      <div class="dr-board">
+        <div class="dr-side is-blue">
+          <h2>Bleu</h2>
+          <ol class="dr-bans" data-bans="blue"></ol>
+          <ol class="dr-picks" data-picks="blue"></ol>
+        </div>
+        <div class="dr-pool">
+          <div class="dr-filters">
+            <input type="search" placeholder="Chercher un champion" aria-label="Chercher un champion" data-search />
+            <div class="dr-tags" data-tags></div>
+          </div>
+          <p class="dr-locked" data-locked hidden></p>
+          <ul class="dr-grid" data-grid></ul>
+        </div>
+        <div class="dr-side is-red">
+          <h2>Rouge</h2>
+          <ol class="dr-bans" data-bans="red"></ol>
+          <ol class="dr-picks" data-picks="red"></ol>
+        </div>
+      </div>
+
+      <div class="dr-bottom">
+        <form class="dr-save" method="post" action="/api/equipe/outils" data-save>
+          <h3>Garder ce draft</h3>
+          <input type="hidden" name="action" value="draft" /><input type="hidden" name="back" value="/equipe/lol/" /><input type="hidden" name="data" data-json />
+          <label>Titre<input name="title" maxlength="80" placeholder="Ex. : vs Team X, game 2, compo engage" required /></label>
+          <label>Roster<select name="roster" data-roster-select>{lolRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+          <button class="btn" disabled={!lolRosters.length}>Enregistrer</button>
+          {!lolRosters.length && <p class="eq-note">Aucun roster LoL pour l'instant : le draft reste utilisable, sans sauvegarde.</p>}
+        </form>
+        <div class="dr-scout">
+          <h3>Scouting</h3>
+          {oursMulti ? <a class="btn btn--ghost" href={oursMulti} rel="noopener">op.gg de notre roster</a> : <p class="eq-note">Les joueurs relient leur Riot ID dans <a href="/equipe/joueurs/">Joueurs</a> pour l'op.gg du roster.</p>}
+          <label>Adversaires (Riot ID, un par ligne)<textarea rows="5" data-opp placeholder="Pseudo#EUW"></textarea></label>
+          <button type="button" class="btn btn--ghost" data-opp-go>op.gg multi de l'adversaire</button>
+        </div>
+        <div class="dr-saved">
+          <h3>Drafts du roster</h3>
+          <ul data-saved><li class="eq-note">{lolRosters.length ? 'Chargement…' : 'Aucun.'}</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  type Champ = { id: string; name: string; tags: string[] };
+  type Side = 'blue' | 'red';
+  // Ordre de draft de tournoi : 3 bans chacun, 6 picks, 2 bans chacun, 4 picks
+  const ORDER: [Side, 'ban' | 'pick', number][] = [
+    ['blue', 'ban', 0], ['red', 'ban', 0], ['blue', 'ban', 1], ['red', 'ban', 1], ['blue', 'ban', 2], ['red', 'ban', 2],
+    ['blue', 'pick', 0], ['red', 'pick', 0], ['red', 'pick', 1], ['blue', 'pick', 1], ['blue', 'pick', 2], ['red', 'pick', 2],
+    ['red', 'ban', 3], ['blue', 'ban', 3], ['red', 'ban', 4], ['blue', 'ban', 4],
+    ['red', 'pick', 3], ['blue', 'pick', 3], ['blue', 'pick', 4], ['red', 'pick', 4],
+  ];
+  const TAGS: Record<string, string> = { Fighter: 'Combattant', Tank: 'Tank', Mage: 'Mage', Assassin: 'Assassin', Marksman: 'Tireur', Support: 'Support' };
+  const root = document.querySelector<HTMLElement>('[data-drafter]')!;
+  const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
+  let version = '';
+  let champs: Champ[] = [];
+  let steps: (string | null)[] = []; // champion choisi à chaque étape (null = pas de ban)
+  let locked = new Set<string>();    // fearless : champions des parties précédentes
+  let tag = '';
+  const icon = (id: string) => `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${id}.png`;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  const state = () => {
+    const s = { blue: { ban: Array(5).fill(null), pick: Array(5).fill(null) }, red: { ban: Array(5).fill(null), pick: Array(5).fill(null) } } as Record<Side, Record<'ban' | 'pick', (string | null)[]>>;
+    steps.forEach((c, i) => { const [side, kind, n] = ORDER[i]; s[side][kind][n] = c; });
+    return s;
+  };
+  const name = (id: string | null) => champs.find((c) => c.id === id)?.name ?? '';
+
+  function render() {
+    const s = state();
+    const cur = ORDER[steps.length];
+    for (const side of ['blue', 'red'] as Side[]) {
+      $(`[data-bans="${side}"]`).innerHTML = s[side].ban.map((c, n) => {
+        const active = cur && cur[0] === side && cur[1] === 'ban' && cur[2] === n;
+        return `<li class="${active ? 'is-active' : ''}">${c ? `<img src="${icon(c)}" alt="${esc(name(c))}" width="40" height="40" />` : ''}</li>`;
+      }).join('');
+      $(`[data-picks="${side}"]`).innerHTML = s[side].pick.map((c, n) => {
+        const active = cur && cur[0] === side && cur[1] === 'pick' && cur[2] === n;
+        return `<li class="${active ? 'is-active' : ''}">${c ? `<img src="${icon(c)}" alt="" width="56" height="56" /><span>${esc(name(c))}</span>` : `<span class="dr-empty">${side === 'blue' ? 'B' : 'R'}${n + 1}</span>`}</li>`;
+      }).join('');
+    }
+    $('[data-step]').textContent = cur ? `${cur[0] === 'blue' ? 'Bleu' : 'Rouge'} · ${cur[1] === 'ban' ? 'ban' : 'pick'} ${cur[2] + 1}` : 'Draft terminé';
+    const used = new Set(steps.filter(Boolean) as string[]);
+    const q = ($<HTMLInputElement>('[data-search]').value || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+    $('[data-grid]').innerHTML = champs
+      .filter((c) => (!tag || c.tags.includes(tag)) && (!q || c.name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').includes(q)))
+      .map((c) => {
+        const off = used.has(c.id) || locked.has(c.id);
+        return `<li><button type="button" data-champ="${c.id}" ${off || !cur ? 'disabled' : ''} title="${esc(c.name)}"><img src="${icon(c.id)}" alt="" width="48" height="48" loading="lazy" /><span>${esc(c.name)}</span></button></li>`;
+      }).join('');
+    const l = $('[data-locked]');
+    l.hidden = !locked.size;
+    l.textContent = locked.size ? `Fearless : ${locked.size} champions déjà joués dans la série sont bloqués.` : '';
+    $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version });
+  }
+
+  root.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-champ]');
+    if (b && steps.length < ORDER.length) { steps.push(b.dataset.champ!); render(); }
+  });
+  $('[data-undo]').addEventListener('click', () => { steps.pop(); render(); });
+  $('[data-reset]').addEventListener('click', () => { steps = []; locked.clear(); render(); });
+  $('[data-next-game]').addEventListener('click', () => {
+    const s = state();
+    [...s.blue.pick, ...s.red.pick].forEach((c) => c && locked.add(c));
+    steps = []; render();
+  });
+  $('[data-search]').addEventListener('input', render);
+  $('[data-tags]').innerHTML = `<button type="button" aria-pressed="true" data-tag="">Tous</button>` + Object.entries(TAGS).map(([k, v]) => `<button type="button" aria-pressed="false" data-tag="${k}">${v}</button>`).join('');
+  $('[data-tags]').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-tag]'); if (!b) return;
+    tag = b.dataset.tag!; root.querySelectorAll('[data-tag]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render();
+  });
+  $('[data-opp-go]').addEventListener('click', () => {
+    const ids = $<HTMLTextAreaElement>('[data-opp]').value.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+    if (ids.length) window.open(`https://www.op.gg/multisearch/euw?summoners=${encodeURIComponent(ids.join(','))}`, '_blank', 'noopener');
+  });
+  $('[data-save]').addEventListener('submit', (e) => { if (!steps.length) { e.preventDefault(); alert('Le draft est vide.'); } });
+
+  // Drafts sauvegardés du roster
+  async function loadSaved() {
+    const sel = $<HTMLSelectElement>('[data-roster-select]');
+    if (!sel?.value) return;
+    const d = await fetch(`/api/equipe/outils?type=drafts&roster=${sel.value}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const list = $('[data-saved]');
+    if (!d?.items?.length) { list.innerHTML = '<li class="eq-note">Aucun draft gardé pour ce roster.</li>'; return; }
+    list.innerHTML = d.items.map((x: any) => `<li><button type="button" class="dr-load" data-load='${esc(x.data)}'>${esc(x.title)}</button>
+      <span class="eq-note">${esc(x.author_name ?? '')} · ${new Date(Number(x.at)).toLocaleDateString('fr-FR')}</span>
+      ${x.author === d.me || d.staff ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="drafts" /><input type="hidden" name="id" value="${x.id}" /><input type="hidden" name="back" value="/equipe/lol/" /><button class="dr-del" aria-label="Supprimer">×</button></form>` : ''}</li>`).join('');
+  }
+  $('[data-saved]').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-load]'); if (!b) return;
+    try { const d = JSON.parse(b.dataset.load!); steps = d.steps ?? []; locked = new Set(d.locked ?? []); render(); window.scrollTo({ top: root.offsetTop - 120, behavior: 'smooth' }); } catch {}
+  });
+  root.querySelector('[data-roster-select]')?.addEventListener('change', loadSaved);
+
+  // Data Dragon : dernière version, champions en français
+  (async () => {
+    version = (await fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()))[0];
+    const data = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/fr_FR/champion.json`).then((r) => r.json());
+    champs = Object.values<any>(data.data).map((c) => ({ id: c.id, name: c.name, tags: c.tags })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    render(); loadSaved();
+  })().catch(() => { $('[data-step]').textContent = 'Impossible de charger les champions (Data Dragon). Réessaie plus tard.'; });
+</script>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .dr { padding-top: 2rem; }
+  .dr-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .dr-step { font-family: var(--font-display); font-size: var(--step-1); margin: 0; }
+  .dr-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .dr-btn { min-height: 40px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
+  .dr-btn:hover { border-color: var(--ink); }
+  .dr-board { display: grid; grid-template-columns: 12rem 1fr 12rem; gap: 1.25rem; align-items: start; }
+  .dr-side h2 { font-family: var(--font-body); font-size: .9rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: .4rem .6rem; color: #fff; }
+  .is-blue h2 { background: #1f5fd1; } .is-red h2 { background: #c8282d; }
+  .dr-bans { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin: .5rem 0; }
+  .dr-bans :global(li) { aspect-ratio: 1; background: var(--line); position: relative; overflow: hidden; }
+  .dr-bans :global(img) { width: 100%; height: 100%; filter: grayscale(1); opacity: .75; }
+  .dr-bans :global(li::after) { content: ''; position: absolute; inset: 0; background: linear-gradient(to top right, transparent 47%, var(--lacquer) 48%, var(--lacquer) 52%, transparent 53%); opacity: 0; }
+  .dr-bans :global(li:has(img)::after) { opacity: .8; }
+  .dr-picks { display: grid; gap: 4px; }
+  .dr-picks :global(li) { display: flex; align-items: center; gap: .6rem; min-height: 60px; padding: 2px; border: 1.5px solid var(--line); font-weight: 700; font-size: .9rem; }
+  .dr-picks :global(img) { width: 56px; height: 56px; }
+  .dr-picks :global(.dr-empty) { padding-left: .6rem; color: var(--muted); }
+  .dr :global(.is-active) { outline: 3px solid var(--lacquer); outline-offset: -3px; }
+  @media (prefers-reduced-motion: no-preference) { .dr :global(.is-active) { animation: dr-pulse 1.2s ease-in-out infinite; } @keyframes dr-pulse { 50% { outline-color: transparent; } } }
+  .dr-filters { display: grid; gap: .5rem; margin-bottom: .6rem; }
+  .dr-filters input { min-height: 44px; padding: 0 .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
+  .dr-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .dr-tags :global(button) { padding: .35rem .7rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .78rem var(--font-body); cursor: pointer; }
+  .dr-tags :global(button[aria-pressed="true"]) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .dr-locked { font-size: var(--step--1); color: var(--red-text); font-weight: 700; margin: 0 0 .5rem; }
+  .dr-locked[hidden] { display: none; }
+  .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; max-height: 32rem; overflow-y: auto; padding-right: 4px; }
+  .dr-grid :global(button) { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: 400 .66rem var(--font-body); }
+  .dr-grid :global(img) { width: 48px; height: 48px; border: 2px solid transparent; }
+  .dr-grid :global(button:hover img) { border-color: var(--lacquer); }
+  .dr-grid :global(button:disabled) { opacity: .25; cursor: default; }
+  .dr-grid :global(span) { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 2rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 2px solid var(--ink); }
+  .dr-bottom h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; margin-bottom: .6rem; }
+  .dr-bottom form, .dr-scout { display: grid; gap: .75rem; align-content: start; }
+  .dr-bottom label { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; }
+  .dr-bottom :is(input, select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .45rem .65rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .dr-bottom .btn { justify-self: start; }
+  .dr-saved :global(li) { display: flex; align-items: center; gap: .6rem; padding: .45rem 0; border-bottom: 1px solid var(--line); }
+  .dr-saved :global(.dr-load) { border: 0; background: none; padding: 0; font: 700 .95rem var(--font-body); color: var(--red-text); cursor: pointer; text-align: left; }
+  .dr-saved :global(form) { margin-left: auto; }
+  .dr-saved :global(.dr-del) { border: 0; background: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+  @media (max-width: 900px) {
+    .dr-board { grid-template-columns: 1fr 1fr; }
+    .dr-pool { grid-column: 1 / -1; order: 3; }
+    .dr-picks :global(li) { min-height: 48px; } .dr-picks :global(img) { width: 44px; height: 44px; }
+  }
+</style>

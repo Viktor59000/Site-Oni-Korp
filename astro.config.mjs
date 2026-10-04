@@ -26,6 +26,11 @@ const api = {
       route('/api/equipe/presence', './src/server/equipe/presence.ts');
       route('/api/equipe/dispos', './src/server/equipe/dispos.ts');
       route('/equipe', './src/server/equipe.astro');
+      route('/equipe/joueurs', './src/server/equipe/joueurs.astro');
+      route('/equipe/notes', './src/server/equipe/notes.astro');
+      route('/equipe/lol', './src/server/equipe/lol.astro');
+      route('/equipe/valo', './src/server/equipe/valo.astro');
+      route('/api/equipe/outils', './src/server/equipe/outils.ts');
       route('/postuler', './src/server/recrutement/page.astro');
       route('/api/postuler', './src/server/recrutement/postuler.ts');
     },
