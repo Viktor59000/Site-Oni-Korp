@@ -24,7 +24,6 @@ const decals = [
 <Base title="Vestiaire" description="Decals Rocket League Oni Korp × Carl & Barl à télécharger gratuitement (Octane, Fennec) et merch du club.">
   <header class="page-head">
     <img class="page-head__bg" src="/img/entete-vestiaire.webp" srcset={srcset("/img/entete-vestiaire.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
-    <span class="page-head__kanji" aria-hidden="true">装</span>
     <div class="wrap">
       <h1>Vestiaire</h1>
       <p>Porte les couleurs du club, en jeu comme dans la vraie vie.</p>
@@ -43,7 +42,7 @@ const decals = [
           <img src={`/img/decal-${d.id}-visiteur.webp`} srcset={srcset(`/img/decal-${d.id}-visiteur.webp`)} sizes="(max-width: 860px) 100vw, 60vw" alt={`${d.car} Oni Korp × Carl & Barl, version visiteur`} loading="lazy" width="1600" height="900" data-side="visiteur" hidden />
         </div>
         <div>
-          <h2 id={`${d.id}-title`}>{d.car} Oni Korp × Carl & Barl</h2>
+          <h2 id={`${d.id}-title`}>{d.car}</h2>
           <p>{d.text}</p>
           <div class="switch" role="group" aria-label="Variante affichée">
             <button type="button" aria-pressed="true" data-show="domicile">Domicile</button>
