@@ -14,7 +14,7 @@ const pages = [
 ];
 const cards = pages.flatMap((p) => p.cartes);
 ---
-<Base title="Boosters" description="Ouvre un booster par jour et complète l'album Oni Korp : 27 vignettes, des holos et l'édition staff en or.">
+<Base title="Boosters" description={`Ouvre un booster par jour et complète l'album Oni Korp : ${cards.length} vignettes, des holos, l'édition staff en or et des légendaires.`}>
   <header class="page-head">
     <img class="page-head__bg page-head__bg--album" src="/img/album-couverture.webp" srcset={srcset("/img/album-couverture.webp")} sizes="100vw" alt="" width="1400" height="933" fetchpriority="high" />
     <div class="wrap">
@@ -43,8 +43,8 @@ const cards = pages.flatMap((p) => p.cartes);
 
       <div class="pack-stage">
         <button class="pack" type="button" data-pack disabled>
-          <span class="pack__body"><img src="/img/pochette.webp" alt="" width="500" height="750" /></span>
-          <span class="pack__top" aria-hidden="true"><img src="/img/pochette.webp" alt="" width="500" height="750" /></span>
+          <span class="pack__body"><img src="/img/pochette.webp" alt="" width="500" height="750" fetchpriority="low" decoding="async" /></span>
+          <span class="pack__top" aria-hidden="true"><img src="/img/pochette.webp" alt="" width="500" height="750" fetchpriority="low" decoding="async" /></span>
           <span class="pack__label" data-pack-label>Reviens demain</span>
         </button>
       </div>

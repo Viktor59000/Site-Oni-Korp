@@ -13,7 +13,7 @@ const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
-        <img src={artSrc} srcset={artSet} sizes="(max-width: 720px) 45vw, 200px" alt="" loading="lazy" width="560" height="840" />
+        <img src={artSrc} srcset={artSet} sizes="(max-width: 720px) 40vw, 180px" alt="" loading="lazy" width="560" height="840" />
       ) : kind === 'blason' ? (
         <span class="sp-blason"><img src="/img/oni-logo.svg" alt="" width="200" height="200" loading="lazy" /></span>
       ) : kind === 'recrue' ? (
@@ -28,7 +28,7 @@ const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
       {kind === 'devise' && <span class="sp-devise" aria-hidden="true">Jamais<br />à genoux</span>}
       {overlay && <span class="sp-overlay" aria-hidden="true">{overlay}</span>}
     </div>
-    <img class="sticker__crest" src="/img/oni-blason-blanc.png" alt="" width="218" height="228" />
+    <img class="sticker__crest" src="/img/oni-blason-blanc.png" alt="" width="218" height="228" loading="lazy" />
     <span class="sticker__num" aria-label={`Vignette numéro ${num}`}>{String(num).padStart(2, '0')}</span>
     <div class="sticker__band">
       <p class="sticker__name" style={`font-size:${nameSize}`}>{title}</p>

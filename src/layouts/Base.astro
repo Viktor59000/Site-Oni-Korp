@@ -35,6 +35,7 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="fr_FR" />
@@ -43,6 +44,7 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <meta property="og:description" content={description} />
     <meta property="og:image" content={abs(image)} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:image:alt" content="Logo Oni Korp, club esport" />
     <script type="application/ld+json" set:html={JSON.stringify({
       '@context': 'https://schema.org', '@type': 'SportsOrganization', name: 'Oni Korp',
       sport: 'Esport', foundingDate: '2021-07-12', url: abs('/'), logo: abs('/apple-touch-icon.png'),

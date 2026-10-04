@@ -21,14 +21,14 @@ const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
-        <img class={!photo && flip ? 'is-flipped' : undefined} src={artSrc} srcset={artSet} sizes="(max-width: 720px) 45vw, 200px" alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="560" height="840" />
+        <img class={!photo && flip ? 'is-flipped' : undefined} src={artSrc} srcset={artSet} sizes="(max-width: 720px) 40vw, 180px" alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="560" height="840" />
       ) : iconRole ? (
         <RoleIcon role={iconRole} class="sticker__icon" />
       ) : (
         <span class="sticker__initial" aria-hidden="true">{initial}</span>
       )}
     </div>
-    <img class="sticker__crest" src="/img/oni-blason-blanc.png" alt="" width="218" height="228" />
+    <img class="sticker__crest" src="/img/oni-blason-blanc.png" alt="" width="218" height="228" loading="lazy" />
     <span class="sticker__num" aria-label={`Vignette numéro ${num}`}>{String(num).padStart(2, '0')}</span>
     <div class="sticker__band">
       <p class="sticker__name" translate="no" style={`font-size:${nameSize}`}>{name}</p>

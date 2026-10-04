@@ -16,7 +16,7 @@ const rosterLabel = (g) => {
 <Base>
   <section class="hero" aria-labelledby="hero-title">
     <img class="hero__bg" src="/img/hero-fond.webp" srcset={srcset("/img/hero-fond.webp")} sizes="100vw" alt="" width="1983" height="793" fetchpriority="high" />
-    <img class="hero__kanji" src="/img/kanji-oni-neon.webp" srcset={srcset("/img/kanji-oni-neon.webp")} sizes="(max-width: 860px) 95vw, 50vw" alt="" width="1402" height="1122" />
+    <img class="hero__kanji" src="/img/kanji-oni-neon.webp" srcset={srcset("/img/kanji-oni-neon.webp")} sizes="(max-width: 860px) 95vw, 50vw" alt="" width="1402" height="1122" fetchpriority="low" decoding="async" />
     <span class="hero__hud hud" aria-hidden="true"></span>
     <span class="hero__motto" aria-hidden="true">Oni's never on knees</span>
     <div class="wrap hero__inner">
