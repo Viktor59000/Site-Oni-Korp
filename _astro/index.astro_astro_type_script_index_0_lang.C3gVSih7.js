@@ -1,1 +1,0 @@
-import{i as e,n as t}from"./collection.BQrm3x_-.js";var n=t(),r=e(n);r>0&&(document.querySelector(`[data-my-album]`).hidden=!1,document.querySelector(`[data-my-owned]`).textContent=String(r),document.querySelectorAll(`.sticker[data-num]`).forEach(e=>{let t=n.owned[e.dataset.num];t&&(e.classList.add(`is-owned`),t.holo&&e.classList.add(`is-holo`))}));
