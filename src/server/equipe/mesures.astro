@@ -2,8 +2,7 @@
 // Stats : les mesures en jeu du roster, joueur par joueur, avec leur tendance.
 // - LoL et osu! : relevées automatiquement par Oni Bot (API Riot et osu!).
 // - Valorant et Rocket League : saisies après chaque match ou scrim (leurs API publiques ne donnent pas les parties).
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { TIERS_FR } from './stats';
@@ -109,9 +108,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
 }));
 const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${c}.png`;
 ---
-<Base title="Stats · Espace équipe" description="Mesures en jeu du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Stats</h1><p>Les mesures en jeu de chaque joueur, et dans quel sens elles vont.</p></div></header>
-  <EquipeShell current="stats" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Stats · QG" heading="Stats" lead="Les mesures en jeu de chaque joueur, et dans quel sens elles vont." current="stats" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="st">
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map((b) => (
@@ -323,8 +320,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
         </section>
       ))}
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style set:html={SHARED_CSS}></style>
 <style>

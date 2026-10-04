@@ -1,8 +1,7 @@
 ---
 // Drafter League of Legends : ordre de draft de tournoi, mode fearless (séries), drafts sauvegardés pour le roster,
 // op.gg multi de notre équipe et de l'adversaire. Champions et icônes : Data Dragon (Riot), à jour automatiquement.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { links } from './stats';
@@ -20,10 +19,7 @@ const ours = rosterIds.length ? await rows<{ ident: string; region: string }>(`S
 const oursMulti = ours.length ? links.opggMulti(ours.map((o) => o.ident), ours[0].region ?? 'euw') : null;
 const games = [...new Set(me.rosters.map((r) => r.game))];
 ---
-<Base title="Drafter LoL · Espace équipe" description="Préparer les drafts League of Legends du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Drafter LoL</h1><p>Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless.</p></div></header>
-
-  <EquipeShell current="lol" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Drafter LoL · QG" heading="Drafter LoL" lead="Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless." current="lol" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))}>
     <div>
       <div class="dr-top">
@@ -78,8 +74,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       </div>
     </div>
   </section>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   type Champ = { id: string; name: string; tags: string[] };

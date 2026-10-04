@@ -2,8 +2,7 @@
 // Avant-match : tout ce qu'il faut pour un match ou un scrim, au même endroit.
 // Infos et horaires (check-in, inscription), compo, fiche de l'adversaire, tableaux blancs, checklist,
 // puis après le match : débrief, stats, replays et VOD.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { md } from './ui';
@@ -43,9 +42,7 @@ const CHECK: Record<string, string[]> = {
 };
 const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
 ---
-<Base title="Avant-match · Espace équipe" description="Préparation des matchs du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Avant-match</h1><p>Compo, adversaire, strats et checklist : tout le match au même endroit.</p></div></header>
-  <EquipeShell current="match" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Avant-match · QG" heading="Avant-match" lead="Compo, adversaire, strats et checklist : tout le match au même endroit." current="match" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {!m ? (
       <div class="am-list">
         <section>
@@ -151,8 +148,7 @@ const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
         </div>
       </div>
     )}
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   // Compte à rebours

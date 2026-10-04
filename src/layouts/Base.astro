@@ -7,7 +7,7 @@ import '@fontsource/zen-kaku-gothic-new/latin-700.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-const { title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert.", image = '/og.jpg' } = Astro.props;
+const { qg = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert.", image = '/og.jpg' } = Astro.props;
 const fullTitle = title ? `${title} | Oni Korp` : "Oni Korp | Club esport, jamais à genoux";
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // URL absolue d'un fichier de public/, base GitHub Pages comprise
@@ -21,6 +21,7 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {qg && <meta name="robots" content="noindex, nofollow" />}
     <meta name="theme-color" content="#f3f1ec" />
     <script is:inline>
       // Applique le thème avant l'affichage (pas de flash) : choix mémorisé, sinon réglage du système
@@ -51,12 +52,16 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
       sameAs: ['https://www.twitch.tv/oni_korp', 'https://x.com/OniKorpPro', 'https://www.tiktok.com/@onikorp.officiel', 'https://youtube.com/channel/UCbjfbZaMnTJBZ2IXrjQGsNQ'],
     })} />
   </head>
-  <body>
+  <body class:list={{ qg }}>
     <a class="skip" href="#contenu">Aller au contenu</a>
-    <Nav />
-    <main id="contenu">
-      <slot />
-    </main>
-    <Footer />
+    {qg ? <slot /> : (
+      <>
+        <Nav />
+        <main id="contenu">
+          <slot />
+        </main>
+        <Footer />
+      </>
+    )}
   </body>
 </html>

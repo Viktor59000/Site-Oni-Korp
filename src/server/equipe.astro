@@ -2,13 +2,12 @@
 // Espace équipe (connexion Discord) : matchs et scrims du roster, séances avec réponse en un clic, disponibilités,
 // agenda perso à synchroniser, et pour l'encadrement le bilan de présence.
 // Les données viennent de la base partagée avec Oni Bot ; une réponse ici met à jour le message Discord dans la minute.
-import Base from '../layouts/Base.astro';
 import { getSession, icsKey } from './session';
 import { rows, weekKey } from './db';
 import { access } from './equipe/access';
 import { SLOTS } from './equipe/dispos';
 import { kindLabel } from './ics';
-import EquipeShell from './equipe/EquipeShell.astro';
+import Qg from './equipe/Qg.astro';
 import { scope } from './equipe/outils';
 
 export const prerender = false;
@@ -83,37 +82,24 @@ const spaces = me ? await Promise.all(sc.list.map(async (r) => {
 const date = (ms: number) => new Date(Number(ms));
 
 ---
-<Base title="Espace équipe" description="Espace réservé aux joueurs et au staff d'Oni Korp.">
-  <header class="page-head eq-head">
-    <div class="wrap">
-      <h1>Espace équipe</h1>
-      {user
-        ? (
-          <div class="eq-who">
-            {(me?.member?.avatar ?? user.avatar) && <img src={me?.member?.avatar ?? user.avatar!} alt="" width="48" height="48" />}
-            <div>
-              <p><strong>{me?.member?.name ?? user.name}</strong>{me?.staff && <span class="eq-tag">Encadrement</span>}</p>
-              <p class="eq-note"><a href="/api/auth/logout">Se déconnecter</a></p>
-            </div>
-            {icsPath && me?.rosters.length ? (
-              <details class="eq-cal">
-                <summary class="btn btn--ghost">Mon agenda perso</summary>
-                <div class="eq-cal__panel">
-                  <p>Séances, scrims et matchs de {me.staff ? 'tous les rosters' : 'ton roster'}, dans ton agenda. À ajouter une seule fois : il se met à jour tout seul.</p>
-                  <a class="btn" href={icsGoogle!} rel="noopener">Google Agenda</a>
-                  <a class="btn btn--ghost" href={`webcal://${host}${icsPath}`}>Apple · Outlook</a>
-                  <label class="eq-note">Lien personnel (ne le partage pas)
-                    <input type="text" readonly value={`https://${host}${icsPath}`} onfocus="this.select()" />
-                  </label>
-                </div>
-              </details>
-            ) : null}
-          </div>
-        )
-        : <p>Séances, présences et disponibilités de ton roster, reliées au Discord du club.</p>}
-    </div>
-  </header>
-  <EquipeShell current="planning" rosters={me?.rosters ?? []} staff={!!me?.staff} active={sc.active} bare={!(me?.member && (me.staff || me.rosters.length > 0))}>
+<Qg title={user ? 'Planning · QG' : 'Espace équipe'} heading={user ? 'Planning' : 'Espace équipe'}
+  lead={user ? 'Séances à venir, disponibilités de la semaine et présence.' : 'Séances, présences et disponibilités de ton roster, reliées au Discord du club.'}
+  current="planning" rosters={me?.rosters ?? []} staff={!!me?.staff} active={sc.active} bare={!(me?.member && (me.staff || me.rosters.length > 0))}
+  user={user ? { name: me?.member?.name ?? user.name, avatar: me?.member?.avatar ?? user.avatar } : null}>
+  {icsPath && me?.rosters.length ? (
+    <details class="qg-drawer" slot="actions">
+      <summary class="btn btn--ghost">Synchroniser mon agenda</summary>
+      <div class="qg-drawer__panel" role="dialog" aria-label="Agenda perso">
+        <div class="qg-drawer__head"><h2>Mon agenda perso</h2><button type="button" class="qg-close" aria-label="Fermer" onclick="this.closest('details').open = false">×</button></div>
+        <p>Séances, scrims et matchs de {me.staff ? 'tous les rosters' : 'ton roster'}, dans ton agenda. À ajouter une seule fois : il se met à jour tout seul.</p>
+        <a class="btn" href={icsGoogle!} rel="noopener">Ajouter à Google Agenda</a>
+        <a class="btn btn--ghost" href={`webcal://${host}${icsPath}`}>Apple · Outlook</a>
+        <label class="eq-note">Lien personnel (ne le partage pas)
+          <input type="text" readonly value={`https://${host}${icsPath}`} onfocus="this.select()" />
+        </label>
+      </div>
+    </details>
+  ) : null}
     <div class="eq">
       {!user && (
         <div class="eq-login">
@@ -149,7 +135,7 @@ const date = (ms: number) => new Date(Number(ms));
 
       {spaces.map((s) => (
         <article class="eq-roster" style={`--team:${s.g.color}`} id={`roster-${s.r.slug}`}>
-          <header class="eq-roster__head">
+          <header class:list={["eq-roster__head", { "is-single": spaces.length === 1 }]}>
             {s.g.img && <img src={`/img/${s.g.img}.webp`} alt="" width="72" height="72" loading="lazy" />}
             <div>
               <h2>{s.r.name}</h2>
@@ -265,8 +251,7 @@ const date = (ms: number) => new Date(Number(ms));
         </article>
       ))}
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style>
   .eq { display: grid; gap: clamp(3rem, 6vw, 5rem); }

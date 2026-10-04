@@ -1,7 +1,6 @@
 ---
 // Guide de l'espace équipe : démarrage rapide (joueurs, encadrement) et rôle de chaque outil, avec les commandes Discord liées.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { teamUser } from './outils';
 
 export const prerender = false;
@@ -36,9 +35,7 @@ const OUTILS = [
   ['Setups · Joueurs · Docs', 'Réglages de chacun, comptes de jeu et profils, documents du roster (routines, règles, appels).', ''],
 ];
 ---
-<Base title="Guide · Espace équipe" description="Mode d'emploi de l'espace équipe.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Guide</h1><p>Tout le roster au même endroit. Voici comment s'en servir.</p></div></header>
-  <EquipeShell current="guide" rosters={me.rosters} staff={me.staff}>
+<Qg title="Guide · QG" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="gd">
       <section>
         <h2 class="gd-h">Joueur : démarrer en 5 minutes</h2>
@@ -62,8 +59,7 @@ const OUTILS = [
         <details><summary>Je veux une fonction en plus</summary><p>Dis-le au staff sur Discord : l'espace évolue avec le club.</p></details>
       </section>
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style>
   .eq-mini { padding-block: 2.5rem 1.5rem; }

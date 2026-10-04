@@ -2,8 +2,7 @@
 // VOD : les vidéos du roster (matchs, scrims, références pro), commentées avec des repères horodatés.
 // YouTube : lecteur intégré, « Repère ici » prend le moment en cours et un clic sur un repère y saute.
 // Autres liens (Twitch, Medal…) : repères saisis à la main (mm:ss).
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 
@@ -28,12 +27,12 @@ const clock = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:
 const KINDS: Record<string, [string, string]> = { bien: ['Bien joué', '#1f8f55'], erreur: ['Erreur', '#e5251f'], revoir: ['À revoir', '#e2a33b'], info: ['Note', '#6b7280'] };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 ---
-<Base title="VOD · Espace équipe" description="Vidéos commentées du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>VOD</h1><p>Les vidéos du roster, commentées au bon moment.</p></div></header>
-  <EquipeShell current="vod" rosters={me.rosters} staff={me.staff} active={sc.active}>
-    {!current ? (
-      <div class="vd">
-        {ids.length > 0 && (
+<Qg title="VOD · QG" heading="VOD" lead="Les vidéos du roster, commentées au bon moment." current="vod" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+  {!current && ids.length > 0 && (
+    <details class="qg-drawer" slot="actions">
+      <summary class="btn">+ Ajouter une VOD</summary>
+      <div class="qg-drawer__panel" role="dialog" aria-label="Ajouter une VOD">
+        <div class="qg-drawer__head"><h2>Ajouter une VOD</h2><button type="button" class="qg-close" aria-label="Fermer" onclick="this.closest('details').open = false">×</button></div>
           <form method="post" action="/api/equipe/outils" class="vd-add">
             <input type="hidden" name="action" value="vod" /><input type="hidden" name="back" value={listUrl} />
             <label class="vd-wide">Lien de la vidéo<input name="url" type="url" required placeholder="YouTube, Twitch, Medal…" /></label>
@@ -42,7 +41,11 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', t
             <label>Match lié <small>(facultatif)</small><select name="match"><option value="">—</option>{matches.map((m) => <option value={m.id}>vs {m.opponent} · {fmt.format(new Date(Number(m.at)))}</option>)}</select></label>
             <button class="btn">Ajouter</button>
           </form>
-        )}
+      </div>
+    </details>
+  )}
+    {!current ? (
+      <div class="vd">
         {vods.length ? (
           <ul class="vd-list">
             {vods.map((v) => (
@@ -93,8 +96,7 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', t
         )}
       </div>
     )}
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   const view = document.querySelector<HTMLElement>('[data-vod]');

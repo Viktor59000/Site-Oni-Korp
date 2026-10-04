@@ -1,7 +1,6 @@
 ---
 // Docs du roster : routines d'entraînement, règles internes, guides, liens utiles. Mise en forme simple (# titre, - liste, **gras**, liens).
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { md } from './ui';
@@ -28,9 +27,7 @@ const STARTERS = [
   ['Appels et vocabulaire', '# Appels\n- **Nom** : ce que ça veut dire\n'],
 ];
 ---
-<Base title="Docs · Espace équipe" description="Documents du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Docs</h1><p>Routines, règles, appels, guides : ce que tout le roster doit savoir.</p></div></header>
-  <EquipeShell current="docs" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Docs · QG" heading="Docs" lead="Routines, règles, appels, guides : ce que tout le roster doit savoir." current="docs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {editing && edit ? (
       <form method="post" action="/api/equipe/outils" class="dc-form">
         <input type="hidden" name="action" value="doc" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} />
@@ -73,8 +70,7 @@ const STARTERS = [
         ) : <p class="eq-note">Aucun doc pour l'instant. Commence par la routine de la semaine ou les règles du roster.</p>}
       </div>
     )}
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   document.querySelectorAll<HTMLElement>('[data-starter]').forEach((b) => b.addEventListener('click', () => {

@@ -1,0 +1,129 @@
+---
+// Cadre du « QG » (espace équipe) : un habillage d'outil, distinct de la vitrine.
+// Barre du haut (QG, sélecteur de roster, thème, compte), navigation en 4 groupes pour le roster choisi,
+// en-tête d'écran compact (titre + action principale), puis le contenu.
+import Base from '../../layouts/Base.astro';
+import type { RosterRow } from './access';
+import '../../styles/qg.css';
+
+interface Props {
+  title: string; heading?: string; lead?: string; current?: string;
+  rosters?: RosterRow[]; staff?: boolean; active?: string | null;
+  user?: { name: string; avatar: string | null } | null; bare?: boolean;
+}
+const { title, heading = title, lead, current = '', rosters = [], staff = false, active = null, user = null, bare = false } = Astro.props;
+const GAMES: Record<string, { label: string; color: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#2fa877' },
+};
+// Roster de travail : celui choisi, ou le seul qu'on ait
+const activeRoster = rosters.find((r) => r.slug === active) ?? (rosters.length === 1 && !staff ? rosters[0] : null);
+const game = activeRoster?.game ?? null;
+const PATH: Record<string, string> = {
+  planning: '/equipe/', calendrier: '/equipe/calendrier/', match: '/equipe/match/', stats: '/equipe/stats/', objectifs: '/equipe/objectifs/',
+  notes: '/equipe/notes/', vod: '/equipe/vod/', tactique: '/equipe/tactique/', scouting: '/equipe/scouting/', lol: '/equipe/lol/',
+  valo: '/equipe/valo/', osu: '/equipe/osu/', joueurs: '/equipe/joueurs/', setup: '/equipe/setup/', docs: '/equipe/docs/',
+};
+const GAME_TOOL: Record<string, [string, string]> = { lol: ['lol', 'Drafter'], valo: ['valo', 'Lineups'], osu: ['osu', 'Défis et maps'] };
+const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
+const gameTools = game ? (GAME_TOOL[game] ? [GAME_TOOL[game]] : []) : staff ? [['lol', 'Drafter LoL'], ['valo', 'Lineups Valorant'], ['osu', 'osu!']] : [];
+const GROUPS: [string, [string, string][]][] = [
+  ['Organisation', [['planning', 'Planning'], ['calendrier', 'Calendrier'], ['match', 'Avant-match']]],
+  ['Progression', [['stats', 'Stats'], ['objectifs', 'Objectifs'], ['notes', 'Notes de match'], ['vod', 'VOD']]],
+  ['Stratégie', [['tactique', 'Tableau blanc'], ['scouting', 'Scouting'], ...gameTools as [string, string][]]],
+  ['Équipe', [['joueurs', 'Joueurs'], ['setup', 'Setups'], ['docs', 'Docs']]],
+];
+// Changer de roster en restant sur le même outil (sauf outil propre à un autre jeu)
+const switchTo = (r: RosterRow) => {
+  const tool = PATH[current] && !(GAME_TOOL[current] && current !== r.game) ? PATH[current] : '/equipe/';
+  return `${tool}?r=${r.slug}`;
+};
+const byGame = Object.entries(GAMES).map(([k, g]) => ({ key: k, ...g, list: rosters.filter((r) => r.game === k) })).filter((g) => g.list.length);
+const accent = activeRoster ? GAMES[activeRoster.game]?.color ?? '#e5251f' : '#e5251f';
+const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === current)?.[1] ?? heading;
+---
+<Base title={title} qg>
+  <div class="qg-app" style={`--game:${accent}`}>
+    <header class="qg-top">
+      <a class="qg-brand" href="/equipe/"><img src="/img/oni-logo.svg" alt="" width="28" height="28" /><span>QG <b translate="no">Oni Korp</b></span></a>
+      {!bare && rosters.length > 0 && (
+        <details class="qg-switch">
+          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : 'Tous les rosters'}<span class="qg-caret" aria-hidden="true"></span></summary>
+          <div class="qg-menu">
+            {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
+            {(staff || rosters.length > 1) && <a href={PATH[current] && !GAME_TOOL[current] ? PATH[current] : '/equipe/'} aria-current={!activeRoster && current !== 'vue' ? 'page' : undefined}>Tous les rosters</a>}
+            {byGame.map((g) => (
+              <>
+                <p style={`--g:${g.color}`}><span aria-hidden="true"></span>{g.label}</p>
+                {g.list.map((r) => <a href={switchTo(r)} aria-current={r.slug === activeRoster?.slug ? 'page' : undefined}>{r.name}</a>)}
+              </>
+            ))}
+          </div>
+        </details>
+      )}
+      <span class="qg-spacer"></span>
+      <button class="qg-icon" type="button" data-qg-theme aria-label="Changer de thème" title="Thème clair / sombre"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 019.5 3.5a8.5 8.5 0 1011 11z" /></svg></button>
+      {user ? (
+        <details class="qg-account">
+          <summary>{user.avatar ? <img src={user.avatar} alt="" width="30" height="30" /> : <span class="qg-avatar">{user.name.slice(0, 1)}</span>}<span class="qg-name">{user.name}</span></summary>
+          <div class="qg-menu qg-menu--right">
+            <a href="/equipe/profil/">Mon profil</a>
+            <a href="/equipe/guide/">Guide</a>
+            <a href="/">Retour au site</a>
+            <a href="/api/auth/logout">Se déconnecter</a>
+          </div>
+        </details>
+      ) : <a class="qg-back" href="/">Retour au site</a>}
+    </header>
+
+    <div class:list={['qg-body', { 'is-bare': bare }]}>
+      {!bare && (
+        <details class="qg-nav" data-qg-nav open>
+          <summary>{currentLabel}<span class="qg-caret" aria-hidden="true"></span></summary>
+          <nav aria-label="Outils du roster">
+            {GROUPS.map(([label, items]) => (
+              <div class="qg-group">
+                <p>{label}</p>
+                {items.map(([k, l]) => <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}>{l}</a>)}
+              </div>
+            ))}
+            <div class="qg-group qg-group--foot">
+              {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
+              <a href="/equipe/profil/" aria-current={current === 'profil' ? 'page' : undefined}>Mon profil</a>
+              <a href="/equipe/guide/" aria-current={current === 'guide' ? 'page' : undefined}>Guide</a>
+            </div>
+          </nav>
+        </details>
+      )}
+      <main id="contenu" class="qg-main">
+        <header class="qg-head">
+          <div>
+            {activeRoster && <p class="qg-kicker"><span aria-hidden="true"></span>{activeRoster.name} · {GAMES[activeRoster.game]?.label}</p>}
+            <h1>{heading}</h1>
+            {lead && <p class="qg-lead">{lead}</p>}
+          </div>
+          <div class="qg-actions"><slot name="actions" /></div>
+        </header>
+        <slot />
+      </main>
+    </div>
+  </div>
+</Base>
+
+<script>
+  // Thème (même choix mémorisé que la vitrine)
+  document.querySelector('[data-qg-theme]')?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch {}
+  });
+  // Navigation repliée sur mobile ; menus fermés au clic à l'extérieur
+  if (matchMedia('(max-width: 900px)').matches) document.querySelector('[data-qg-nav]')?.removeAttribute('open');
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll<HTMLDetailsElement>('.qg-switch[open], .qg-account[open]').forEach((d) => { if (!d.contains(e.target as Node)) d.open = false; });
+  });
+  // Panneaux (formulaires) : fermeture par Échap
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll<HTMLDetailsElement>('.qg-drawer[open]').forEach((d) => (d.open = false));
+  });
+</script>

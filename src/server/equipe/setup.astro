@@ -1,7 +1,6 @@
 ---
 // Setups : réglages et matériel de chaque joueur, par jeu. Pratique pour comparer, dépanner, ou copier le viseur d'un coéquipier.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 
@@ -47,9 +46,7 @@ const blocks = await Promise.all(games.map(async (g) => {
 }));
 const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? Math.round(Number(d.dpi) * Number(d.sens)) : null);
 ---
-<Base title="Setups · Espace équipe" description="Réglages et matériel des joueurs du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Setups</h1><p>Réglages et matériel de chacun : pour comparer, dépanner, ou copier un viseur.</p></div></header>
-  <EquipeShell current="setup" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Setups · QG" heading="Setups" lead="Réglages et matériel de chacun : pour comparer, dépanner, ou copier un viseur." current="setup" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="su">
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map((b) => (
@@ -97,8 +94,7 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
         </section>
       ))}
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   document.addEventListener('click', async (e) => {

@@ -10,7 +10,7 @@ const joueurs = new Set(album.games.flatMap((g) => g.rosters.flatMap((r) => r.ca
 const chiffres = [
   ['2021', 'année de création'],
   [String(album.games.length), 'jeux joués depuis 2021'],
-  [String(joueurs), "légendes dans l'album"],
+  [String(joueurs), "joueurs légendes"],
   [String(album.staff.length), 'membres du staff historique'],
 ];
 ---
@@ -27,7 +27,7 @@ const chiffres = [
     <div class="wrap club">
       <div class="club__story">
         <h2 id="histoire" style="font-size:var(--step-3);margin-bottom:1.5rem">Notre histoire</h2>
-        <p>Oni Korp rassemble depuis 2021 des joueurs qui ont l'ambition des plus grands. Chaque joueur est choisi avec soin, après une présentation en ticket sur notre Discord, puis intégré à un roster adapté à son niveau.</p>
+        <p>Oni Korp rassemble depuis 2021 des joueurs qui ont l'ambition des plus grands. Chaque joueur est choisi avec soin : une candidature, un échange avec le staff du pôle, puis une place dans un roster adapté à son niveau.</p>
         <p>Le club a connu des succès, des défaites et des périodes difficiles. En 2024, une refonte complète a remis à plat l'organisation : nouveaux outils, procédures plus claires et un staff organisé pôle par pôle.</p>
         <p class="signature">Notre devise n'a pas changé : <em>Oni's never on knees</em>.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="300" height="300" loading="lazy" /></p>
       </div>
@@ -37,6 +37,7 @@ const chiffres = [
         <li><time datetime="2023">2023</time><p>Partenariat avec Carl & Barl by LNDR et sortie des decals Octane et Fennec.</p></li>
         <li><time datetime="2024-01">Janvier 2024</time><p>Ouverture des pôles League of Legends, Valorant et osu!.</p></li>
         <li><time datetime="2024">2024</time><p>Refonte de la structure et des méthodes de travail.</p></li>
+        <li><time datetime="2026">2026</time><p>Nouvelle ère : le club se reconstruit, avec un espace dédié à chaque roster et un bot maison.</p></li>
         <li><time>Prochaine étape</time><p>Statut d'association loi 1901 et locaux.</p></li>
       </ol>
     </div>

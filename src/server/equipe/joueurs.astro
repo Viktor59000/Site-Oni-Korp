@@ -1,7 +1,6 @@
 ---
 // Joueurs : chacun relie ses comptes de jeu ; le roster voit les profils (op.gg, tracker.gg, osu!) et les rangs quand une clé d'API est configurée.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { REGIONS, TIERS_FR, links, lolRank, osuStats } from './stats';
@@ -37,14 +36,15 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 const seen = await rows<{ key: string }>(`SELECT key FROM stats_cache WHERE key LIKE 'lol:%' OR key LIKE 'osu:%' LIMIT 50`);
 const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.startsWith('lol:')), osu: !!process.env.OSU_CLIENT_ID || seen.some((k) => k.key.startsWith('osu:')) };
 ---
-<Base title="Joueurs · Espace équipe" description="Comptes de jeu et profils des joueurs du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Joueurs</h1><p>Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander.</p></div></header>
-
-  <EquipeShell current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active}>
-    <div class="jo">
+<Qg title="Joueurs · QG" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+  {true && (
+    <details class="qg-drawer" slot="actions">
+      <summary class="btn btn--ghost">Relier mes comptes</summary>
+      <div class="qg-drawer__panel" role="dialog" aria-label="Mes comptes de jeu">
+        <div class="qg-drawer__head"><h2>Mes comptes de jeu</h2><button type="button" class="qg-close" aria-label="Fermer" onclick="this.closest('details').open = false">×</button></div>
       <form method="post" action="/api/equipe/outils" class="jo-me">
         <input type="hidden" name="action" value="comptes" /><input type="hidden" name="back" value={`/equipe/joueurs/${sc.active ? `?r=${sc.active}` : ''}`} />
-        <h2 class="jo-h">Mes comptes</h2>
+        
         <div class="jo-fields">
           <label>Riot ID <small>(LoL et Valorant)</small><input name="riot" value={get('riot')?.ident ?? ''} placeholder="Pseudo#TAG" maxlength="60" pattern=".+#.+" /></label>
           <label>Région<select name="region">{Object.entries(REGIONS).map(([k, v]) => <option value={k} selected={(get('riot')?.region ?? 'euw') === k}>{v.label}</option>)}</select></label>
@@ -53,6 +53,12 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
         </div>
         <button class="btn">Enregistrer</button>
       </form>
+      </div>
+    </details>
+  )}
+    <div class="jo">
+      {!mine.length && <p class="qg-empty"><strong>Relie tes comptes de jeu</strong>Tes rangs et tes parties apparaîtront dans Stats et sur ton profil. Bouton « Relier mes comptes », en haut à droite.</p>}
+
 
       {rosters.map(({ r, people, multi }) => (
         <article class="jo-roster">
@@ -88,8 +94,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
         <p class="eq-note jo-keys">Encadrement : les rangs s'affichent automatiquement avec {!keys.riot && <>une clé <a href="https://developer.riotgames.com" rel="noopener">Riot</a> (RIOT_API_KEY)</>}{!keys.riot && !keys.osu && ' et '}{!keys.osu && <>une application <a href="https://osu.ppy.sh/home/account/edit#oauth" rel="noopener">osu!</a> (OSU_CLIENT_ID, OSU_CLIENT_SECRET)</>} dans le fichier <code>.env</code> d'Oni Bot. Sans elles, les liens de profil suffisent.</p>
       )}
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style>
   .eq-mini { padding-block: 2.5rem 1.5rem; }

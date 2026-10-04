@@ -1,8 +1,7 @@
 ---
 // Profil d'un joueur : rosters, rangs, mesures en jeu par jeu, tendances, objectifs, présence, débriefs et setups.
 // Visible par le joueur, ses coéquipiers et l'encadrement. Par défaut : mon profil.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { teamUser } from './outils';
 import { access } from './access';
 import { rows } from '../db';
@@ -57,17 +56,7 @@ const setups = await rows<{ game: string; data: string }>('SELECT game, data FRO
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 ---
-<Base title={`${m?.name ?? 'Profil'} · Espace équipe`} description="Profil d'un joueur.">
-  <header class="page-head eq-mini pf-head">
-    <div class="wrap">
-      {m?.avatar && <img src={m.avatar} alt="" width="72" height="72" />}
-      <div>
-        <h1>{m?.name ?? 'Profil'}</h1>
-        <p>{target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')}{target.staff && target.rosterIds.length ? ' · Encadrement' : ''}</p>
-      </div>
-    </div>
-  </header>
-  <EquipeShell current="profil" rosters={me.rosters} staff={me.staff}>
+<Qg title={`${m?.name ?? 'Profil'} · QG`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="pf">
       <ul class="pf-kpis">
         <li><b>{presence === null ? '—' : `${presence} %`}</b><span>présence aux séances (90 j)</span></li>
@@ -110,8 +99,7 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
         </section>
       </div>
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style set:html={SHARED_CSS}></style>
 <style>

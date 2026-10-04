@@ -1,8 +1,7 @@
 ---
 // osu! : le coin du roster. Défi de la semaine (classement interne relevé par Oni Bot), maps d'entraînement partagées,
 // et les outils de Yuzuctus : Osurea (zone de tablette) et Yuzu Skins.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 import { r1 } from './ui';
@@ -47,9 +46,24 @@ const KIT: [string, [string, string, string, string?][]][] = [
 const len = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000); return h <= 0 ? 'terminé' : h < 48 ? `encore ${h} h` : `encore ${Math.round(h / 24)} jours`; };
 ---
-<Base title="osu! · Espace équipe" description="Défis, maps d'entraînement et outils osu! du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>osu!</h1><p>Défi de la semaine, maps d'entraînement et outils du roster.</p></div></header>
-  <EquipeShell current="osu" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="osu! · QG" heading="osu!" lead="Défi de la semaine, maps d'entraînement et outils du roster." current="osu" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+  {osuRosters.length > 0 && (
+    <details class="qg-drawer" slot="actions">
+      <summary class="btn">+ Ajouter une map</summary>
+      <div class="qg-drawer__panel" role="dialog" aria-label="Ajouter une map d'entraînement">
+        <div class="qg-drawer__head"><h2>Ajouter une map d'entraînement</h2><button type="button" class="qg-close" aria-label="Fermer" onclick="this.closest('details').open = false">×</button></div>
+            <form method="post" action="/api/equipe/outils" class="ou-add">
+              <input type="hidden" name="action" value="osu-map" /><input type="hidden" name="back" value={back} />
+              {erreur === 'map' && <p class="ou-err">Lien non reconnu : colle le lien de la difficulté (osu.ppy.sh/beatmapsets/…#osu/…).</p>}
+              <label class="ou-wide">Lien de la map<input name="map" required placeholder="https://osu.ppy.sh/beatmapsets/…#osu/…" /></label>
+              <label>Roster<select name="roster">{osuRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+              <label class="ou-wide">Pourquoi cette map<input name="note" maxlength="300" placeholder="Ex. : streams 200 BPM, lecture AR10, endurance" /></label>
+              {me.staff && <label class="ou-check"><input type="checkbox" name="challenge" value="1" /> Défi de la semaine, pendant <input name="days" type="number" min="1" max="30" value="7" /> jours</label>}
+              <button class="btn">Ajouter</button>
+            </form>
+      </div>
+    </details>
+  )}
     <div class="ou">
 
 
@@ -77,20 +91,12 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
                   ) : <p class="eq-note">Pas encore de score. Joue la map : le classement se met à jour toutes les 30 minutes (comptes osu! reliés dans <a href="/equipe/joueurs/">Joueurs</a>).</p>}
                 </div>
               </article>
-            )) : <p class="eq-note">{me.staff ? 'Aucun défi en cours. Lance-en un ci-dessous (case « défi de la semaine »).' : 'Aucun défi en cours.'}</p>}
+            )) : <p class="eq-note">{me.staff ? 'Aucun défi en cours. Lance-en un avec « + Ajouter une map » (case « défi de la semaine »).' : 'Aucun défi en cours.'}</p>}
           </section>
 
           <section>
             <h2 class="ou-h">Maps d'entraînement</h2>
-            <form method="post" action="/api/equipe/outils" class="ou-add">
-              <input type="hidden" name="action" value="osu-map" /><input type="hidden" name="back" value={back} />
-              {erreur === 'map' && <p class="ou-err">Lien non reconnu : colle le lien de la difficulté (osu.ppy.sh/beatmapsets/…#osu/…).</p>}
-              <label class="ou-wide">Lien de la map<input name="map" required placeholder="https://osu.ppy.sh/beatmapsets/…#osu/…" /></label>
-              <label>Roster<select name="roster">{osuRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
-              <label class="ou-wide">Pourquoi cette map<input name="note" maxlength="300" placeholder="Ex. : streams 200 BPM, lecture AR10, endurance" /></label>
-              {me.staff && <label class="ou-check"><input type="checkbox" name="challenge" value="1" /> Défi de la semaine, pendant <input name="days" type="number" min="1" max="30" value="7" /> jours</label>}
-              <button class="btn">Ajouter</button>
-            </form>
+
             {training.length ? (
               <ul class="ou-maps">
                 {training.map(({ m, meta }) => (
@@ -123,8 +129,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
         ))}
       </section>
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style>
   .eq-mini { padding-block: 2.5rem 1.5rem; }

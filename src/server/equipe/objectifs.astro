@@ -1,8 +1,7 @@
 ---
 // Objectifs : l'encadrement fixe des objectifs (à un joueur ou à tout le roster), chacun fait avancer les siens.
 // Exemples : « passer Diamant avant décembre », « 3 VOD reviews par semaine », « communication en fin de round ».
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { exec, rows } from '../db';
 
@@ -28,9 +27,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
 }));
 const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id)));
 ---
-<Base title="Objectifs · Espace équipe" description="Objectifs des joueurs et du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Objectifs</h1><p>Ce qu'on vise, joueur par joueur, et où on en est.</p></div></header>
-  <EquipeShell current="objectifs" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Objectifs · QG" heading="Objectifs" lead="Ce qu'on vise, joueur par joueur, et où on en est." current="objectifs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ob">
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map(({ r, members, groups }) => (
@@ -82,8 +79,7 @@ const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me
         </section>
       ))}
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style>
   .eq-mini { padding-block: 2.5rem 1.5rem; }

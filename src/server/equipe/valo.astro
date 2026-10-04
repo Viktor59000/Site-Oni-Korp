@@ -1,8 +1,7 @@
 ---
 // Lineups Valorant : la bibliothèque du roster, posée sur les cartes. Deux clics (position du lanceur, point d'impact),
 // un titre, un clip : tout le roster la retrouve. Cartes et agents : valorant-api.com (données officielles du jeu).
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 
 export const prerender = false;
@@ -13,10 +12,7 @@ const sc = scope(me.rosters, Astro.url);
 const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.active));
 const games = [...new Set(me.rosters.map((r) => r.game))];
 ---
-<Base title="Lineups Valorant · Espace équipe" description="La bibliothèque de lineups Valorant du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Lineups Valorant</h1><p>Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une.</p></div></header>
-
-  <EquipeShell current="valo" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Lineups Valorant · QG" heading="Lineups Valorant" lead="Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une." current="valo" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   <section class="lu" data-lineups>
     <div>
       {!valoRosters.length ? <p class="eq-note">Aucun roster Valorant pour l'instant : la bibliothèque s'ouvrira dès sa création sur Discord.</p> : (
@@ -60,8 +56,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       )}
     </div>
   </section>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   type Map = { uuid: string; name: string; icon: string };

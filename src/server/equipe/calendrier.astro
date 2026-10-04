@@ -1,7 +1,6 @@
 ---
 // Calendrier interne du roster : séances (avec ma réponse), matchs et scrims, échéances d'objectifs, sur un mois.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
 
@@ -45,9 +44,7 @@ const STATUS: Record<string, string> = { present: 'is-ok', 'peut-etre': 'is-mayb
 const upcoming = events.filter((e) => e.at > Date.now()).slice(0, 8);
 const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: tz });
 ---
-<Base title="Calendrier · Espace équipe" description="Calendrier interne du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Calendrier</h1><p>Séances, matchs, scrims et échéances : le mois du roster d'un coup d'œil.</p></div></header>
-  <EquipeShell current="calendrier" rosters={me.rosters} staff={me.staff} active={sc.active}>
+<Qg title="Calendrier · QG" heading="Calendrier" lead="Séances, matchs, scrims et échéances : le mois du roster d'un coup d'œil." current="calendrier" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ca">
       <div class="ca-bar">
         <a class="ca-btn" href={link(shift(-1))} aria-label="Mois précédent">‹</a>
@@ -83,8 +80,7 @@ const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeri
           : <p class="eq-note">Rien de prévu. Les séances se planifient sur Discord avec <code>/entrainement planifier</code>, les matchs avec <code>/match ajouter</code>.</p>}
       </section>
     </div>
-  </EquipeShell>
-</Base>
+</Qg>
 
 <style>
   .eq-mini { padding-block: 2.5rem 1.5rem; }

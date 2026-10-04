@@ -2,8 +2,7 @@
 // Tableau blanc du roster (tous les jeux) : un fond (carte du jeu, tableau blanc, quadrillage ou image),
 // des éléments (repères, agents, champions, pings), des formes, des flèches, des post-it, le crayon par-dessus,
 // des étapes pour dérouler une strat et des notes. Synchronisé en quasi direct pour tout le roster.
-import Base from '../../layouts/Base.astro';
-import EquipeShell from './EquipeShell.astro';
+import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { ensureBoards } from './tableau-api';
 import { rows } from '../db';
@@ -37,15 +36,14 @@ const TOOLS: [string, string, string][] = [
 ];
 const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ['vision', '◉', 'Vision / ward'], ['balle', '●', 'Balle / spike']];
 ---
-<Base title="Tableau blanc · Espace équipe" description="Tableau blanc partagé du roster.">
-  <header class="page-head eq-mini"><div class="wrap"><h1>Tableau blanc</h1><p>Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct.</p></div></header>
-  <EquipeShell current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active}>
-    {!current ? (
-      <div class="tb-home">
-        {!usable.length && <p class="eq-note">Aucun roster pour l'instant : le tableau blanc s'ouvrira dès la création d'un roster sur Discord.</p>}
-        {usable.length > 0 && (
+<Qg title="Tableau blanc · QG" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+  {!current && usable.length > 0 && (
+    <details class="qg-drawer" slot="actions">
+      <summary class="btn">+ Nouveau tableau</summary>
+      <div class="qg-drawer__panel" role="dialog" aria-label="Nouveau tableau">
+        <div class="qg-drawer__head"><h2>Nouveau tableau</h2><button type="button" class="qg-close" aria-label="Fermer" onclick="this.closest('details').open = false">×</button></div>
           <form method="post" action="/api/equipe/outils" class="tb-new" data-new>
-            <h2>Nouveau tableau</h2>
+            
             <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={listUrl} />
             <input type="hidden" name="game" data-game />
             <label>Titre<input name="title" required maxlength="60" placeholder="Ex. : Ascent · retake B, kickoff, plan de jeu" /></label>
@@ -60,7 +58,12 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             <label data-url hidden>Lien de l'image<input name="url" type="url" placeholder="https://…" /></label>
             <button class="btn">Créer et ouvrir</button>
           </form>
-        )}
+      </div>
+    </details>
+  )}
+    {!current ? (
+      <div class="tb-home">
+        {!usable.length && <p class="eq-note">Aucun roster pour l'instant : le tableau blanc s'ouvrira dès la création d'un roster sur Discord.</p>}
         {list.length > 0 && (
           <section class="tb-list">
             <h2>Tableaux du roster</h2>
@@ -149,8 +152,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         </form>
       </div>
     )}
-  </EquipeShell>
-</Base>
+</Qg>
 
 <script>
   const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
