@@ -6,10 +6,10 @@ const JEUX: Record<string, string> = { rl: 'Rocket League', lol: 'League of Lege
 
 export const GET: APIRoute = async () => {
   // Variables posées par l'intégration Turso de Vercel (préfixe ONI_DB), sinon noms standards
-  const url = process.env.ONI_DB_URL ?? process.env.TURSO_DATABASE_URL;
+  const url = process.env.ONI_DB_TURSO_DATABASE_URL ?? process.env.TURSO_DATABASE_URL;
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' };
   if (!url) return new Response(JSON.stringify({ aVenir: [], resultats: [] }), { headers });
-  const db = createClient({ url, authToken: process.env.ONI_DB_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN });
+  const db = createClient({ url, authToken: process.env.ONI_DB_TURSO_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN });
   const q = `SELECT m.id, m.game, m.opponent, m.format, m.at, m.link, m.score_us, m.score_them, r.name AS roster
              FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id WHERE m.cancelled = 0`;
   const now = Date.now();
