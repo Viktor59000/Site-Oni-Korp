@@ -5,17 +5,30 @@ import Base from '../../layouts/Base.astro';
 import PlayerCard from '../../components/PlayerCard.astro';
 import CardViewer from '../../components/CardViewer.astro';
 ---
-<Base title="Effectif" description="L'album Oni Korp : les rosters Rocket League, League of Legends, Valorant et osu!, et le staff du club.">
+<Base title="Légendes du club" description="Les légendes d'Oni Korp : les joueurs et le staff qui ont écrit l'histoire du club depuis 2021, en vignettes à collectionner.">
   <header class="page-head">
     <img class="page-head__bg" src="/img/entete-effectif.webp" srcset={srcset("/img/entete-effectif.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <div class="wrap">
-      <h1>Effectif</h1>
-      <p>L'album du club : {album.total} vignettes, les rosters par jeu et le staff qui les fait tourner.</p>
+      <h1>Légendes du club</h1>
+      <p>{album.total} vignettes All Stars : les joueurs et le staff qui ont porté Oni Korp depuis 2021.</p>
       <p class="my-album" data-my-album hidden>Ta collection : <strong data-my-owned>0</strong> / {album.totalAll} · <a href="/boosters/">Ouvrir un booster</a></p>
     </div>
   </header>
 
-  <div class="topo">
+  <section class="legend-now" aria-labelledby="now-title">
+    <div class="wrap legend-now__inner">
+      <div>
+        <h2 id="now-title">Et aujourd'hui ?</h2>
+        <p>Le club se reconstruit. Les jeux et les line-ups de la nouvelle ère seront annoncés ici, roster par roster. Les places sont ouvertes : la prochaine légende, c'est peut-être toi.</p>
+      </div>
+      <div class="legend-now__actions">
+        <a class="btn" href="/postuler/">Postuler</a>
+        <a class="btn btn--ghost" href="/agenda/">Suivre l'agenda</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="topo topo--legend">
   <div class="wrap">
     {album.games.map(({ game: g, rosters, tba }) => (
       <section class="roster-game" id={g.id} aria-labelledby={`${g.id}-title`}>

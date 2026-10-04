@@ -11,7 +11,7 @@ import { album } from '../lib/album.js';
 // Nombre de joueurs annoncés dans le pôle
 const rosterLabel = (g) => {
   const n = g.rosters.reduce((t, r) => t + r.players.length, 0);
-  return g.id === 'rocket-league' ? `${g.rosters.length} rosters, ${n} joueurs` : `Depuis ${g.since}, ${n} joueur${n > 1 ? 's' : ''}`;
+  return `Depuis ${g.since} · ${n} légende${n > 1 ? 's' : ''}`;
 };
 ---
 <Base>
@@ -35,8 +35,8 @@ const rosterLabel = (g) => {
     <div class="wrap">
       <div class="album-intro">
         <div class="section__head">
-          <h2 id="poles-title">Quatre jeux,<br /> un seul album.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" loading="lazy" /></h2>
-          <p>{album.total} vignettes de joueurs et de staff, plus des séries spéciales à gagner dans les boosters : un offert chaque jour.</p>
+          <h2 id="poles-title">Les légendes,<br /> en album.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" loading="lazy" /></h2>
+          <p>{album.total} vignettes All Stars des joueurs et du staff qui ont fait le club, plus des séries spéciales à gagner dans les boosters : un offert chaque jour.</p>
           <p class="album-intro__actions"><a class="btn" href="/effectif/">Ouvrir l'album</a><a class="btn btn--ghost" href="/boosters/">Ouvrir un booster</a></p>
         </div>
         <a class="album-intro__cover" href="/effectif/" tabindex="-1" aria-hidden="true">

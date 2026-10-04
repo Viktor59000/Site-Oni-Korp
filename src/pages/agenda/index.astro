@@ -1,6 +1,6 @@
 ---
-// Agenda public : rendez-vous officiels (tournois, ligues, showmatchs), résultats, live en cours et vidéos.
-// Données en direct : /api/agenda et /api/feed (Oni Bot). Les scrims n'apparaissent jamais ici.
+// Agenda public : calendrier des rendez-vous officiels (tournois, ligues, showmatchs), live en cours et vidéos.
+// Données en direct : /api/agenda?mois=… et /api/feed (Oni Bot). Les scrims n'apparaissent jamais ici.
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import site from '../../data/site.json';
@@ -10,13 +10,14 @@ const host = (Astro.site?.host ?? 'oni-korp.vercel.app');
 const ics = `https://${host}/agenda.ics`;
 const google = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`webcal://${host}/agenda.ics`)}`;
 const socials = site.socials.filter((s) => s.icon !== 'discord');
+const JEUX = [['', 'Tous'], ['rl', 'Rocket League'], ['lol', 'LoL'], ['valo', 'Valorant'], ['osu', 'osu!']];
+const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 ---
-<Base title="Agenda" description="Les prochains matchs officiels d'Oni Korp, les résultats, les lives et les dernières vidéos. Ajoute le calendrier du club à ton agenda.">
+<Base title="Agenda" description="Le calendrier d'Oni Korp : tournois, ligues et showmatchs, lives en cours et dernières vidéos. Ajoute-le à ton agenda.">
   <header class="page-head">
     <div class="wrap">
       <h1>Agenda</h1>
       <p>Tournois, ligues et showmatchs. Ajoute le calendrier à ton agenda : il se met à jour tout seul.</p>
-      <p class="ag-season" data-season hidden></p>
       <div class="ag-sub">
         <a class="btn" href={google} rel="noopener">Ajouter à Google Agenda</a>
         <a class="btn btn--ghost" href={`webcal://${host}/agenda.ics`}>Apple · Outlook</a>
@@ -29,25 +30,28 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
     <div class="wrap ag-live__inner" data-live-list></div>
   </section>
 
-  <section class="section">
-    <div class="wrap ag-grid">
-      <div>
-        <h2 class="ag-h"><span class="agenda__live" aria-hidden="true"></span>Prochains rendez-vous</h2>
-        <ol class="ag-list" data-list="aVenir"></ol>
-        <p class="ag-empty" data-empty="aVenir">Rien d'annoncé pour l'instant. Abonne-toi au calendrier : les prochains matchs s'y ajouteront d'eux-mêmes, et Discord te prévient avec le rôle <b>Notif matchs</b>.</p>
+  <section class="section" aria-labelledby="cal-title">
+    <div class="wrap">
+      <div class="cal-bar">
+        <div class="cal-nav">
+          <button type="button" class="cal-btn" data-move="-1" aria-label="Mois précédent">‹</button>
+          <h2 id="cal-title" class="cal-title" aria-live="polite" data-title>Calendrier</h2>
+          <button type="button" class="cal-btn" data-move="1" aria-label="Mois suivant">›</button>
+          <button type="button" class="cal-today" data-today>Aujourd'hui</button>
+        </div>
+        <div class="cal-filter" role="group" aria-label="Filtrer par jeu">
+          {JEUX.map(([k, l]) => <button type="button" data-jeu={k} aria-pressed={k === '' ? 'true' : 'false'}>{l}</button>)}
+        </div>
       </div>
-      <div>
-        <h2 class="ag-h">Résultats</h2>
-        <ol class="ag-list" data-list="resultats"></ol>
-        <ol class="ag-hist">
-          {history.filter((m) => m.event !== 'Scrim' && m.opponent).map((m) => (
-            <li>
-              <span><span translate="no">Oni Korp</span> <i>vs</i> {m.opponent}</span>
-              <span class="ag-hist__meta">{[m.event, m.format, m.date].filter(Boolean).join(' · ')}{m.video && <> · <a href={m.video} rel="noopener">Revoir</a></>}</span>
-            </li>
-          ))}
-        </ol>
+
+      <div class="cal" aria-hidden="true">
+        {DAYS.map((d) => <div class="cal-dow">{d}</div>)}
+        <div class="cal-days" data-grid></div>
       </div>
+
+      <h3 class="ag-h" data-list-title>Ce mois-ci</h3>
+      <ol class="ag-list" data-list></ol>
+      <p class="ag-empty" data-empty hidden>Aucun rendez-vous public ce mois-ci. Les prochains s'ajouteront ici et dans ton agenda si tu t'abonnes ; sur Discord, le rôle <b>Notif matchs</b> te prévient.</p>
     </div>
   </section>
 
@@ -63,42 +67,93 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
       <p class="ag-empty" data-videos-empty>Les vidéos de la chaîne <a href={site.socials[1].url} rel="noopener">YouTube</a> apparaissent ici dès leur sortie.</p>
     </div>
   </section>
+
+  <section class="section" aria-labelledby="hist-title">
+    <div class="wrap">
+      <h2 id="hist-title" class="ag-h">Les débuts du club</h2>
+      <ol class="ag-hist">
+        {history.filter((m) => m.event !== 'Scrim' && m.opponent).map((m) => (
+          <li>
+            <span><span translate="no">Oni Korp</span> <i>vs</i> {m.opponent}</span>
+            <span class="ag-hist__meta">{[m.event, m.format, m.date].filter(Boolean).join(' · ')}{m.video && <> · <a href={m.video} rel="noopener">Revoir</a></>}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
 </Base>
 
 <script>
-  type Item = { id: number; type: string; cast: string | null; compo: string[] | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  type Item = { id: number; type: string; code: string; cast: string | null; compo: string[] | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
   type F = { auteur: string; titre: string; lien: string; image: string | null; jeu: string | null; date: string };
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   const tz = { timeZone: 'Europe/Paris' } as const;
-  const day = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', ...tz });
-  const month = new Intl.DateTimeFormat('fr-FR', { month: 'short', ...tz });
-  const rest = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', ...tz });
+  const parts = (d: Date) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', ...tz }).formatToParts(d).map((p) => [p.type, p.value]));
+  const dayKey = (d: Date) => { const p = parts(d); return `${p.year}-${p.month}-${p.day}`; };
+  const hour = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', ...tz });
+  const long = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', ...tz });
+  const monthName = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const http = (u: string | null): u is string => !!u && /^https?:\/\//.test(u);
 
-  const row = (m: Item) => {
-    const d = new Date(m.date);
-    const score = m.score ? `<b class="ag-score ${m.score[0] > m.score[1] ? 'is-win' : m.score[0] < m.score[1] ? 'is-loss' : ''}">${m.score[0]} – ${m.score[1]}</b>` : '';
-    const watch = !m.score && http(m.lien) ? `<a class="ag-watch" href="${esc(m.lien)}" rel="noopener">Regarder</a>` : '';
-    return `<li class="ag-item"><time class="ag-date" datetime="${m.date}"><b>${day.format(d)}</b>${month.format(d)}</time>
-      <div><p class="ag-vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(m.adversaire)}</p>
-      <p class="ag-meta">${[esc(m.type), m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format), m.score ? '' : rest.format(d), m.cast ? `cast ${esc(m.cast)}` : ''].filter(Boolean).join(' · ')}</p>${m.compo?.length ? `<p class="ag-meta">Compo : ${m.compo.map(esc).join(', ')}</p>` : ''}</div>${score}${watch}</li>`;
+  const q = new URLSearchParams(location.search);
+  const today = parts(new Date());
+  let y = Number(q.get('mois')?.slice(0, 4)) || Number(today.year);
+  let m = Number(q.get('mois')?.slice(5, 7)) || Number(today.month);
+  let jeu = q.get('jeu') ?? '';
+  const cache = new Map<string, Item[]>();
+
+  const grid = document.querySelector<HTMLElement>('[data-grid]')!;
+  const list = document.querySelector<HTMLElement>('[data-list]')!;
+
+  const row = (it: Item) => {
+    const d = new Date(it.date);
+    const score = it.score ? `<b class="ag-score ${it.score[0] > it.score[1] ? 'is-win' : it.score[0] < it.score[1] ? 'is-loss' : ''}">${it.score[0]} – ${it.score[1]}</b>` : '';
+    const watch = !it.score && http(it.lien) ? `<a class="ag-watch" href="${esc(it.lien)}" rel="noopener">Regarder</a>` : '';
+    return `<li class="ag-item g-${esc(it.code)}" id="m-${it.id}"><span class="ag-dot" aria-hidden="true"></span>
+      <div><p class="ag-vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(it.adversaire)}</p>
+      <p class="ag-meta"><time datetime="${it.date}">${long.format(d)}</time></p>
+      <p class="ag-meta">${[esc(it.type), it.jeu, it.roster ? `roster ${esc(it.roster)}` : '', esc(it.format), it.cast ? `cast ${esc(it.cast)}` : ''].filter(Boolean).join(' · ')}</p>
+      ${it.compo?.length ? `<p class="ag-meta">Compo : ${it.compo.map(esc).join(', ')}</p>` : ''}</div>${score}${watch}</li>`;
   };
 
-  fetch('/api/agenda').then((r) => (r.ok ? r.json() : null)).then((d: { aVenir: Item[]; resultats: Item[] } | null) => {
-    for (const key of ['aVenir', 'resultats'] as const) {
-      const list = d?.[key] ?? [];
-      document.querySelector<HTMLElement>(`[data-list="${key}"]`)!.innerHTML = list.map(row).join('');
-      const empty = document.querySelector<HTMLElement>(`[data-empty="${key}"]`);
-      if (empty) empty.hidden = list.length > 0;
+  async function render() {
+    const key = `${y}-${String(m).padStart(2, '0')}`;
+    document.querySelector('[data-title]')!.textContent = monthName.format(Date.UTC(y, m - 1, 1)).replace(/^./, (c) => c.toUpperCase());
+    document.querySelectorAll<HTMLElement>('[data-jeu]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.jeu === jeu)));
+    const ck = `${key}|${jeu}`;
+    if (!cache.has(ck)) {
+      const d = await fetch(`/api/agenda?mois=${key}${jeu ? `&jeu=${jeu}` : ''}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      cache.set(ck, (d?.matchs ?? []).filter((it: Item) => dayKey(new Date(it.date)).startsWith(key)));
     }
-  }).catch(() => {});
+    const items = cache.get(ck)!;
+    const byDay = new Map<string, Item[]>();
+    for (const it of items) { const k = dayKey(new Date(it.date)); byDay.set(k, [...(byDay.get(k) ?? []), it]); }
 
-  fetch('/api/club').then((r) => (r.ok ? r.json() : null)).then((d) => {
-    const s = d?.saison; if (!s || !(s.victoires + s.defaites + s.nuls)) return;
-    const el = document.querySelector<HTMLElement>('[data-season]')!;
-    el.innerHTML = `Saison en cours : <b>${s.victoires}</b> victoire${s.victoires > 1 ? 's' : ''} · <b>${s.defaites}</b> défaite${s.defaites > 1 ? 's' : ''}${s.nuls ? ` · <b>${s.nuls}</b> nul${s.nuls > 1 ? 's' : ''}` : ''}`;
-    el.hidden = false;
-  }).catch(() => {});
+    // Grille : lundi en premier, cases vides avant le 1er
+    const first = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const todayKey = `${today.year}-${today.month}-${today.day}`;
+    let html = '<span class="cal-pad"></span>'.repeat(first);
+    for (let d = 1; d <= days; d++) {
+      const k = `${key}-${String(d).padStart(2, '0')}`;
+      const evs = byDay.get(k) ?? [];
+      html += `<div class="cal-day${k === todayKey ? ' is-today' : ''}${evs.length ? ' has-ev' : ''}"><span class="cal-num">${d}</span>${evs.map((it) =>
+        `<a class="cal-ev g-${esc(it.code)}${it.score ? ' is-done' : ''}" href="#m-${it.id}"><b>${hour.format(new Date(it.date))}</b> ${esc(it.adversaire)}${it.score ? ` <i>${it.score[0]}-${it.score[1]}</i>` : ''}</a>`).join('')}</div>`;
+    }
+    grid.innerHTML = html;
+    list.innerHTML = items.map(row).join('');
+    document.querySelector<HTMLElement>('[data-empty]')!.hidden = items.length > 0;
+    const url = new URL(location.href);
+    url.searchParams.set('mois', key); jeu ? url.searchParams.set('jeu', jeu) : url.searchParams.delete('jeu');
+    history.replaceState(null, '', url);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-move]').forEach((b) => b.addEventListener('click', () => {
+    m += Number(b.dataset.move); if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } render();
+  }));
+  document.querySelector('[data-today]')!.addEventListener('click', () => { y = Number(today.year); m = Number(today.month); render(); });
+  document.querySelectorAll<HTMLElement>('[data-jeu]').forEach((b) => b.addEventListener('click', () => { jeu = b.dataset.jeu ?? ''; render(); }));
+  render();
 
   fetch('/api/feed').then((r) => (r.ok ? r.json() : null)).then((d: { live: F[]; videos: F[] } | null) => {
     if (!d) return;
@@ -121,25 +176,55 @@ const socials = site.socials.filter((s) => s.icon !== 'discord');
 </script>
 
 <style>
-  .page-head .ag-season { margin-top: 1rem; font-size: 1rem; max-width: none; }
-  .ag-season[hidden] { display: none; }
-  .ag-season :global(b) { font-family: var(--font-display); font-size: 1.3rem; color: var(--red-text); }
   .ag-sub { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1.75rem; }
   .ag-raw { font-size: var(--step--1); color: var(--muted); }
-  .ag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: clamp(2.5rem, 5vw, 4.5rem); }
+
+  /* Couleurs des jeux (repères du calendrier) */
+  :global(.g-rl) { --g: #2f6bff; } :global(.g-lol) { --g: #0f8a9b; } :global(.g-valo) { --g: #ff4655; } :global(.g-osu) { --g: #2fa877; }
+
+  .cal-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+  .cal-nav { display: flex; align-items: center; gap: .5rem; }
+  .cal-title { font-size: clamp(1.5rem, 4vw, 2.2rem); min-width: 9ch; text-align: center; }
+  .cal-btn { width: 44px; height: 44px; border: 1.5px solid var(--line); background: none; color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; }
+  .cal-today { min-height: 44px; padding: 0 .9rem; border: 0; background: none; color: var(--red-text); font: 700 .9rem var(--font-body); cursor: pointer; }
+  .cal-btn:hover { border-color: var(--ink); }
+  .cal-filter { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .cal-filter button { min-height: 40px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
+  .cal-filter button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 2px solid var(--ink); margin-bottom: 2.5rem; }
+  .cal-dow { padding: .5rem .4rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .cal-days { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, 1fr); border-left: 1px solid var(--line); }
+  .cal-days :global(.cal-pad), .cal-days :global(.cal-day) { min-height: 6.5rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .cal-days :global(.cal-day) { display: flex; flex-direction: column; gap: .25rem; padding: .35rem; min-width: 0; }
+  .cal-days :global(.cal-num) { font-size: .8rem; font-weight: 700; color: var(--muted); }
+  .cal-days :global(.is-today .cal-num) { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--lacquer); color: #fff; }
+  .cal-days :global(.cal-ev) { display: block; padding: .2rem .35rem; border-left: 3px solid var(--g, var(--lacquer)); background: color-mix(in srgb, var(--g, var(--lacquer)) 14%, transparent);
+    color: var(--ink); text-decoration: none; font-size: .75rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-days :global(.cal-ev:hover) { background: color-mix(in srgb, var(--g, var(--lacquer)) 28%, transparent); }
+  .cal-days :global(.cal-ev.is-done) { opacity: .7; }
+  .cal-days :global(.cal-ev i) { font-style: normal; font-weight: 700; }
+  @media (max-width: 720px) {
+    .cal-days :global(.cal-pad), .cal-days :global(.cal-day) { min-height: 3.2rem; }
+    .cal-days :global(.cal-day) { align-items: center; }
+    .cal-days :global(.cal-ev) { width: .55rem; height: .55rem; padding: 0; border: 0; border-radius: 50%; background: var(--g, var(--lacquer)); font-size: 0; }
+    .cal-dow { text-align: center; padding-inline: 0; }
+  }
+
   .ag-h { display: flex; align-items: center; gap: .6rem; font-family: var(--font-body); font-weight: 700; font-size: 1rem; padding-bottom: .6rem; border-bottom: 2px solid var(--ink); }
-  .ag-list :global(.ag-item) { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--line); }
-  .ag-list :global(.ag-date) { display: grid; text-align: center; line-height: 1; color: var(--red-text); font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-  .ag-list :global(.ag-date b) { font-family: var(--font-display); font-size: 1.9rem; color: var(--ink); letter-spacing: 0; }
+  .ag-list :global(.ag-item) { display: grid; grid-template-columns: .9rem 1fr auto; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--line); scroll-margin-top: 90px; }
+  .ag-list :global(.ag-item:target) { background: color-mix(in srgb, var(--g, var(--lacquer)) 10%, transparent); }
+  .ag-list :global(.ag-dot) { width: .7rem; height: .7rem; border-radius: 50%; background: var(--g, var(--lacquer)); align-self: start; margin-top: .45rem; }
   .ag-list :global(.ag-vs) { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.15; }
   .ag-list :global(.ag-vs i), .ag-hist i { font-family: var(--font-body); font-style: normal; font-size: .75em; color: var(--muted); }
+  .ag-list :global(p) { margin: 0; }
   .ag-list :global(.ag-meta) { color: var(--muted); font-size: var(--step--1); margin-top: .25rem; }
-  .ag-list :global(.ag-meta::first-letter) { text-transform: uppercase; }
+  .ag-list :global(.ag-meta::first-letter), .ag-list :global(time) { text-transform: none; }
   .ag-list :global(.ag-score) { font-family: var(--font-display); font-size: 1.3rem; padding: .1em .45em; border: 2px solid var(--line); white-space: nowrap; }
   .ag-list :global(.ag-score.is-win) { border-color: #1f8f55; color: #1f8f55; }
   .ag-list :global(.ag-score.is-loss) { color: var(--muted); }
   .ag-list :global(.ag-watch) { font-weight: 700; color: var(--red-text); white-space: nowrap; }
-  .ag-empty { color: var(--muted); padding: 1.25rem 0; max-width: 40ch; }
+  .ag-empty { color: var(--muted); padding: 1.25rem 0; max-width: 46ch; }
   .ag-empty[hidden] { display: none; }
   .ag-hist { margin-top: 1rem; }
   .ag-hist li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); font-size: .95rem; }

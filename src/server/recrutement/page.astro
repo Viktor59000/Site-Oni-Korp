@@ -69,7 +69,7 @@ const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typ
           </fieldset>
 
           <label class="pz-field pz-only-joueur">Jeu
-            <select name="jeu">{Object.entries(JEUX).map(([k, l]) => <option value={k}>{l}</option>)}</select>
+            <select name="jeu">{Object.entries(JEUX).map(([k, l]) => <option value={k} selected={k === q.get('jeu')}>{l}</option>)}</select>
           </label>
           <label class="pz-field pz-only-staff">Poste
             <select name="poste">{POSTES.map((p) => <option>{p}</option>)}</select>

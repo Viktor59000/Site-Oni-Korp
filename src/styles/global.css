@@ -1004,3 +1004,11 @@ main { counter-reset: page; }
 .hero__count { display: flex; align-items: center; gap: .55rem; margin-top: 1.25rem; font-size: var(--step--1); font-weight: 700; color: var(--ink); }
 .hero__count[hidden] { display: none; }
 .hero__count > span:first-child { width: .55rem; height: .55rem; border-radius: 50%; background: #2fbf71; box-shadow: 0 0 0 3px rgb(47 191 113 / .25); }
+
+/* Légendes : bandeau « aujourd'hui » et mention d'époque sur les rosters de l'album */
+.legend-now { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--lacquer) 7%, transparent); }
+.legend-now__inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem 3rem; padding-block: clamp(2rem, 4vw, 3rem); }
+.legend-now h2 { font-size: var(--step-2); }
+.legend-now p { margin-top: .6rem; max-width: 52ch; color: var(--muted); }
+.legend-now__actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.topo--legend .roster h3::after { content: 'Ère 2021–2024'; margin-left: .75rem; font-family: var(--font-body); font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold, #b8902f); border: 1.5px solid currentColor; padding: .1rem .45rem; vertical-align: .35em; }

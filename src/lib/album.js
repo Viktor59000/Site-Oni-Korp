@@ -42,6 +42,10 @@ const games = data.games.map((g) => {
     game: g,
     rosters: filled.map((r, ri) => ({
       title: g.rosters.length > 1 ? `Roster ${r.name}` : r.name,
+      name: r.name,
+      // Page dédiée : /effectif/rocket-league/gamma/
+      slug: slug(r.name).replace(/\s+/g, '-'),
+      href: `/effectif/${g.id}/${slug(r.name).replace(/\s+/g, '-')}/`,
       lettre: g.rosters.length > 1 ? GREC[r.name] : null,
       equipe: g.id === 'rocket-league' ? EQUIPES[ri % 2] : null,
       cards: r.players.map(norm).map((p, i) => ({
