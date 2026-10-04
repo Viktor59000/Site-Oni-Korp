@@ -43,8 +43,8 @@ const cards = pages.flatMap((p) => p.cartes);
 
       <div class="pack-stage">
         <button class="pack" type="button" data-pack disabled>
-          <span class="pack__body"><img src="/img/pochette.webp" alt="" width="500" height="750" fetchpriority="low" decoding="async" /></span>
-          <span class="pack__top" aria-hidden="true"><img src="/img/pochette.webp" alt="" width="500" height="750" fetchpriority="low" decoding="async" /></span>
+          <span class="pack__body"><img src="/img/pochette.webp" srcset={srcset("/img/pochette.webp")} sizes="(max-width: 600px) 60vw, 300px" alt="" width="500" height="750" fetchpriority="low" decoding="async" /></span>
+          <span class="pack__top" aria-hidden="true"><img src="/img/pochette.webp" srcset={srcset("/img/pochette.webp")} sizes="(max-width: 600px) 60vw, 300px" alt="" width="500" height="750" fetchpriority="low" decoding="async" /></span>
           <span class="pack__label" data-pack-label>Reviens demain</span>
         </button>
       </div>
@@ -87,7 +87,7 @@ const cards = pages.flatMap((p) => p.cartes);
 
   <!-- Dos de vignette, utilisé pendant l'ouverture -->
   <template id="card-back">
-    <div class="pc__back"><img src="/img/hanko-oni.webp" alt="" width="320" height="308" /></div>
+    <div class="pc__back"><img src="/img/hanko-oni.webp" srcset={srcset("/img/hanko-oni.webp")} sizes="120px" alt="" width="320" height="308" /></div>
   </template>
 </Base>
 

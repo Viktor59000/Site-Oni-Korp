@@ -774,6 +774,7 @@ main { counter-reset: page; }
   padding: .9rem 1.1rem; background: #0e0e0e; color: #fff; text-decoration: none; border-left: 4px solid var(--lacquer);
   box-shadow: 0 12px 30px rgb(0 0 0 / .35); font-size: .9rem;
 }
+.toast a { display: grid; gap: .15rem; color: inherit; text-decoration: none; }
 .toast strong { font-family: var(--font-display); font-weight: 400; font-size: 1.1rem; }
 .toast span { color: rgb(255 255 255 / .75); }
 @media (prefers-reduced-motion: no-preference) {

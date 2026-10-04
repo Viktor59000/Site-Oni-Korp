@@ -59,17 +59,17 @@ const decals = [
     <section class="section" aria-labelledby="merch-title">
       <div class="merch">
         <figure class="merch__shot">
-          <img src="/img/sweat-porte-face.webp" alt="Joueur portant le sweat Oni Korp noir et blanc, logo rouge sur la poitrine" loading="lazy" width="900" height="1131" />
+          <img src="/img/sweat-porte-face.webp" srcset={srcset("/img/sweat-porte-face.webp")} sizes="(max-width: 860px) 50vw, 30vw" alt="Joueur portant le sweat Oni Korp noir et blanc, logo rouge sur la poitrine" loading="lazy" width="900" height="1131" />
           <figcaption>Face</figcaption>
         </figure>
         <figure class="merch__shot">
-          <img src="/img/sweat-dos.webp" alt="Dos du sweat personnalisé avec le pseudo SHEEP et le numéro 777" loading="lazy" width="600" height="900" />
+          <img src="/img/sweat-dos.webp" srcset={srcset("/img/sweat-dos.webp")} sizes="(max-width: 860px) 50vw, 30vw" alt="Dos du sweat personnalisé avec le pseudo SHEEP et le numéro 777" loading="lazy" width="600" height="900" />
           <figcaption>Dos personnalisé</figcaption>
         </figure>
         <div class="merch__text">
           <h2 id="merch-title">Le sweat du club</h2>
           <p>Corps noir, capuche et manches blanches, blason rouge sur la poitrine. Au dos, le blason, ton pseudo et ton numéro.</p>
-          <img class="merch__flat" src="/img/sweat-a-plat.webp" alt="Sweat Oni Korp plié à côté d'un casque et d'une manette" loading="lazy" width="1100" height="875" />
+          <img class="merch__flat" src="/img/sweat-a-plat.webp" srcset={srcset("/img/sweat-a-plat.webp")} sizes="(max-width: 860px) 100vw, 35vw" alt="Sweat Oni Korp plié à côté d'un casque et d'une manette" loading="lazy" width="1100" height="875" />
           <p>Un nouveau drop est en préparation. Les précommandes seront annoncées en premier sur le Discord.</p>
           <a class="btn btn--ghost" href={site.discord} rel="noopener">Être prévenu sur Discord</a>
         </div>

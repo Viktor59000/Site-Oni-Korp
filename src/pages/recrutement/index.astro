@@ -68,7 +68,7 @@ const staffGroups = [
           <h2 id="staff-title">Staff</h2>
           <p>Tu t'intéresses à l'esport sans forcément jouer en compétition ? Le club cherche des profils sérieux et motivés. Ta vignette t'attend.</p>
         </div>
-        <img class="staff-intro__pack" src="/img/pochette.webp" alt="" width="500" height="750" loading="lazy" />
+        <img class="staff-intro__pack" src="/img/pochette.webp" srcset={srcset("/img/pochette.webp")} sizes="(max-width: 860px) 40vw, 240px" alt="" width="500" height="750" loading="lazy" />
       </div>
       <div class="role-groups">
         {staffGroups.map(([famille, postes]) => (

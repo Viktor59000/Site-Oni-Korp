@@ -86,11 +86,10 @@ const path = '/' + Astro.url.pathname.slice(import.meta.env.BASE_URL.length).rep
     b.setAttribute('aria-label', `${credits} booster${credits > 1 ? 's' : ''} à ouvrir`);
   });
   if (gained.length && ['accueil', 'effectif'].includes(nav?.dataset.page ?? '')) {
-    const t = document.createElement('a');
+    const t = document.createElement('div');
     t.className = 'toast';
-    t.href = '/boosters/';
     t.setAttribute('role', 'status');
-    t.innerHTML = `<strong>+${gained.length} booster${gained.length > 1 ? 's' : ''}</strong><span></span>`;
+    t.innerHTML = `<a href="/boosters/"><strong>+${gained.length} booster${gained.length > 1 ? 's' : ''}</strong><span></span></a>`;
     t.querySelector('span')!.textContent = gained.join(' · ') + ' — ouvrir';
     document.body.append(t);
     setTimeout(() => t.classList.add('is-out'), 6000);

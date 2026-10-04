@@ -57,7 +57,7 @@ import { album } from '../lib/album.js';
     <div class="wrap">
       <div class="album-intro">
         <div class="section__head">
-          <h2 id="poles-title">Les légendes,<br /> en album.<img class="hanko" src="/img/hanko-oni.webp" alt="" width="320" height="308" loading="lazy" /></h2>
+          <h2 id="poles-title">Les légendes,<br /> en album.<img class="hanko" src="/img/hanko-oni.webp" srcset={srcset("/img/hanko-oni.webp")} sizes="64px" alt="" width="320" height="308" loading="lazy" /></h2>
           <p>{album.total} vignettes All Stars des joueurs et du staff qui ont fait le club, plus des séries spéciales à gagner dans les boosters : un offert chaque jour.</p>
           <p class="album-intro__actions"><a class="btn" href="/effectif/">Ouvrir l'album</a><a class="btn btn--ghost" href="/boosters/">Ouvrir un booster</a></p>
         </div>
@@ -79,11 +79,11 @@ import { album } from '../lib/album.js';
       </div>
       <ul class="partners">
         <li>
-          <img src="/img/partenaires/carl-barl.webp" alt="" width="304" height="320" loading="lazy" />
+          <img src="/img/partenaires/carl-barl.webp" srcset={srcset("/img/partenaires/carl-barl.webp")} sizes="80px" alt="" width="304" height="320" loading="lazy" />
           <div><strong translate="no">Carl &amp; Barl by LNDR</strong><span>Rocket League · decals Octane et Fennec</span></div>
         </li>
         <li>
-          <img class="partners__wordmark" src="/img/partenaires/lolineup.webp" alt="LoLineup.gg" width="903" height="160" loading="lazy" />
+          <img class="partners__wordmark" src="/img/partenaires/lolineup.webp" srcset={srcset("/img/partenaires/lolineup.webp")} sizes="220px" alt="LoLineup.gg" width="903" height="160" loading="lazy" />
           <div><span>League of Legends · partenaire du pôle</span></div>
         </li>
       </ul>
