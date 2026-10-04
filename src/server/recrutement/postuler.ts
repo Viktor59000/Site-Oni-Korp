@@ -18,6 +18,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const valid = (kind === 'joueur' ? value in JEUX : POSTES.includes(value)) && answers.pseudo && answers.niveau
     && /^\d{1,2}$/.test(answers.age) && answers.dispo && answers.presentation.length >= 20;
   if (!valid) return redirect(`/postuler/?type=${kind}&erreur=champs`);
+  if (Number(answers.age) < 18) return redirect(`/postuler/?type=${kind}&erreur=age`);
 
   await exec(`CREATE TABLE IF NOT EXISTS applications (id INTEGER PRIMARY KEY, user_id TEXT, kind TEXT, value TEXT, answers TEXT, created_at INTEGER, thread_id TEXT, status TEXT DEFAULT 'attente')`);
   const open = await rows(`SELECT 1 FROM applications WHERE user_id = ? AND status IN ('attente', 'ouverte')`, user.id);
