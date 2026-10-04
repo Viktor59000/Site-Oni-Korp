@@ -1,0 +1,148 @@
+---
+// Profil d'un joueur : rosters, rangs, mesures en jeu par jeu, tendances, objectifs, présence, débriefs et setups.
+// Visible par le joueur, ses coéquipiers et l'encadrement. Par défaut : mon profil.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { teamUser } from './outils';
+import { access } from './access';
+import { rows } from '../db';
+import { links, TIERS_FR } from './stats';
+import { avg, pct, r1, spark, SHARED_CSS } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const uid = Astro.url.searchParams.get('u') ?? user.id;
+const target = uid === user.id ? me : await access(uid);
+// Accès : soi-même, l'encadrement, ou un coéquipier (au moins un roster en commun)
+const shared = target.rosterIds.some((id) => me.rosterIds.includes(id));
+if (!target.member || !(uid === user.id || me.staff || shared)) return Astro.redirect('/equipe/profil/');
+const [m] = await rows<{ name: string; avatar: string }>('SELECT name, avatar FROM guild_members WHERE id = ?', uid);
+const DAY = 86400_000;
+const accounts = await rows<{ game: string; ident: string; region: string | null }>('SELECT game, ident, region FROM accounts WHERE user_id = ?', uid);
+const acc = (g: string) => accounts.find((a) => a.game === g);
+const cache = async (k: string) => JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', k))[0]?.value ?? 'null');
+const hist = await rows<{ game: string; value: string }>('SELECT game, value FROM rank_history WHERE user_id = ? AND day >= ? ORDER BY day', uid, new Date(Date.now() - 120 * DAY).toISOString().slice(0, 10));
+const perfs = await rows<{ game: string; data: string; at: number }>('SELECT game, data, at FROM perf WHERE user_id = ? AND at > ? ORDER BY at DESC', uid, Date.now() - 60 * DAY);
+const games = (g: string) => perfs.filter((p) => p.game === g).slice(0, 20).map((p) => JSON.parse(p.data));
+const riot = acc('riot');
+const lolRank = riot ? await cache(`lol:${riot.region ?? 'euw'}:${riot.ident.toLowerCase()}`) : null;
+const valoRank = riot ? await cache(`valo:${riot.ident.toLowerCase()}`) : null;
+const osuSt = acc('osu') ? await cache(`osu:${acc('osu')!.ident.toLowerCase()}`) : null;
+const lol = games('lol'), valo = games('valo'), rl = games('rl'), osu = games('osu');
+const win = (g: any[]) => (g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null);
+const cards = [
+  lol.length || lolRank ? { key: 'lol', title: 'League of Legends', rank: lolRank && lolRank.tier !== 'UNRANKED' ? `${TIERS_FR[lolRank.tier] ?? lolRank.tier} ${lolRank.rank ?? ''} · ${lolRank.lp} LP` : lolRank ? 'Non classé' : null,
+    trend: spark(hist.filter((h) => h.game === 'lol').map((h) => JSON.parse(h.value).score), { w: 160, h: 40 }),
+    kpis: [['Parties', String(lol.length)], ['Victoires', pct(win(lol))], ['KDA', r1(lol.length ? lol.reduce((s, x) => s + x.k + x.a, 0) / Math.max(1, lol.reduce((s, x) => s + x.d, 0)) : null, 2)], ['CS/min', r1(avg(lol.map((x) => x.csMin)))], ['Vision/min', r1(avg(lol.map((x) => x.visionMin)), 2)], ['KP', pct(avg(lol.map((x) => x.kp)))]] } : null,
+  valo.length || valoRank ? { key: 'valo', title: 'Valorant', rank: valoRank?.tier ? `${valoRank.tier}${valoRank.rr !== null ? ` · ${valoRank.rr} RR` : ''}` : null,
+    trend: spark(hist.filter((h) => h.game === 'valo').map((h) => JSON.parse(h.value).score), { w: 160, h: 40 }),
+    kpis: [['Parties', String(valo.length)], ['Victoires', pct(win(valo))], ['ACS', r1(avg(valo.map((x) => x.acs)), 0)], ['ADR', r1(avg(valo.map((x) => x.adr)), 0)], ['HS', pct(avg(valo.map((x) => x.hs).filter((v: number | null) => v !== null)))], ['First bloods', r1(avg(valo.map((x) => x.fb)))]] } : null,
+  rl.length ? { key: 'rl', title: 'Rocket League', rank: null, trend: spark(rl.slice().reverse().map((x) => x.score), { w: 160, h: 40 }),
+    kpis: [['Parties', String(rl.length)], ['Victoires', pct(win(rl))], ['Score', r1(avg(rl.map((x) => x.score)), 0)], ['Boost/min', r1(avg(rl.map((x) => x.bpm)), 0)], ['Supersonique', pct(avg(rl.map((x) => x.supersonique)))], ['Derrière la balle', pct(avg(rl.map((x) => x.derriere)))]] } : null,
+  osu.length || osuSt ? { key: 'osu', title: 'osu!', rank: osuSt ? `#${osuSt.rank?.toLocaleString('fr-FR') ?? '—'} · ${osuSt.pp?.toLocaleString('fr-FR')} pp` : null,
+    trend: spark(hist.filter((h) => h.game === 'osu').map((h) => JSON.parse(h.value).rank), { w: 160, h: 40, invert: true }),
+    kpis: [['Précision', osuSt ? `${String(osuSt.acc).replace('.', ',')} %` : '—'], ['Parties 60 j', String(osu.length)], ['Préc. récente', osu.length ? `${r1(avg(osu.map((x) => x.acc)), 2)} %` : '—'], ['Heures', osuSt?.hours ? String(osuSt.hours) : '—']] } : null,
+].filter(Boolean) as { key: string; title: string; rank: string | null; trend: string; kpis: [string, string][] }[];
+
+// Présence (90 jours) sur les séances de ses rosters
+const rIds = target.rosterIds;
+const done = rIds.length ? await rows<{ id: number }>(`SELECT id FROM trainings WHERE cancelled = 0 AND roster_id IN (${rIds.map(() => '?').join(',')}) AND at BETWEEN ? AND ?`, ...rIds, Date.now() - 90 * DAY, Date.now()) : [];
+const att = done.length ? await rows<{ status: string }>(`SELECT status FROM attendance WHERE user_id = ? AND training_id IN (${done.map(() => '?').join(',')})`, uid, ...done.map((d) => d.id)) : [];
+const presence = done.length ? Math.round((att.filter((a) => a.status === 'present').length / done.length) * 100) : null;
+const goals = await rows<{ title: string; status: string; progress: number; due: number | null }>(`SELECT title, status, progress, due FROM goals WHERE user_id = ? ORDER BY status = 'en-cours' DESC, updated_at DESC LIMIT 8`, uid).catch(() => []);
+const [deb] = await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE user_id = ?', uid);
+const setups = await rows<{ game: string; data: string }>('SELECT game, data FROM setups WHERE user_id = ?', uid);
+const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
+const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+---
+<Base title={`${m?.name ?? 'Profil'} · Espace équipe`} description="Profil d'un joueur.">
+  <header class="page-head eq-mini pf-head">
+    <div class="wrap">
+      {m?.avatar && <img src={m.avatar} alt="" width="72" height="72" />}
+      <div>
+        <h1>{m?.name ?? 'Profil'}</h1>
+        <p>{target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')}{target.staff && target.rosterIds.length ? ' · Encadrement' : ''}</p>
+      </div>
+    </div>
+  </header>
+  <EquipeShell current="profil" rosters={me.rosters} staff={me.staff}>
+    <div class="pf">
+      <ul class="pf-kpis">
+        <li><b>{presence === null ? '—' : `${presence} %`}</b><span>présence aux séances (90 j)</span></li>
+        <li><b>{goals.filter((g) => g.status === 'en-cours').length}</b><span>objectif(s) en cours</span></li>
+        <li><b>{Number(deb?.n ?? 0)}</b><span>débrief(s) écrits{Number(deb?.n ?? 0) ? ` · ${r1(Number(deb.avg))}/10 en moyenne` : ''}</span></li>
+        <li class="pf-links">
+          {riot && <a href={links.opgg(riot.ident, riot.region ?? 'euw')!} rel="noopener" target="_blank">op.gg</a>}
+          {riot && <a href={links.valo(riot.ident)!} rel="noopener" target="_blank">tracker Valorant</a>}
+          {acc('rl') && <a href={links.rl(acc('rl')!.ident)} rel="noopener" target="_blank">tracker RL</a>}
+          {acc('osu') && <a href={links.osu(acc('osu')!.ident)} rel="noopener" target="_blank">osu!</a>}
+          {!accounts.length && <span>{uid === user.id ? <a href="/equipe/joueurs/">Relier mes comptes de jeu</a> : 'Aucun compte relié'}</span>}
+        </li>
+      </ul>
+
+      {cards.length ? (
+        <div class="pf-games">
+          {cards.map((c) => (
+            <section class={`pf-game g-${c.key}`}>
+              <header><h2>{c.title}</h2>{c.rank && <p class="pf-rank">{c.rank}</p>}<span set:html={c.trend} /></header>
+              <dl>{c.kpis.map(([l, v]) => <div><dt>{l}</dt><dd>{v}</dd></div>)}</dl>
+            </section>
+          ))}
+        </div>
+      ) : <p class="eq-note">Pas encore de mesures en jeu. {uid === user.id && <>Relie tes comptes dans <a href="/equipe/joueurs/">Joueurs</a> : rangs et parties arrivent dans les 30 minutes.</>}</p>}
+
+      <div class="pf-cols">
+        <section>
+          <h2 class="pf-h">Objectifs</h2>
+          {goals.length ? <ul class="pf-goals">{goals.map((g) => (
+            <li class={`is-${g.status}`}><strong>{g.title}</strong><span>{g.status === 'atteint' ? 'Atteint' : g.status === 'abandonne' ? 'Abandonné' : `${g.progress} %${g.due ? ` · avant le ${fmt.format(new Date(Number(g.due)))}` : ''}`}</span><i style={`--p:${g.status === 'atteint' ? 100 : g.progress}%`}></i></li>
+          ))}</ul> : <p class="eq-note">Aucun objectif pour l'instant.</p>}
+        </section>
+        <section>
+          <h2 class="pf-h">Setups</h2>
+          {setups.length ? setups.map((s) => { const d = JSON.parse(s.data); return (
+            <div class="pf-setup"><p><strong>{GAME_LABEL[s.game]}</strong>{s.game === 'valo' && Number(d.dpi) && Number(d.sens) ? ` · ${Math.round(Number(d.dpi) * Number(d.sens))} eDPI` : ''}</p>
+              <p class="eq-note">{Object.entries(d).filter(([k]) => k !== 'viseur').slice(0, 6).map(([k, v]) => `${k} ${v}`).join(' · ')}</p></div>
+          ); }) : <p class="eq-note">Pas encore rempli. <a href="/equipe/setup/">Setups</a></p>}
+        </section>
+      </div>
+    </div>
+  </EquipeShell>
+</Base>
+
+<style set:html={SHARED_CSS}></style>
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .pf-head .wrap { display: flex; align-items: center; gap: 1.25rem; }
+  .pf-head img { border-radius: 50%; background: var(--line); }
+  .pf-head h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .pf-head p { margin-top: .3rem; }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .pf { display: grid; gap: 2rem; }
+  .pf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .75rem; }
+  .pf-kpis li { display: grid; gap: .2rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid var(--ink); }
+  .pf-kpis b { font-family: var(--font-display); font-size: 1.7rem; }
+  .pf-kpis span { color: var(--muted); font-size: var(--step--1); }
+  .pf-links { display: flex !important; flex-wrap: wrap; gap: .4rem .9rem; align-content: center; }
+  .pf-links a { color: var(--red-text); font-weight: 700; }
+  .pf-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+  .pf-game { padding: 1rem; border: 1px solid var(--line); border-top: 4px solid var(--g, var(--ink)); display: grid; gap: .8rem; }
+  .g-rl { --g: #2f6bff; } .g-lol { --g: #0f8a9b; } .g-valo { --g: #ff4655; } .g-osu { --g: #2fa877; }
+  .pf-game header { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
+  .pf-game h2 { font-size: 1.15rem; flex-basis: 100%; }
+  .pf-rank { margin: 0; font-weight: 700; }
+  .pf-game dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: 0; }
+  .pf-game dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .pf-game dd { margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
+  .pf-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; }
+  .pf-h { font-family: var(--font-body); font-size: 1rem; font-weight: 700; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: .7rem; }
+  .pf-goals { display: grid; gap: .5rem; }
+  .pf-goals li { display: grid; gap: .2rem; padding: .6rem .8rem; border: 1px solid var(--line); }
+  .pf-goals span { color: var(--muted); font-size: var(--step--1); }
+  .pf-goals i { display: block; height: .35rem; background: linear-gradient(90deg, var(--lacquer) var(--p), var(--line) var(--p)); }
+  .pf-goals .is-atteint i { background: #1f8f55; }
+  .pf-setup { padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .pf-setup p { margin: 0; }
+</style>

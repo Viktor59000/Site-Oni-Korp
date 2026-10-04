@@ -64,7 +64,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
             <ul class="jo-list">
               {people.map((p) => (
                 <li>
-                  <span class="jo-who">{p.avatar && <img src={p.avatar} alt="" width="36" height="36" loading="lazy" />}<strong>{p.name}</strong></span>
+                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar && <img src={p.avatar} alt="" width="36" height="36" loading="lazy" />}<strong>{p.name}</strong></a>
                   <span class="jo-stat">
                     {p.lol && (p.lol.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.lol.tier] ?? p.lol.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.lol.tier) ? '' : p.lol.rank} · ${p.lol.lp} LP · ${p.lol.wins}V ${p.lol.losses}D`)}
                     {p.osuS && `#${p.osuS.rank?.toLocaleString('fr-FR') ?? '—'} · ${p.osuS.pp} pp · ${p.osuS.acc} %`}
@@ -105,6 +105,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
   .jo-roster__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; padding-bottom: .6rem; border-bottom: 2px solid var(--ink); }
   .jo-list li { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 1.2fr) auto; gap: .5rem 1.5rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid var(--line); }
   .jo-who { display: flex; align-items: center; gap: .6rem; }
+  .jo-who { color: inherit; text-decoration: none; } .jo-who:hover strong { text-decoration: underline; }
   .jo-who img { border-radius: 50%; background: var(--line); }
   .jo-stat { color: var(--ink); font-size: .92rem; }
   .jo-links { display: flex; flex-wrap: wrap; gap: .4rem .9rem; justify-content: flex-end; font-size: .9rem; }

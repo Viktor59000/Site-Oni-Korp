@@ -1,0 +1,88 @@
+---
+// Guide de l'espace équipe : démarrage rapide (joueurs, encadrement) et rôle de chaque outil, avec les commandes Discord liées.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { teamUser } from './outils';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me } = t;
+const JOUEUR = [
+  ['Relie tes comptes', 'Onglet Joueurs : Riot ID (LoL et Valorant), pseudo Rocket League, pseudo osu!. Tes rangs et tes parties arrivent tout seuls.', '/equipe/joueurs/'],
+  ['Remplis ton setup', 'Sensibilité, viseur, caméra, zone de tablette : utile à tout le roster.', '/equipe/setup/'],
+  ['Réponds aux séances', 'Présent, peut-être ou absent, ici ou sur Discord : c\'est la même réponse.', '/equipe/'],
+  ['Coche tes dispos', 'Chaque semaine, tes créneaux : le staff planifie avec.', '/equipe/'],
+  ['Écris ton débrief', 'Après chaque match ou scrim, deux minutes : ce qui a marché, ce qu\'on travaille.', '/equipe/notes/'],
+];
+const STAFF = [
+  ['Crée le roster', '/roster creer puis /roster ajouter sur Discord : rôle, salons et espace sur le site.'],
+  ['Planifie', '/entrainement planifier pour les séances, /match ajouter pour les matchs (type « scrim » pour ce qui reste interne).'],
+  ['Fixe des objectifs', 'Onglet Objectifs : par joueur ou pour tout le roster, avec une échéance.'],
+  ['Prépare les matchs', 'Avant-match : compo, fiche de l\'adversaire (Scouting), tableau blanc, check-in.'],
+  ['Suis le club', 'Vue d\'ensemble : alertes, présence, débriefs manquants, candidatures.'],
+];
+const OUTILS = [
+  ['Planning', 'Séances à venir avec réponses, disponibilités de la semaine, présence sur 30 jours.', '/entrainement, /dispos, /presences'],
+  ['Calendrier', 'Le mois du roster : séances (avec ta réponse), matchs, scrims, échéances.', ''],
+  ['Avant-match', 'Une page par match : horaires, compo, plan contre l\'adversaire, strats, checklist, puis débrief et stats.', '/match compo'],
+  ['Stats', 'Mesures en jeu par joueur avec tendances : LoL, Valorant et osu! automatiques, Rocket League via ballchasing ou saisie.', ''],
+  ['Objectifs', 'Ce qu\'on vise et où on en est. Annoncés sur Discord à la création.', ''],
+  ['Notes de match', 'Débriefs écrits ; le bot les demande 2 h après chaque match.', ''],
+  ['VOD', 'Vidéos commentées avec des repères horodatés, un clic saute au moment.', ''],
+  ['Scouting', 'Fiches des adversaires avec l\'historique contre nous.', ''],
+  ['Tableau blanc', 'Carte, éléments, crayon, post-it et étapes, en direct ; mode présentation et export en image pour Discord.', ''],
+  ['Drafter LoL · Lineups Valorant · Défis osu!', 'Les outils propres à chaque jeu.', ''],
+  ['Setups · Joueurs · Docs', 'Réglages de chacun, comptes de jeu et profils, documents du roster (routines, règles, appels).', ''],
+];
+---
+<Base title="Guide · Espace équipe" description="Mode d'emploi de l'espace équipe.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Guide</h1><p>Tout le roster au même endroit. Voici comment s'en servir.</p></div></header>
+  <EquipeShell current="guide" rosters={me.rosters} staff={me.staff}>
+    <div class="gd">
+      <section>
+        <h2 class="gd-h">Joueur : démarrer en 5 minutes</h2>
+        <ol class="gd-steps">{JOUEUR.map(([t2, d, href]) => <li><a href={href}><strong>{t2}</strong><span>{d}</span></a></li>)}</ol>
+      </section>
+      {me.staff && (
+        <section>
+          <h2 class="gd-h">Encadrement</h2>
+          <ol class="gd-steps">{STAFF.map(([t2, d]) => <li><div><strong>{t2}</strong><span>{d}</span></div></li>)}</ol>
+        </section>
+      )}
+      <section>
+        <h2 class="gd-h">Les outils</h2>
+        <dl class="gd-tools">{OUTILS.map(([t2, d, cmd]) => <div><dt>{t2}</dt><dd>{d}{cmd && <code>{cmd}</code>}</dd></div>)}</dl>
+      </section>
+      <section class="gd-faq">
+        <h2 class="gd-h">Questions fréquentes</h2>
+        <details><summary>Mes stats ne s'affichent pas</summary><p>Vérifie ton compte dans Joueurs (Riot ID avec le #TAG). Le relevé passe toutes les 30 minutes. Rocket League : il faut que tes replays soient sur ballchasing.com (BakkesMod, envoi automatique).</p></details>
+        <details><summary>Qui voit quoi ?</summary><p>Tu vois les rosters dont tu fais partie. L'encadrement et les administrateurs Discord voient tout. Le public ne voit que l'agenda des matchs officiels, jamais les scrims ni l'espace équipe.</p></details>
+        <details><summary>Ma réponse sur le site apparaît-elle sur Discord ?</summary><p>Oui : le message de la séance sur Discord se met à jour dans la minute, et inversement.</p></details>
+        <details><summary>Je veux une fonction en plus</summary><p>Dis-le au staff sur Discord : l'espace évolue avec le club.</p></details>
+      </section>
+    </div>
+  </EquipeShell>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .gd { display: grid; gap: 2.5rem; max-width: 60rem; }
+  .gd-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
+  .gd-steps { display: grid; gap: .5rem; counter-reset: s; }
+  .gd-steps li { counter-increment: s; }
+  .gd-steps a, .gd-steps div { display: grid; grid-template-columns: 2.5rem 1fr; grid-template-rows: auto auto; column-gap: .75rem; padding: .8rem 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; }
+  .gd-steps a:hover { border-color: var(--ink); }
+  .gd-steps a::before, .gd-steps div::before { content: counter(s); grid-row: span 2; font-family: var(--font-display); font-size: 1.6rem; color: var(--red-text); }
+  .gd-steps span { color: var(--muted); font-size: .92rem; }
+  .gd-tools { display: grid; gap: .1rem; margin: 0; }
+  .gd-tools div { display: grid; grid-template-columns: minmax(10rem, 14rem) 1fr; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
+  .gd-tools dt { font-weight: 700; }
+  .gd-tools dd { margin: 0; color: var(--muted); }
+  .gd-tools code { display: inline-block; margin-left: .5rem; font-size: .78rem; }
+  .gd-faq details { padding: .7rem 0; border-bottom: 1px solid var(--line); }
+  .gd-faq summary { cursor: pointer; font-weight: 700; }
+  .gd-faq p { margin: .5rem 0 0; color: var(--muted); }
+  @media (max-width: 600px) { .gd-tools div { grid-template-columns: 1fr; gap: .2rem; } }
+</style>

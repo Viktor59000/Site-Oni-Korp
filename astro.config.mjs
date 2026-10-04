@@ -41,6 +41,9 @@ const api = {
       route('/equipe/docs', './src/server/equipe/docs.astro');
       route('/equipe/scouting', './src/server/equipe/scouting.astro');
       route('/equipe/match', './src/server/equipe/match.astro');
+      route('/equipe/calendrier', './src/server/equipe/calendrier.astro');
+      route('/equipe/profil', './src/server/equipe/profil.astro');
+      route('/equipe/guide', './src/server/equipe/guide.astro');
       route('/api/equipe/tableau', './src/server/equipe/tableau-api.ts');
       route('/postuler', './src/server/recrutement/page.astro');
       route('/api/postuler', './src/server/recrutement/postuler.ts');

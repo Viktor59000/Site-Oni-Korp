@@ -1,0 +1,129 @@
+---
+// Calendrier interne du roster : séances (avec ma réponse), matchs et scrims, échéances d'objectifs, sur un mois.
+import Base from '../../layouts/Base.astro';
+import EquipeShell from './EquipeShell.astro';
+import { scope, teamUser } from './outils';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const q = sc.active ? `r=${sc.active}` : '';
+const ids = sc.list.map((r) => Number(r.id));
+const tz = 'Europe/Paris';
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const mois = /^\d{4}-\d{2}$/.test(Astro.url.searchParams.get('mois') ?? '') ? Astro.url.searchParams.get('mois')! : today.slice(0, 7);
+const [y, mo] = mois.split('-').map(Number);
+const start = Date.UTC(y, mo - 1, 1) - 86400_000, end = Date.UTC(y, mo, 1) + 86400_000;
+const dayKey = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+const hour = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+const marks = ids.map(() => '?').join(',') || 'NULL';
+const color = new Map(me.rosters.map((r) => [Number(r.id), ({ rl: '#2f6bff', lol: '#0f8a9b', valo: '#ff4655', osu: '#2fa877' } as Record<string, string>)[r.game] ?? '#e5251f']));
+const rname = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+
+type Ev = { at: number; kind: 'seance' | 'match' | 'scrim' | 'objectif'; title: string; href: string; roster: number; mine?: string | null };
+const trainings = ids.length ? await rows<{ id: number; roster_id: number; at: number; kind: string; duration: number }>(`SELECT id, roster_id, at, kind, duration FROM trainings WHERE cancelled = 0 AND roster_id IN (${marks}) AND at BETWEEN ? AND ?`, ...ids, start, end) : [];
+const answers = trainings.length ? await rows<{ training_id: number; status: string }>(`SELECT training_id, status FROM attendance WHERE user_id = ? AND training_id IN (${trainings.map(() => '?').join(',')})`, user.id, ...trainings.map((x) => x.id)) : [];
+const matches = ids.length ? await rows<{ id: number; roster_id: number; at: number; opponent: string; kind: string | null; score_us: number | null; score_them: number | null }>(`SELECT id, roster_id, at, opponent, kind, score_us, score_them FROM matches WHERE cancelled = 0 AND roster_id IN (${marks}) AND at BETWEEN ? AND ?`, ...ids, start, end) : [];
+const goals = ids.length ? await rows<{ id: number; roster_id: number; due: number; title: string; user_id: string | null }>(`SELECT id, roster_id, due, title, user_id FROM goals WHERE status = 'en-cours' AND due IS NOT NULL AND roster_id IN (${marks}) AND due BETWEEN ? AND ? AND (user_id IS NULL OR user_id = ? OR ?)`, ...ids, start, end, user.id, me.staff ? 1 : 0).catch(() => []) : [];
+const events: Ev[] = [
+  ...trainings.map((x) => ({ at: Number(x.at), kind: 'seance' as const, title: `${x.kind} · ${x.duration} min`, href: `/equipe/?r=${me.rosters.find((r) => Number(r.id) === Number(x.roster_id))?.slug}#seance-${x.id}`, roster: Number(x.roster_id), mine: answers.find((a) => Number(a.training_id) === Number(x.id))?.status ?? null })),
+  ...matches.map((x) => ({ at: Number(x.at), kind: ((x.kind ?? '') === 'scrim' ? 'scrim' : 'match') as Ev['kind'], title: `vs ${x.opponent}${x.score_us !== null ? ` ${x.score_us}–${x.score_them}` : ''}`, href: `/equipe/match/?m=${x.id}${q ? `&${q}` : ''}`, roster: Number(x.roster_id) })),
+  ...goals.map((x) => ({ at: Number(x.due), kind: 'objectif' as const, title: x.title, href: `/equipe/objectifs/${q ? `?${q}` : ''}`, roster: Number(x.roster_id) })),
+].sort((a, b) => a.at - b.at);
+const byDay = new Map<string, Ev[]>();
+for (const e of events) { const k = dayKey(e.at); if (k.startsWith(mois)) byDay.set(k, [...(byDay.get(k) ?? []), e]); }
+const first = (new Date(Date.UTC(y, mo - 1, 1)).getUTCDay() + 6) % 7;
+const days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+const shift = (d: number) => { const dt = new Date(Date.UTC(y, mo - 1 + d, 1)); return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`; };
+const title = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(y, mo - 1, 1));
+const link = (m: string) => `/equipe/calendrier/?mois=${m}${q ? `&${q}` : ''}`;
+const ICON: Record<string, string> = { seance: '●', match: '★', scrim: '⚔', objectif: '🎯' };
+const STATUS: Record<string, string> = { present: 'is-ok', 'peut-etre': 'is-maybe', absent: 'is-ko' };
+const upcoming = events.filter((e) => e.at > Date.now()).slice(0, 8);
+const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: tz });
+---
+<Base title="Calendrier · Espace équipe" description="Calendrier interne du roster.">
+  <header class="page-head eq-mini"><div class="wrap"><h1>Calendrier</h1><p>Séances, matchs, scrims et échéances : le mois du roster d'un coup d'œil.</p></div></header>
+  <EquipeShell current="calendrier" rosters={me.rosters} staff={me.staff} active={sc.active}>
+    <div class="ca">
+      <div class="ca-bar">
+        <a class="ca-btn" href={link(shift(-1))} aria-label="Mois précédent">‹</a>
+        <h2>{title.replace(/^./, (c) => c.toUpperCase())}</h2>
+        <a class="ca-btn" href={link(shift(1))} aria-label="Mois suivant">›</a>
+        <a class="ca-today" href={link(today.slice(0, 7))}>Aujourd'hui</a>
+        <ul class="ca-legend">
+          <li><span>●</span>Séance</li><li><span>★</span>Match</li><li><span>⚔</span>Scrim</li><li><span>🎯</span>Échéance</li>
+          <li><i class="is-ok"></i>Présent</li><li><i class="is-maybe"></i>Peut-être</li><li><i class="is-ko"></i>Absent</li><li><i></i>Sans réponse</li>
+        </ul>
+      </div>
+      <div class="ca-grid">
+        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => <div class="ca-dow">{d}</div>)}
+        {Array.from({ length: first }).map(() => <div class="ca-pad"></div>)}
+        {Array.from({ length: days }).map((_, i) => {
+          const k = `${mois}-${String(i + 1).padStart(2, '0')}`;
+          const evs = byDay.get(k) ?? [];
+          return (
+            <div class:list={['ca-day', { 'is-today': k === today, 'is-past': k < today }]}>
+              <span class="ca-num">{i + 1}</span>
+              {evs.map((e) => (
+                <a class:list={['ca-ev', `k-${e.kind}`, e.kind === 'seance' ? STATUS[e.mine ?? ''] ?? 'is-none' : '']} href={e.href} style={`--g:${color.get(e.roster)}`} title={`${rname.get(e.roster)} · ${e.title}`}>
+                  <b>{ICON[e.kind]}</b>{e.kind !== 'objectif' && <time>{hour.format(new Date(e.at))}</time>} <span>{e.title}</span>
+                </a>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <section class="ca-next">
+        <h2>À venir ce mois-ci</h2>
+        {upcoming.length ? <ul>{upcoming.map((e) => <li style={`--g:${color.get(e.roster)}`}><a href={e.href}><b>{ICON[e.kind]} {e.title}</b><span>{fmtLong.format(new Date(e.at))} · {rname.get(e.roster)}{e.kind === 'seance' && !e.mine ? ' · à répondre' : ''}</span></a></li>)}</ul>
+          : <p class="eq-note">Rien de prévu. Les séances se planifient sur Discord avec <code>/entrainement planifier</code>, les matchs avec <code>/match ajouter</code>.</p>}
+      </section>
+    </div>
+  </EquipeShell>
+</Base>
+
+<style>
+  .eq-mini { padding-block: 2.5rem 1.5rem; }
+  .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+  .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .ca { display: grid; gap: 2rem; }
+  .ca-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
+  .ca-bar h2 { font-size: clamp(1.4rem, 3vw, 2rem); min-width: 10ch; text-align: center; }
+  .ca-btn { display: grid; place-items: center; width: 40px; height: 40px; border: 1.5px solid var(--line); color: var(--ink); text-decoration: none; font-size: 1.4rem; }
+  .ca-btn:hover { border-color: var(--ink); }
+  .ca-today { font-weight: 700; color: var(--red-text); }
+  .ca-legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; margin-left: auto; font-size: .78rem; color: var(--muted); }
+  .ca-legend li { display: flex; align-items: center; gap: .3rem; }
+  .ca-legend i { display: inline-block; width: .7rem; height: .7rem; border: 2px dashed var(--muted); }
+  .ca-legend i.is-ok { background: #1f8f55; border: 0; } .ca-legend i.is-maybe { background: #c98a16; border: 0; } .ca-legend i.is-ko { background: var(--lacquer); border: 0; }
+  .ca-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 2px solid var(--ink); border-left: 1px solid var(--line); }
+  .ca-dow { padding: .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .ca-pad, .ca-day { min-height: 7rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .ca-day { display: flex; flex-direction: column; gap: .2rem; padding: .3rem; min-width: 0; }
+  .ca-day.is-past { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+  .ca-num { font-size: .78rem; font-weight: 700; color: var(--muted); }
+  .is-today .ca-num { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--lacquer); color: #fff; }
+  .ca-ev { display: flex; gap: .25rem; align-items: baseline; padding: .15rem .3rem; border-left: 3px solid var(--g); background: color-mix(in srgb, var(--g) 12%, transparent); color: var(--ink); text-decoration: none; font-size: .72rem; line-height: 1.25; overflow: hidden; white-space: nowrap; }
+  .ca-ev span { overflow: hidden; text-overflow: ellipsis; }
+  .ca-ev time { font-weight: 700; }
+  .ca-ev:hover { background: color-mix(in srgb, var(--g) 25%, transparent); }
+  .ca-ev.k-match { background: var(--g); color: #fff; }
+  .ca-ev.k-objectif { border-left-style: dotted; }
+  .ca-ev.k-seance.is-ok { box-shadow: inset -4px 0 #1f8f55; } .ca-ev.k-seance.is-maybe { box-shadow: inset -4px 0 #c98a16; } .ca-ev.k-seance.is-ko { box-shadow: inset -4px 0 var(--lacquer); opacity: .7; }
+  .ca-ev.k-seance.is-none { outline: 1.5px dashed var(--g); outline-offset: -1.5px; }
+  .ca-next h2 { font-family: var(--font-body); font-size: 1rem; font-weight: 700; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: .6rem; }
+  .ca-next ul { display: grid; gap: .4rem; }
+  .ca-next a { display: grid; gap: .1rem; padding: .55rem .8rem; border-left: 4px solid var(--g); background: color-mix(in srgb, var(--g) 6%, transparent); color: inherit; text-decoration: none; }
+  .ca-next span { color: var(--muted); font-size: var(--step--1); }
+  .ca-next span::first-letter { text-transform: uppercase; }
+  @media (max-width: 760px) {
+    .ca-pad, .ca-day { min-height: 3.8rem; }
+    .ca-ev { padding: 0; height: .5rem; font-size: 0; border-left-width: 0; background: var(--g); }
+    .ca-ev b, .ca-ev time, .ca-ev span { display: none; }
+    .ca-legend { margin-left: 0; }
+  }
+</style>

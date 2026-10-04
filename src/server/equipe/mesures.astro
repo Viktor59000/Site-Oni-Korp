@@ -127,7 +127,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                   <tbody>
                     {b.players.map((p) => (
                       <tr>
-                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                         <td>{p.rank ? (p.rank.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.rank.tier] ?? p.rank.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.rank.tier) ? '' : p.rank.rank} · ${p.rank.lp} LP`) : p.acc ? '…' : <a href="/equipe/joueurs/">Relier</a>}</td>
                         <td set:html={p.trend || '—'} />
                         <td>{p.games.length || '—'}</td>
@@ -170,7 +170,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                   <tbody>
                     {b.players.map((p) => (
                       <tr>
-                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                         <td>{p.st ? `#${p.st.rank?.toLocaleString('fr-FR') ?? '—'}` : p.acc ? '…' : <a href="/equipe/joueurs/">Relier</a>}</td>
                         <td set:html={p.trend || '—'} />
                         <td>{p.st?.pp?.toLocaleString('fr-FR') ?? '—'}</td>
@@ -210,7 +210,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                     <tbody>
                       {b.auto.map((p: any) => (
                         <tr>
-                          <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                          <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                           <td>{p.rank?.tier ? `${p.rank.tier}${p.rank.rr !== null ? ` · ${p.rank.rr} RR` : ''}` : '—'}</td>
                           <td set:html={p.trend || '—'} /><td>{p.n || '—'}</td><td>{pct(p.win)}</td>
                           <td>{r1(p.a.acs, 0)}</td><td>{r1(p.a.kd, 2)}</td><td>{r1(p.a.adr, 0)}</td><td>{pct(p.a.hs)}</td><td>{r1(p.a.fb)}</td><td>{r1(p.a.fd)}</td>
@@ -249,7 +249,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                     <tbody>
                       {b.auto.map((p) => (
                         <tr>
-                          <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                          <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                           <td>{p.n || '—'}</td><td set:html={p.trend || '—'} /><td>{pct(p.win)}</td>
                           <td>{r1(p.a.score, 0)}</td><td>{r1(p.a.buts)}</td><td>{r1(p.a.arrets)}</td><td>{pct(p.a.precision)}</td>
                           <td>{r1(p.a.bpm, 0)}</td><td>{r1(p.a.boostMoy, 0)}</td><td>{pct(p.a.sansBoost)}</td><td>{pct(p.a.supersonique)}</td>
@@ -296,7 +296,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                   <tbody>
                     {b.players.map((p) => (
                       <tr>
-                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}{p.m.name}</td>
+                        <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                         <td>{p.lines.length || '—'}</td>
                         <td set:html={p.trend || '—'} />
                         {b.fields.map((f) => <td>{p.averages[f.key] === null ? '—' : `${r1(p.averages[f.key])}${f.unit ? ' %' : ''}`}</td>)}
@@ -340,6 +340,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
   .st-table td { padding: .55rem .6rem; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
   .st-table tr:hover td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
   .st-who { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+  .st-table a.st-name { color: inherit; font-weight: 700; }
   .st-who img, .st-champs img { border-radius: 50%; background: var(--line); }
   .st-champs { display: flex; gap: 2px; }
   .st-table a { color: var(--red-text); font-weight: 700; }
