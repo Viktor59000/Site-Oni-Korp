@@ -21,6 +21,8 @@ const ticket = user ? (await rows<{ thread_id: string; kind: string; game: strin
 const threadId = ticket?.thread_id ?? (current?.status === 'ouverte' ? current.thread_id : null);
 const waiting = current?.status === 'attente';
 const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typeof JEUX] ?? ticket.game : ticket.game) : current ? (current.kind === 'joueur' ? JEUX[current.value as keyof typeof JEUX] ?? current.value : current.value) : '';
+const REPERE: Record<string, string> = { rl: 'Diamant 3', lol: 'Émeraude', valo: 'Diamant', osu: '4 000 pp environ' };
+const apartir = (x: string) => (/^[AEIOUÉÈÊ]/i.test(x) ? `à partir d’${x}` : `à partir de ${x}`);
 ---
 <Base title="Postuler" description="Candidature joueur ou staff chez Oni Korp : connexion Discord, un formulaire, et un fil privé avec le staff du pôle.">
   <header class="page-head">
@@ -81,7 +83,8 @@ const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typ
           </div>
           <label class="pz-field">
             <span class="pz-only-joueur">Rang actuel et meilleur rang</span><span class="pz-only-staff">Ton expérience sur ce poste</span>
-            <input name="niveau" required maxlength="200" />
+            <input name="niveau" required maxlength="200" aria-describedby="repere" />
+            <small class="pz-only-joueur pz-repere" id="repere" data-repere>Repère : {apartir(REPERE[q.get('jeu') ?? 'rl'] ?? REPERE.rl)}. C'est indicatif : la régularité compte autant.</small>
           </label>
           <label class="pz-field">Disponibilités<input name="dispo" required maxlength="300" placeholder="Ex. : soirs en semaine après 20 h, week-end" /></label>
           <label class="pz-field">Présente-toi<textarea name="presentation" required minlength="20" maxlength="1000" rows="5"></textarea></label>
@@ -93,6 +96,14 @@ const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typ
     </div>
   </section>
 </Base>
+
+<script>
+  // Repère de niveau du jeu choisi (le même que sur /recrutement)
+  const REPERE: Record<string, string> = { rl: 'Diamant 3', lol: 'Émeraude', valo: 'Diamant', osu: '4 000 pp environ' };
+  const jeu = document.querySelector<HTMLSelectElement>('select[name="jeu"]');
+  const out = document.querySelector<HTMLElement>('[data-repere]');
+  jeu?.addEventListener('change', () => { const r = REPERE[jeu.value] ?? ''; if (out) out.textContent = `Repère : à partir ${/^[AEIOUÉÈÊ]/i.test(r) ? `d’${r}` : `de ${r}`}. C'est indicatif : la régularité compte autant.`; });
+</script>
 
 <style>
   .pz > * { max-width: 44rem; }

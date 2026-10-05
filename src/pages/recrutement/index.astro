@@ -51,7 +51,7 @@ const staffGroups = [
               <span class="open-rosters__tag">Roster ouvert</span>
               <h3>{label}</h3>
               <p>{desc}</p>
-              <p class="open-rosters__lvl">Repère : à partir de <strong>{repere}</strong></p>
+              <p class="open-rosters__lvl">Repère : à partir {/^[AEIOUÉÈÊ]/i.test(repere) ? "d’" : "de "}<strong>{repere}</strong></p>
               <a class="btn" href={`/postuler/?type=joueur&jeu=${key}`}>Postuler<span class="sr-only"> en {label}</span></a>
             </div>
           </li>
