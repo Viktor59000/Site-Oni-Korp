@@ -1,0 +1,95 @@
+---
+// Créateurs de contenu : streamers et vidéastes qui portent les couleurs du club. Liste en direct (Oni Bot, /api/createurs).
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+
+const gives = [
+  ['Des alertes', 'Chaque live et chaque vidéo annoncés sur le Discord du club, avec un ping pour celles et ceux qui suivent.'],
+  ['Une vitrine', 'Ta chaîne sur cette page et dans le fil en direct du site.'],
+  ['Le récap du mois', 'Les créateurs mis en avant chaque mois sur le Discord et les réseaux du club.'],
+  ['Du contenu', 'La priorité pour caster nos tournois et inhouses, ou streamer les matchs du club.'],
+];
+---
+<Base title="Créateurs de contenu" description="Les streamers et vidéastes d'Oni Korp, club esport français : lives en cours, chaînes Twitch et YouTube, et comment rejoindre les créateurs du club.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Créateurs</h1>
+      <p>Ils streament, ils montent, ils portent les couleurs du club.</p>
+    </div>
+  </header>
+
+  <section class="section" aria-labelledby="liste-title">
+    <div class="wrap">
+      <div class="section__head"><h2 id="liste-title">Nos créateurs.</h2></div>
+      <ul class="cr-list" data-list aria-live="polite"></ul>
+      <p class="cr-empty" data-empty hidden>Les premiers créateurs du club arrivent bientôt. Tu streames ou tu fais des vidéos ? <a href="#rejoindre">Rejoins-les</a>.</p>
+    </div>
+  </section>
+
+  <section class="section section--bone" id="rejoindre" aria-labelledby="deal-title">
+    <div class="wrap">
+      <div class="section__head"><h2 id="deal-title">Le deal.</h2><p>Pas besoin de jouer en compétition : il suffit de créer et d'afficher le club.</p></div>
+      <ul class="cr-gives">
+        {gives.map(([t, d]) => <li><strong>{t}</strong><p>{d}</p></li>)}
+      </ul>
+      <div class="cr-ask">
+        <h3>En retour</h3>
+        <ul>
+          <li>« Oni Korp » ou « [ONI] » dans le titre de tes lives, au moins quatre fois par mois</li>
+          <li>Le club et le lien du Discord dans ta bio Twitch</li>
+          <li>Être présent et actif sur le serveur</li>
+        </ul>
+        <a class="btn" href={site.discord} rel="noopener">Nous en parler sur le Discord</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  type C = { nom: string; avatar: string | null; twitch: string | null; youtube: string | null; live: { titre: string; lien: string; image: string | null; jeu: string | null } | null; mois: { lives: number; heures: number }; video: { titre: string; lien: string } | null };
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+  const safe = (u: string | null) => (u && /^https:\/\//.test(u) ? esc(u) : '');
+  const list = document.querySelector<HTMLElement>('[data-list]')!;
+  fetch('/api/createurs').then((r) => (r.ok ? r.json() : null)).then((d: { createurs: C[] } | null) => {
+    const cs = d?.createurs ?? [];
+    if (!cs.length) { document.querySelector<HTMLElement>('[data-empty]')!.hidden = false; return; }
+    list.innerHTML = cs.map((c) => `
+      <li class="cr${c.live ? ' cr--live' : ''}">
+        ${c.live?.image ? `<a class="cr__thumb" href="${safe(c.live.lien)}" rel="noopener"><img src="${safe(c.live.image)}" alt="" loading="lazy" width="320" height="180" /><span class="cr__badge">En live</span></a>` : ''}
+        <div class="cr__head">
+          ${c.avatar ? `<img class="cr__avatar" src="${safe(c.avatar)}" alt="" loading="lazy" width="56" height="56" />` : '<span class="cr__avatar" aria-hidden="true"></span>'}
+          <div><strong translate="no">${esc(c.nom)}</strong>
+          <span>${c.live ? esc(c.live.titre) : c.mois.lives ? `${c.mois.lives} live${c.mois.lives > 1 ? 's' : ''} · ${c.mois.heures} h ce mois-ci` : 'Créateur Oni Korp'}</span></div>
+        </div>
+        <div class="cr__links">
+          ${c.twitch ? `<a href="${safe(c.twitch)}" rel="noopener">Twitch</a>` : ''}
+          ${c.youtube ? `<a href="${safe(c.youtube)}" rel="noopener">YouTube</a>` : ''}
+          ${c.video ? `<a href="${safe(c.video.lien)}" rel="noopener" title="${esc(c.video.titre)}">Dernière vidéo</a>` : ''}
+        </div>
+      </li>`).join('');
+  }).catch(() => { document.querySelector<HTMLElement>('[data-empty]')!.hidden = false; });
+</script>
+
+<style>
+  .cr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem; }
+  .cr-list:empty { display: none; }
+  .cr-empty { color: var(--muted); }
+  .cr-empty a { color: var(--red-text); font-weight: 700; }
+  .cr-list :global(.cr) { display: grid; gap: .9rem; padding: 1.1rem; border: 1.5px solid var(--line); align-content: start; }
+  .cr-list :global(.cr--live) { border-color: #9146ff; }
+  .cr-list :global(.cr__thumb) { position: relative; display: block; }
+  .cr-list :global(.cr__thumb img) { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+  .cr-list :global(.cr__badge) { position: absolute; top: .5rem; left: .5rem; background: #9146ff; color: #fff; font-weight: 700; font-size: var(--step--1); padding: .15rem .5rem; }
+  .cr-list :global(.cr__head) { display: flex; gap: .8rem; align-items: center; min-width: 0; }
+  .cr-list :global(.cr__head div) { display: grid; min-width: 0; }
+  .cr-list :global(.cr__head span) { color: var(--muted); font-size: var(--step--1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cr-list :global(.cr__avatar) { width: 56px; height: 56px; border-radius: 50%; flex: none; background: var(--line); object-fit: cover; }
+  .cr-list :global(.cr__links) { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .cr-list :global(.cr__links a) { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .9rem; border: 1.5px solid var(--line); font-weight: 700; color: var(--ink); }
+  .cr-gives { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1.5rem; }
+  .cr-gives li { display: grid; gap: .5rem; padding: 1.25rem; border: 1.5px solid var(--line); }
+  .cr-gives strong { font-family: var(--font-display); font-size: 1.2rem; }
+  .cr-gives p { color: var(--muted); }
+  .cr-ask { margin-top: 2.5rem; display: grid; gap: 1rem; justify-items: start; }
+  .cr-ask ul { display: grid; gap: .4rem; padding-left: 1.2rem; list-style: square; }
+</style>
