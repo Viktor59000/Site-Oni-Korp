@@ -588,11 +588,14 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 .topo::before { background-image: url(/img/topo-sombre.svg); opacity: .09; }
 
 /* Partenaires */
-.partners { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 2px solid var(--ink); }
+.partners { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px solid var(--ink); }
 .partners li { display: flex; align-items: center; gap: 1.5rem; padding: 1.75rem 0; border-bottom: 1px solid var(--line); }
 .partners li + li { padding-left: 2rem; border-left: 1px solid var(--line); }
 .partners img { height: 56px; width: auto; flex: none; }
-.partners .partners__wordmark { height: 30px; }
+.partners .partners__wordmark { height: 30px; max-width: 100%; object-fit: contain; object-position: left; }
+/* Logos de partenaires en noir et blanc : noir sur le thème clair, blanc sur le thème sombre */
+.partners__mono { filter: brightness(0); }
+.partners li:has(.partners__wordmark) { flex-direction: column; align-items: flex-start; justify-content: center; gap: .75rem; }
 .partners div { display: grid; gap: .2rem; }
 .partners strong { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; }
 .partners span { color: var(--muted); font-size: var(--step--1); }
@@ -609,6 +612,7 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 }
 :root[data-theme="dark"] .topo::before { background-image: url(/img/topo.svg); opacity: .07; }
 :root[data-theme="dark"] .partners img { filter: invert(1); }
+:root[data-theme="dark"] .partners .partners__mono { filter: brightness(0) invert(1); }
 :root[data-theme="dark"] .roster[data-equipe="bleue"] .roster__lettre { color: #6f98ff; }
 :root[data-theme="dark"] .roster[data-equipe="orange"] .roster__lettre { color: #ff9a4a; }
 .dark .theme-toggle, .section--red { --red-text: #fff; }
