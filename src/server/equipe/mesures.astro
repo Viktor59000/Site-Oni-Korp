@@ -5,7 +5,7 @@
 import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows } from '../db';
-import { TIERS_FR } from './stats';
+import { TIERS_FR, valoTierFr } from './stats';
 import { avg, ddragon, pct, r1, spark, SHARED_CSS } from './ui';
 
 export const prerender = false;
@@ -208,7 +208,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                       {b.auto.map((p: any) => (
                         <tr>
                           <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
-                          <td>{p.rank?.tier ? `${p.rank.tier}${p.rank.rr !== null ? ` · ${p.rank.rr} RR` : ''}` : '—'}</td>
+                          <td>{p.rank?.tier ? `${valoTierFr(p.rank.tier)}${p.rank.rr !== null ? ` · ${p.rank.rr} RR` : ''}` : '—'}</td>
                           <td set:html={p.trend || '—'} /><td>{p.n || '—'}</td><td>{pct(p.win)}</td>
                           <td>{r1(p.a.acs, 0)}</td><td>{r1(p.a.kd, 2)}</td><td>{r1(p.a.adr, 0)}</td><td>{pct(p.a.hs)}</td><td>{r1(p.a.fb)}</td><td>{r1(p.a.fd)}</td>
                           <td>{p.agents.join(', ') || '—'}</td>

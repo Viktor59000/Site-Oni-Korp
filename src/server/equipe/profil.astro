@@ -5,7 +5,7 @@ import Qg from './Qg.astro';
 import { teamUser } from './outils';
 import { access } from './access';
 import { rows } from '../db';
-import { links, TIERS_FR } from './stats';
+import { links, TIERS_FR, valoTierFr } from './stats';
 import { avg, pct, r1, spark, SHARED_CSS } from './ui';
 
 export const prerender = false;
@@ -35,7 +35,7 @@ const cards = [
   lol.length || lolRank ? { key: 'lol', title: 'League of Legends', rank: lolRank && lolRank.tier !== 'UNRANKED' ? `${TIERS_FR[lolRank.tier] ?? lolRank.tier} ${lolRank.rank ?? ''} · ${lolRank.lp} LP` : lolRank ? 'Non classé' : null,
     trend: spark(hist.filter((h) => h.game === 'lol').map((h) => JSON.parse(h.value).score), { w: 160, h: 40 }),
     kpis: [['Parties', String(lol.length)], ['Victoires', pct(win(lol))], ['KDA', r1(lol.length ? lol.reduce((s, x) => s + x.k + x.a, 0) / Math.max(1, lol.reduce((s, x) => s + x.d, 0)) : null, 2)], ['CS/min', r1(avg(lol.map((x) => x.csMin)))], ['Vision/min', r1(avg(lol.map((x) => x.visionMin)), 2)], ['KP', pct(avg(lol.map((x) => x.kp)))]] } : null,
-  valo.length || valoRank ? { key: 'valo', title: 'Valorant', rank: valoRank?.tier ? `${valoRank.tier}${valoRank.rr !== null ? ` · ${valoRank.rr} RR` : ''}` : null,
+  valo.length || valoRank ? { key: 'valo', title: 'Valorant', rank: valoRank?.tier ? `${valoTierFr(valoRank.tier)}${valoRank.rr !== null ? ` · ${valoRank.rr} RR` : ''}` : null,
     trend: spark(hist.filter((h) => h.game === 'valo').map((h) => JSON.parse(h.value).score), { w: 160, h: 40 }),
     kpis: [['Parties', String(valo.length)], ['Victoires', pct(win(valo))], ['ACS', r1(avg(valo.map((x) => x.acs)), 0)], ['ADR', r1(avg(valo.map((x) => x.adr)), 0)], ['HS', pct(avg(valo.map((x) => x.hs).filter((v: number | null) => v !== null)))], ['First bloods', r1(avg(valo.map((x) => x.fb)))]] } : null,
   rl.length ? { key: 'rl', title: 'Rocket League', rank: null, trend: spark(rl.slice().reverse().map((x) => x.score), { w: 160, h: 40 }),

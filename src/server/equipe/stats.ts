@@ -67,6 +67,9 @@ export async function osuStats(username: string) {
   });
 }
 
+/** Rang Valorant en français : « Iron 3 » → « Fer 3 » (le reste du nom est identique). */
+const VALO_FR: Record<string, string> = { Iron: 'Fer', Silver: 'Argent', Gold: 'Or', Platinum: 'Platine', Diamond: 'Diamant', Immortal: 'Immortel', Unrated: 'Non classé' };
+export const valoTierFr = (t: string) => t.replace(/^\w+/, (w) => VALO_FR[w] ?? w);
 export const TIERS_FR: Record<string, string> = {
   IRON: 'Fer', BRONZE: 'Bronze', SILVER: 'Argent', GOLD: 'Or', PLATINUM: 'Platine', EMERALD: 'Émeraude', DIAMOND: 'Diamant',
   MASTER: 'Maître', GRANDMASTER: 'Grand maître', CHALLENGER: 'Challenger', UNRANKED: 'Non classé',
