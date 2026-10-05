@@ -94,6 +94,9 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   let steps: (string | null)[] = []; // champion choisi à chaque étape (null = pas de ban)
   let locked = new Set<string>();    // fearless : champions des parties précédentes
   let tag = '';
+  const lazyIcons = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { const img = e.target as HTMLImageElement; img.src = img.dataset.src!; img.removeAttribute('data-src'); lazyIcons.unobserve(img); }
+  }, { root: document.querySelector('[data-grid]'), rootMargin: '150px' });
   const icon = (id: string) => `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${id}.png`;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -124,8 +127,10 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       .filter((c) => (!tag || c.tags.includes(tag)) && (!q || c.name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').includes(q)))
       .map((c) => {
         const off = used.has(c.id) || locked.has(c.id);
-        return `<li><button type="button" data-champ="${c.id}" ${off || !cur ? 'disabled' : ''} title="${esc(c.name)}"><img src="${icon(c.id)}" alt="" width="48" height="48" loading="lazy" /><span>${esc(c.name)}</span></button></li>`;
+        return `<li><button type="button" data-champ="${c.id}" ${off || !cur ? 'disabled' : ''} title="${esc(c.name)}"><img data-src="${icon(c.id)}" alt="" width="48" height="48" /><span>${esc(c.name)}</span></button></li>`;
       }).join('');
+    // Icônes chargées seulement quand elles apparaissent dans la grille (170 champions, sinon ~4 Mo d'un coup)
+    $('[data-grid]').querySelectorAll<HTMLImageElement>('img[data-src]').forEach((img) => lazyIcons.observe(img));
     const l = $('[data-locked]');
     l.hidden = !locked.size;
     l.textContent = locked.size ? `Fearless : ${locked.size} champions déjà joués dans la série sont bloqués.` : '';
@@ -212,8 +217,8 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   .dr-tags :global(button[aria-pressed="true"]) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
   .dr-locked { font-size: var(--step--1); color: var(--red-text); font-weight: 700; margin: 0 0 .5rem; }
   .dr-locked[hidden] { display: none; }
-  .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; max-height: 32rem; overflow-y: auto; padding-right: 4px; }
-  .dr-grid :global(button) { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: 400 .66rem var(--font-body); }
+  .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; height: 32rem; align-content: start; overflow-y: auto; padding-right: 4px; }
+  .dr-grid :global(button) { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: 400 .75rem var(--font-body); }
   .dr-grid :global(img) { width: 48px; height: 48px; border: 2px solid transparent; }
   .dr-grid :global(button:hover img) { border-color: var(--lacquer); }
   .dr-grid :global(button:disabled) { opacity: .25; cursor: default; }

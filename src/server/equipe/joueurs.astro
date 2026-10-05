@@ -70,7 +70,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
             <ul class="jo-list">
               {people.map((p) => (
                 <li>
-                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar && <img src={p.avatar} alt="" width="36" height="36" loading="lazy" />}<strong>{p.name}</strong></a>
+                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar && <img src={p.avatar} alt="" width="36" height="36" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<strong>{p.name}</strong></a>
                   <span class="jo-stat">
                     {p.lol && (p.lol.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.lol.tier] ?? p.lol.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.lol.tier) ? '' : p.lol.rank} · ${p.lol.lp} LP · ${p.lol.wins}V ${p.lol.losses}D`)}
                     {p.osuS && `#${p.osuS.rank?.toLocaleString('fr-FR') ?? '—'} · ${p.osuS.pp} pp · ${p.osuS.acc} %`}

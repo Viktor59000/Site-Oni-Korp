@@ -61,7 +61,7 @@ const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typ
           {current?.status === 'hors-serveur' && <p class="pz-alert">Tu dois être sur le serveur Discord pour que ton fil s'ouvre. <a href={site.discord} rel="noopener">Rejoins-le</a>, puis renvoie le formulaire.</p>}
           {erreur === 'age' && <p class="pz-alert">Le recrutement est ouvert à partir de 18 ans. Reviens nous voir à ta majorité !</p>}
           {erreur === 'champs' && <p class="pz-alert">Il manque quelque chose : vérifie chaque champ (présentation : quelques lignes au moins).</p>}
-          <p class="pz-who">{user.avatar && <img src={user.avatar} alt="" width="32" height="32" />}Connecté en tant que <strong>{user.name}</strong></p>
+          <p class="pz-who">{user.avatar && <img src={user.avatar} alt="" width="32" height="32" crossorigin="anonymous" referrerpolicy="no-referrer" />}Connecté en tant que <strong>{user.name}</strong></p>
 
           <fieldset class="pz-kind">
             <legend>Je postule comme</legend>

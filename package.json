@@ -19,6 +19,7 @@
     "simple-icons": "^16.33.0"
   },
   "devDependencies": {
+    "@astrojs/node": "^11.1.6",
     "lighthouse": "^12.8.2"
   }
 }

@@ -100,7 +100,7 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
               <li style={`--g:${c.g.color}`}>
                 <a class="ov-card" href={`/equipe/?r=${c.r.slug}`}>
                   <header><strong>{c.r.name}</strong><span>{c.g.label}</span>{c.alerts.length > 0 && <em>{c.alerts.length}</em>}</header>
-                  <ul class="ov-faces">{c.members.slice(0, 8).map((m) => <li title={m.name}><img src={m.avatar} alt="" width="26" height="26" loading="lazy" /></li>)}</ul>
+                  <ul class="ov-faces">{c.members.slice(0, 8).map((m) => <li title={m.name}><img src={m.avatar} alt="" width="26" height="26" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /></li>)}</ul>
                   <dl>
                     <div><dt>Joueurs</dt><dd>{c.members.length}</dd></div>
                     <div><dt>Séances 7 j</dt><dd>{c.week}</dd></div>

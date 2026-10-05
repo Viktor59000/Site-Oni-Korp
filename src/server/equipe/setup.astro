@@ -72,7 +72,7 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
               const filled = FIELDS[b.g].filter((f) => d[f.key]);
               return (
                 <article class="su-card">
-                  <p class="su-who">{m.avatar && <img src={m.avatar} alt="" width="30" height="30" loading="lazy" />}<strong>{m.name}</strong></p>
+                  <p class="su-who">{m.avatar && <img src={m.avatar} alt="" width="30" height="30" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<strong>{m.name}</strong></p>
                   {b.g === 'valo' && edpi(d) && <p class="su-big"><b>{edpi(d)}</b> eDPI</p>}
                   {filled.length ? (
                     <dl>

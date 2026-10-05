@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import vercel from '@astrojs/vercel';
+import node from '@astrojs/node';
 
 // Hébergement : Vercel (VERCEL=1 fourni par la plateforme). Les pages restent statiques ;
 // seules les routes /api/* tournent à la demande (lecture de la base Turso partagée avec Oni Bot).
@@ -54,7 +55,8 @@ const api = {
 export default defineConfig({
   site: process.env.SITE_URL || (onVercel ? 'https://oni-korp.vercel.app' : 'https://viktor59000.github.io'),
   base: process.env.BASE_PATH ? `/${process.env.BASE_PATH}/` : '/',
-  adapter: onVercel ? vercel() : undefined,
+  // ONI_NODE=1 : build de production servi en local (mesures Lighthouse de l'espace équipe, scripts/lighthouse-equipe.mjs)
+  adapter: onVercel ? vercel() : process.env.ONI_NODE ? node({ mode: 'standalone' }) : undefined,
   integrations: [sitemap(), api],
   // CSS du site (~15 Ko) intégré dans chaque page : supprime la requête bloquante
   build: { inlineStylesheets: 'always' },

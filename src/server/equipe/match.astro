@@ -86,7 +86,7 @@ const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
             <h3>Compo</h3>
             {lineup ? (
               <ul class="am-lineup">
-                {lineup.titulaires.map((p) => <li class:list={{ 'is-me': p.id === user.id }}>{members.find((x) => x.id === p.id)?.avatar && <img src={members.find((x) => x.id === p.id)!.avatar} alt="" width="28" height="28" />}{p.nom}</li>)}
+                {lineup.titulaires.map((p) => <li class:list={{ 'is-me': p.id === user.id }}>{members.find((x) => x.id === p.id)?.avatar && <img src={members.find((x) => x.id === p.id)!.avatar} alt="" width="28" height="28" crossorigin="anonymous" referrerpolicy="no-referrer" />}{p.nom}</li>)}
                 {lineup.remplacant && <li class="is-sub">{lineup.remplacant.nom} <small>remplaçant</small></li>}
                 {lineup.coach && <li class="is-sub">{lineup.coach.nom} <small>coach</small></li>}
               </ul>

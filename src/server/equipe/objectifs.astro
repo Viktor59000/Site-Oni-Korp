@@ -50,7 +50,7 @@ const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me
             <div class="ob-groups">
               {groups.filter((g) => g.list.length).map((g) => (
                 <div class="ob-group">
-                  <p class="ob-who">{g.avatar && <img src={g.avatar} alt="" width="28" height="28" loading="lazy" />}<strong>{g.label}</strong></p>
+                  <p class="ob-who">{g.avatar && <img src={g.avatar} alt="" width="28" height="28" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<strong>{g.label}</strong></p>
                   <ul>
                     {g.list.map((o) => (
                       <li class:list={['ob-goal', `is-${o.status}`]}>

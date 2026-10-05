@@ -142,7 +142,7 @@ const date = (ms: number) => new Date(Number(ms));
               <p>{s.g.label} · {s.members.length} joueur{s.members.length > 1 ? 's' : ''}</p>
             </div>
             <ul class="eq-faces" aria-label="Joueurs du roster">
-              {s.members.map((m) => <li title={m.name}><img src={m.avatar} alt="" width="32" height="32" loading="lazy" /><span class="sr-only">{m.name}</span></li>)}
+              {s.members.map((m) => <li title={m.name}><img src={m.avatar} alt="" width="32" height="32" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /><span class="sr-only">{m.name}</span></li>)}
             </ul>
           </header>
 
@@ -188,7 +188,7 @@ const date = (ms: number) => new Date(Number(ms));
                         <ul class={`eq-chips is-${g.key}`} aria-label={g.label}>
                           {g.people.map((p) => (
                             <li title={p.reason ? `${p.name} · ${p.reason}` : p.name}>
-                              {p.avatar && <img src={p.avatar} alt="" width="24" height="24" loading="lazy" />}{p.name}{p.reason && <small>{p.reason}</small>}
+                              {p.avatar && <img src={p.avatar} alt="" width="24" height="24" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}{p.name}{p.reason && <small>{p.reason}</small>}
                             </li>
                           ))}
                         </ul>
@@ -238,7 +238,7 @@ const date = (ms: number) => new Date(Number(ms));
                 <ul class="eq-bilan">
                   {s.bilan.map((b) => (
                     <li>
-                      <span class="eq-bilan__name">{b.avatar && <img src={b.avatar} alt="" width="24" height="24" loading="lazy" />}{b.name}</span>
+                      <span class="eq-bilan__name">{b.avatar && <img src={b.avatar} alt="" width="24" height="24" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}{b.name}</span>
                       <span class="eq-bilan__bar" style={`--rate:${b.rate}%`}><span></span></span>
                       <strong>{b.rate} %</strong>
                       <span class="eq-note">{b.p} présent · {b.m} peut-être · {b.a} absent · {b.n} sans réponse</span>
@@ -346,7 +346,7 @@ const date = (ms: number) => new Date(Number(ms));
     background: color-mix(in srgb, var(--team) calc(var(--fill) * 55%), transparent); }
   .eq-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
   .eq-slot__mark { display: none; font-weight: 700; font-size: 1.1rem; line-height: 1; }
-  .eq-slot__n { font-size: .7rem; color: var(--muted); }
+  .eq-slot__n { font-size: .72rem; color: inherit; font-weight: 700; }
   .eq-slot:has(input:checked) { border-color: var(--ink); border-width: 2.5px; }
   .eq-slot:has(input:checked) .eq-slot__mark { display: block; }
   .eq-slot:has(input:focus-visible) { outline: 3px solid var(--lacquer-hi); }

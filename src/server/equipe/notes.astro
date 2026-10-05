@@ -47,7 +47,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
               <ul class="nt-list">
                 {list.sort((a, b) => Number(isCoach(b)) - Number(isCoach(a))).map((n) => (
                   <li class:list={{ 'is-coach': isCoach(n) }}>
-                    <p class="nt-who">{n.avatar && <img src={n.avatar} alt="" width="28" height="28" loading="lazy" />}<strong>{n.name ?? 'Membre'}</strong>{isCoach(n) && <span class="nt-tag">Encadrement</span>}<span class="nt-rate">{n.rating}/10</span></p>
+                    <p class="nt-who">{n.avatar && <img src={n.avatar} alt="" width="28" height="28" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<strong>{n.name ?? 'Membre'}</strong>{isCoach(n) && <span class="nt-tag">Encadrement</span>}<span class="nt-rate">{n.rating}/10</span></p>
                     {n.good && <p><span class="nt-k is-good">Ça a marché</span>{n.good}</p>}
                     {n.work && <p><span class="nt-k is-work">À travailler</span>{n.work}</p>}
                   </li>

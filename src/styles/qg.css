@@ -159,7 +159,7 @@ body.qg :is(.eq-empty, .nt-empty, .ag-empty, .ou .eq-note:only-child) { padding:
     background: var(--qg-card); border-top: 1px solid var(--qg-border); padding-bottom: env(safe-area-inset-bottom); }
   .qg-tabs a, .qg-tabs button { display: grid; justify-items: center; gap: 2px; padding: .45rem 0 .5rem; border: 0; background: none; color: var(--qg-muted); text-decoration: none; font: 700 .68rem var(--font-body); cursor: pointer; }
   .qg-tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .qg-tabs [aria-current] { color: var(--game); }
+  .qg-tabs [aria-current] { color: var(--qg-ink); box-shadow: inset 0 3px 0 var(--game); }
   .qg-main { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
   /* La navigation complète s'ouvre depuis l'onglet « Menu » ; le résumé du haut suffit à s'orienter */
 }
