@@ -3,10 +3,6 @@
   "motto": "Oni's never on knees",
   "founded": "2021-07-12",
   "discord": "https://discord.gg/RGdEsjrC6a",
-  "forms": {
-    "joueurs": "https://tinyurl.com/FomulaireJoueurs-OniKorp",
-    "staff": "https://tinyurl.com/FomulaireStaff-OniKorp"
-  },
   "socials": [
     { "label": "Twitch", "url": "https://www.twitch.tv/oni_korp", "icon": "twitch" },
     { "label": "YouTube", "url": "https://www.youtube.com/@OniKorp_Officiel", "icon": "youtube" },

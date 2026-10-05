@@ -137,10 +137,18 @@ import { album } from '../lib/album.js';
     document.querySelector('[data-live-title]')!.textContent = main.club ? 'Oni Korp est en direct.' : 'En direct chez nos créateurs.';
     const box = document.querySelector<HTMLElement>('[data-live-player]')!;
     if (main.chaine) {
-      const f = document.createElement('iframe');
-      f.src = `https://player.twitch.tv/?channel=${encodeURIComponent(main.chaine)}&parent=${location.hostname}&muted=true&autoplay=false`;
-      f.title = `Live Twitch : ${main.titre}`; f.allowFullscreen = true; f.loading = 'lazy';
-      box.append(f);
+      // Le lecteur Twitch (et ses cookies) ne se charge qu'au clic : aperçu du live d'ici là
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'home-live__facade';
+      b.setAttribute('aria-label', `Lancer le live : ${main.titre}`);
+      if (main.image) { const img = document.createElement('img'); img.src = main.image; img.alt = ''; img.width = 1280; img.height = 720; b.append(img); }
+      const play = document.createElement('span'); play.className = 'home-live__play'; play.textContent = '▶ Lancer le live'; b.append(play);
+      b.addEventListener('click', () => {
+        const f = document.createElement('iframe');
+        f.src = `https://player.twitch.tv/?channel=${encodeURIComponent(main.chaine!)}&parent=${location.hostname}&autoplay=true`;
+        f.title = `Live Twitch : ${main.titre}`; f.allowFullscreen = true; f.allow = 'autoplay; fullscreen';
+        b.replaceWith(f);
+      }, { once: true });
+      box.append(b);
     }
     const cap = document.createElement('a'); cap.className = 'home-live__cap'; cap.href = main.lien; cap.rel = 'noopener';
     const t = document.createElement('strong'); t.textContent = main.titre;
@@ -192,6 +200,12 @@ import { album } from '../lib/album.js';
   .home-live__grid:has(.home-live__others:empty), .home-live__grid:not(:has(.home-live__others)) { grid-template-columns: minmax(0, 1fr); }
   .home-live__player { display: grid; gap: .75rem; }
   .home-live__player :global(iframe) { width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; display: block; }
+  .home-live__player :global(.home-live__facade) { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9; padding: 0; border: 0; background: #000; cursor: pointer; overflow: hidden; }
+  .home-live__player :global(.home-live__facade img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .8; transition: opacity .2s; }
+  .home-live__player :global(.home-live__facade:hover img), .home-live__player :global(.home-live__facade:focus-visible img) { opacity: 1; }
+  .home-live__player :global(.home-live__play) { position: relative; padding: .7rem 1.2rem; background: #9146ff; color: #fff; font-weight: 700; }
+  .home-live--club .home-live__player :global(.home-live__play) { background: var(--lacquer); }
+  .home-live--club .home-live__player :global(.home-live__facade),
   .home-live--club .home-live__player :global(iframe) { outline: 3px solid var(--lacquer); outline-offset: 4px; }
   .home-live__player :global(.home-live__cap) { display: grid; gap: .2rem; color: var(--ink); }
   .home-live__player :global(.home-live__cap span) { color: var(--muted); font-size: var(--step--1); }

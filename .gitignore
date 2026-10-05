@@ -4,3 +4,7 @@ dist/
 .vercel
 .env
 .env.*
+
+# Sources des visuels (PNG pleine taille, prompts) : gardées sur le PC, pas dans le dépôt public.
+# Les versions publiées sont dans public/img (scripts/cartes.mjs les y intègre).
+visuels/

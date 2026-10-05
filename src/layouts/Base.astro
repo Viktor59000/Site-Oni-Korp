@@ -55,11 +55,11 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <meta property="og:description" content={description} />
     <meta property="og:image" content={abs(image)} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta property="og:image:alt" content="Logo Oni Korp, club esport" />
+    <meta property="og:image:alt" content={`${fullTitle} : aperçu`} />
     <script type="application/ld+json" set:html={JSON.stringify({
       '@context': 'https://schema.org', '@type': 'SportsOrganization', name: 'Oni Korp',
       sport: 'Esport', foundingDate: '2021-07-12', url: abs('/'), logo: abs('/apple-touch-icon.png'),
-      sameAs: ['https://www.twitch.tv/oni_korp', 'https://x.com/Oni_Korp', 'https://www.tiktok.com/@onikorp_', 'https://www.instagram.com/oni_korp/', 'https://www.youtube.com/@OniKorp_Officiel'],
+      sameAs: [site.discord, 'https://www.twitch.tv/oni_korp', 'https://x.com/Oni_Korp', 'https://www.tiktok.com/@onikorp_', 'https://www.instagram.com/oni_korp/', 'https://www.youtube.com/@OniKorp_Officiel'],
     })} />
   </head>
   <body class:list={{ qg }}>
