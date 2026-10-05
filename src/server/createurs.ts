@@ -10,7 +10,7 @@ export const GET: APIRoute = async () => {
     const [m] = await rows<any>(`SELECT COUNT(*) AS n, SUM(COALESCE(ended_at, ?) - at) AS ms FROM feed WHERE kind = 'live' AND at >= ? AND (user_id = ? OR author = ?)`, Date.now(), month, c.user_id, c.twitch ?? '-');
     const [video] = await rows<any>(`SELECT title, url, thumb FROM feed WHERE kind = 'video' AND user_id = ? ORDER BY at DESC LIMIT 1`, c.user_id);
     return {
-      nom: c.name ?? c.twitch ?? 'Créateur', avatar: c.avatar ?? null,
+      nom: c.name ?? c.twitch ?? 'Créateur', avatar: c.avatar ? `/api/avatar?id=${c.user_id}` : null,
       twitch: c.twitch ? `https://www.twitch.tv/${c.twitch}` : null,
       youtube: c.youtube ? `https://www.youtube.com/channel/${c.youtube}` : null,
       live: live ? { titre: live.title, lien: live.url, image: live.thumb, jeu: live.game ?? null } : null,

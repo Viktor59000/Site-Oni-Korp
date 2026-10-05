@@ -21,7 +21,7 @@ const gives = [
   <section class="section" aria-labelledby="liste-title">
     <div class="wrap">
       <div class="section__head"><h2 id="liste-title">Nos créateurs.</h2></div>
-      <ul class="cr-list" data-list aria-live="polite"></ul>
+      <ul class="cr-list" data-list data-loading aria-live="polite"></ul>
       <p class="cr-empty" data-empty hidden>Les premiers créateurs du club arrivent bientôt. Tu streames ou tu fais des vidéos ? <a href="#rejoindre">Rejoins-les</a>.</p>
     </div>
   </section>
@@ -51,6 +51,7 @@ const gives = [
   const safe = (u: string | null) => (u && /^https:\/\//.test(u) ? esc(u) : '');
   const list = document.querySelector<HTMLElement>('[data-list]')!;
   fetch('/api/createurs').then((r) => (r.ok ? r.json() : null)).then((d: { createurs: C[] } | null) => {
+    list.removeAttribute('data-loading');
     const cs = d?.createurs ?? [];
     if (!cs.length) { document.querySelector<HTMLElement>('[data-empty]')!.hidden = false; return; }
     list.innerHTML = cs.map((c) => `
@@ -67,12 +68,15 @@ const gives = [
           ${c.video ? `<a href="${safe(c.video.lien)}" rel="noopener" title="${esc(c.video.titre)}">Dernière vidéo</a>` : ''}
         </div>
       </li>`).join('');
-  }).catch(() => { document.querySelector<HTMLElement>('[data-empty]')!.hidden = false; });
+  }).catch(() => { list.removeAttribute('data-loading'); document.querySelector<HTMLElement>('[data-empty]')!.hidden = false; });
 </script>
 
 <style>
   .cr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem; }
-  .cr-list:empty { display: none; }
+  .cr-list:empty:not([data-loading]) { display: none; }
+  /* place réservée pendant le chargement : la suite de la page ne saute pas */
+  .cr-list[data-loading] { min-height: 19rem; }
+  @media (min-width: 40rem) { .cr-list[data-loading] { min-height: 9.5rem; } }
   .cr-empty { color: var(--muted); }
   .cr-empty a { color: var(--red-text); font-weight: 700; }
   .cr-list :global(.cr) { display: grid; gap: .9rem; padding: 1.1rem; border: 1.5px solid var(--line); align-content: start; }

@@ -196,7 +196,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
   .cal-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
   .cal-nav { display: flex; align-items: center; gap: .5rem; }
-  .cal-title { font-size: clamp(1.5rem, 4vw, 2.2rem); min-width: 9ch; text-align: center; }
+  .cal-title { font-size: clamp(1.5rem, 4vw, 2.2rem); min-width: 13ch; white-space: nowrap; text-align: center; } /* place du mois le plus long : la barre ne bouge pas au chargement */
   .cal-btn { width: 44px; height: 44px; border: 1.5px solid var(--line); background: none; color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; }
   .cal-today { min-height: 44px; padding: 0 .9rem; border: 0; background: none; color: var(--red-text); font: 700 .9rem var(--font-body); cursor: pointer; }
   .cal-btn:hover { border-color: var(--ink); }

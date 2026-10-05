@@ -18,7 +18,7 @@ export const GET: APIRoute = async ({ url }) => {
   const body = {
     season, current,
     modes: Object.fromEntries(MODES.map((m) => [m, elo.filter((e) => e.mode === m).slice(0, 50).map((e) => ({
-      name: e.name ?? 'Membre', avatar: e.avatar, rating: Number(e.rating), wins: Number(e.wins), losses: Number(e.losses), streak: Number(e.streak), best: Number(e.best),
+      name: e.name ?? 'Membre', avatar: e.avatar ? `/api/avatar?id=${e.user_id}` : null, rating: Number(e.rating), wins: Number(e.wins), losses: Number(e.losses), streak: Number(e.streak), best: Number(e.best),
     }))])),
     recent: recent.map((r) => ({
       id: Number(r.id), mode: r.mode, at: Number(r.ended_at), delta: Number(r.delta),
