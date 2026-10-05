@@ -2,7 +2,7 @@
 // Espace équipe (connexion Discord) : matchs et scrims du roster, séances avec réponse en un clic, disponibilités,
 // agenda perso à synchroniser, et pour l'encadrement le bilan de présence.
 // Les données viennent de la base partagée avec Oni Bot ; une réponse ici met à jour le message Discord dans la minute.
-import { getSession, icsKey } from './session';
+import { currentSession, icsKey, userKeys } from './session';
 import { rows, weekKey } from './db';
 import { access } from './equipe/access';
 import { SLOTS } from './equipe/dispos';
@@ -12,7 +12,7 @@ import { scope } from './equipe/outils';
 
 export const prerender = false;
 
-const user = getSession(Astro.cookies);
+const user = await currentSession(Astro.cookies);
 const erreur = Astro.url.searchParams.get('erreur');
 const me = user ? await access(user.id) : null;
 
@@ -30,7 +30,7 @@ const weekLabel = week.split('-').reverse().join('/');
 
 // Agenda perso : lien secret à ajouter une fois dans Google / Apple / Outlook
 const host = Astro.url.host;
-const icsPath = user && process.env.SESSION_SECRET ? `/api/equipe/agenda.ics?u=${user.id}&k=${icsKey(user.id)}` : null;
+const icsPath = user && process.env.SESSION_SECRET ? `/api/equipe/agenda.ics?u=${user.id}&k=${icsKey(user.id, (await userKeys(user.id)).salt)}` : null;
 const icsGoogle = icsPath ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`webcal://${host}${icsPath}`)}` : null;
 
 type T = { id: number; roster_id: number; at: number; duration: number; kind: string; note: string | null };
@@ -97,6 +97,11 @@ const date = (ms: number) => new Date(Number(ms));
         <label class="eq-note">Lien personnel (ne le partage pas)
           <input type="text" readonly value={`https://${host}${icsPath}`} onfocus="this.select()" />
         </label>
+        <form method="post" action="/api/equipe/outils">
+          <input type="hidden" name="action" value="ics-regen" /><input type="hidden" name="back" value="/equipe/planning/" />
+          <button class="btn btn--ghost" type="submit">Lien partagé par erreur ? En créer un nouveau</button>
+        </form>
+        <p class="eq-note">L'ancien lien cesse aussitôt de marcher : il faudra ré-ajouter l'agenda.</p>
       </div>
     </details>
   ) : null}

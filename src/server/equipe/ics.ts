@@ -3,13 +3,13 @@
 import type { APIRoute } from 'astro';
 import { timingSafeEqual } from 'node:crypto';
 import { rows } from '../db';
-import { icsKey } from '../session';
+import { icsKey, userKeys } from '../session';
 import { calendar, matchEvent, MATCH_SQL, type IcsEvent } from '../ics';
 import { access } from './access';
 
 export const GET: APIRoute = async ({ url }) => {
   const u = url.searchParams.get('u') ?? '', k = url.searchParams.get('k') ?? '';
-  const expected = process.env.SESSION_SECRET ? icsKey(u) : '';
+  const expected = process.env.SESSION_SECRET && /^\d{5,25}$/.test(u) ? icsKey(u, (await userKeys(u)).salt) : '';
   if (!/^\d{5,25}$/.test(u) || !expected || k.length !== expected.length || !timingSafeEqual(Buffer.from(k), Buffer.from(expected)))
     return new Response('Lien invalide', { status: 403 });
   const me = await access(u);

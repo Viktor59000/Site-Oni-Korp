@@ -2,13 +2,13 @@
 // Postuler : connexion Discord, formulaire, puis Oni Bot ouvre le fil privé avec le staff du pôle.
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
-import { getSession } from '../session';
+import { currentSession } from '../session';
 import { rows } from '../db';
 import { JEUX, POSTES } from './postuler';
 
 export const prerender = false;
 
-const user = getSession(Astro.cookies);
+const user = await currentSession(Astro.cookies);
 const q = Astro.url.searchParams;
 const type = q.get('type') === 'staff' ? 'staff' : 'joueur';
 const erreur = q.get('erreur');

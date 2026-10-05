@@ -1,11 +1,11 @@
 // POST /api/equipe/presence : réponse à une séance depuis le site (Oni Bot met à jour le message Discord dans la minute).
 import type { APIRoute } from 'astro';
-import { getSession, sameOrigin } from '../session';
+import { currentSession, sameOrigin } from '../session';
 import { exec, rows } from '../db';
 import { access } from './access';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  const user = getSession(cookies);
+  const user = await currentSession(cookies);
   if (!user || !sameOrigin(request)) return redirect('/equipe/');
   const f = await request.formData();
   const id = Number(f.get('training'));

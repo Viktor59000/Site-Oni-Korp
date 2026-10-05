@@ -1,6 +1,6 @@
 // GET /api/auth/callback : Discord renvoie ici après connexion. On vérifie que la personne est membre du serveur.
 import type { APIRoute } from 'astro';
-import { setSession } from '../session';
+import { setSession, userKeys } from '../session';
 
 export const GET: APIRoute = async ({ cookies, url, redirect }) => {
   const code = url.searchParams.get('code'); const state = url.searchParams.get('state');
@@ -29,6 +29,6 @@ export const GET: APIRoute = async ({ cookies, url, redirect }) => {
   const u = member.user;
   const avatar = member.avatar ? `https://cdn.discordapp.com/guilds/${guild}/users/${u.id}/avatars/${member.avatar}.webp?size=128`
     : u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.webp?size=128` : null;
-  setSession(cookies, { id: u.id, name: member.nick ?? u.global_name ?? u.username, avatar });
+  setSession(cookies, { id: u.id, name: member.nick ?? u.global_name ?? u.username, avatar, v: (await userKeys(u.id)).v });
   return redirect(back);
 };

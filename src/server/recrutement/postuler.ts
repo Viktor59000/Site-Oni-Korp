@@ -1,14 +1,14 @@
 // POST /api/postuler : candidature envoyée depuis le site. Enregistrée dans la base ;
 // Oni Bot ouvre le fil privé sur Discord dans les 30 secondes (même circuit que le bouton du salon #postuler).
 import type { APIRoute } from 'astro';
-import { getSession, sameOrigin } from '../session';
+import { currentSession, sameOrigin } from '../session';
 import { exec, rows } from '../db';
 
 export const JEUX = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' } as const;
 export const POSTES = ['Coach', 'Manager', 'Casteur', 'Graphiste', 'Community manager', 'Modérateur', 'Créateur de contenu'];
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  const user = getSession(cookies);
+  const user = await currentSession(cookies);
   if (!user || !sameOrigin(request)) return redirect('/postuler/');
   const f = await request.formData();
   const s = (k: string, max: number) => String(f.get(k) ?? '').trim().slice(0, max);

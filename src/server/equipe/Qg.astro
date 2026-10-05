@@ -73,6 +73,7 @@ const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === cu
             <a href="/equipe/guide/">Guide</a>
             <a href="/">Retour au site</a>
             <a href="/api/auth/logout">Se déconnecter</a>
+            <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="deconnexion-partout" /><button type="submit" class="qg-menu__btn" title="Coupe aussi les sessions ouvertes sur tes autres appareils">Me déconnecter partout</button></form>
           </div>
         </details>
       ) : <a class="qg-back" href="/">Retour au site</a>}

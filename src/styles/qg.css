@@ -56,6 +56,9 @@ body.qg p { max-width: 72ch; }
 .qg-menu--right { left: auto; right: 0; }
 .qg-menu a { padding: var(--space-2) var(--space-3); border-radius: 6px; color: var(--qg-ink); text-decoration: none; font-size: var(--text-sm); }
 .qg-menu a:hover, .qg-menu a[aria-current] { background: var(--qg-sunk); }
+.qg-menu form { margin: 0; display: flex; }
+.qg-menu__btn { flex: 1; text-align: left; padding: var(--space-2) var(--space-3); border: 0; border-radius: 6px; background: none; color: var(--qg-ink); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.qg-menu__btn:hover { background: var(--qg-sunk); }
 .qg-menu a[aria-current] { font-weight: 700; }
 .qg-menu p { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) var(--space-3) 0; font-size: var(--text-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted); }
 .qg-menu p span { width: .5rem; height: .5rem; border-radius: 50%; background: var(--g); }

@@ -1,7 +1,7 @@
 // Outils de l'espace équipe : comptes de jeu, notes de match, drafts LoL, lineups Valorant.
 // POST /api/equipe/outils (formulaire, champ « action ») · GET /api/equipe/outils?type=drafts|lineups&roster=ID (JSON)
 import type { APIRoute, AstroCookies } from 'astro';
-import { getSession, sameOrigin } from '../session';
+import { bumpKey, clearSession, currentSession, sameOrigin } from '../session';
 import { db, exec, rows } from '../db';
 import { access } from './access';
 
@@ -33,7 +33,7 @@ export async function ensureTables() {
 
 /** Membre connecté avec accès à l'espace équipe, sinon null. */
 export async function teamUser(cookies: AstroCookies) {
-  const user = getSession(cookies);
+  const user = await currentSession(cookies);
   if (!user) return null;
   const me = await access(user.id);
   if (!me.member || !(me.staff || me.rosters.length)) return null;
@@ -60,6 +60,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const action = clip(f.get('action'), 30);
   const back = clip(f.get('back'), 100).startsWith('/equipe') ? clip(f.get('back'), 100) : '/equipe/';
   const canRoster = (id: number) => me.staff || me.rosterIds.includes(id);
+
+  // Sécurité du compte : nouveau lien d'agenda perso ; déconnexion de tous les appareils
+  if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
+  if (action === 'deconnexion-partout') { await bumpKey(user.id, 'session'); clearSession(cookies); return redirect('/'); }
 
   if (action === 'comptes') {
     for (const g of GAMES_ACCOUNTS) {
