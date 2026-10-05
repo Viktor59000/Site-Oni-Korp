@@ -6,7 +6,9 @@ export const GET: APIRoute = async () => {
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
   // Quelle base est utilisée (nom d'hôte seulement) et quelles variables existent
   const host = (u?: string) => { try { return u ? new URL(u.replace(/^libsql:/, 'https:')).host.split('.')[0] : null; } catch { return '?'; } };
-  const vars = { ONI_DB: host(process.env.ONI_DB_TURSO_DATABASE_URL), TURSO: host(process.env.TURSO_DATABASE_URL) };
+  const vars = { ONI_DB: host(process.env.ONI_DB_TURSO_DATABASE_URL), TURSO: host(process.env.TURSO_DATABASE_URL),
+    // Clés présentes ou non (jamais leur valeur) : sans clé, le site lit les stats relevées par Oni Bot
+    cles: Object.fromEntries(['RIOT_API_KEY', 'OSU_CLIENT_ID', 'HENRIK_API_KEY', 'SESSION_SECRET', 'DISCORD_CLIENT_SECRET'].map((k) => [k, !!process.env[k]])) };
   const version = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null; // commit déployé (vérifier qu'un envoi est bien en ligne)
   const c = db();
   if (!c) return new Response(JSON.stringify({ base: 'non configurée', variables: vars }), { headers });
