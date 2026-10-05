@@ -35,8 +35,10 @@ const cards = pages.flatMap((p) => p.cartes);
         <ul class="booster__rules">
           <li data-rule="daily">Un booster offert chaque jour</li>
           <li data-rule="club">Visiter <a href="/club/">Le club</a></li>
-          <li data-rule="vestiaire">Visiter le <a href="/vestiaire/">Vestiaire</a></li>
+          <li data-rule="agenda">Visiter l'<a href="/agenda/">Agenda</a></li>
           <li data-rule="recrutement">Visiter le <a href="/recrutement/">Recrutement</a></li>
+          <li data-rule="partenaires">Visiter les <a href="/partenaires/">Partenaires</a></li>
+          <li data-rule="vestiaire">Visiter le <a href="/vestiaire/">Vestiaire</a></li>
         </ul>
         <p class="booster__note">Ta collection est gardée dans ce navigateur. {cards.length} vignettes : joueurs, staff en édition or, moments holo, garage et partenaires en argent, et deux légendaires très rares. Chaque vignette a aussi une chance sur six de sortir en holo.</p>
       </div>
@@ -137,6 +139,11 @@ const cards = pages.flatMap((p) => p.cartes);
     return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`;
   };
   setInterval(() => { if (load().credits < 1) $('[data-pack-label]').textContent = `Prochain booster dans ${untilMidnight()}`; }, 30000);
+
+  // Aucun glisser-déposer : sinon l'aperçu montre la vignette sous le dos du booster
+  document.addEventListener('dragstart', (e) => {
+    if ((e.target as Element).closest?.('.pc, .collection__item')) e.preventDefault();
+  });
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
 

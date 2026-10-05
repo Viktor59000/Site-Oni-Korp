@@ -13,6 +13,8 @@ const initial = (name.match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
 const artSrc = photo ?? (art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null);
 // Petite version pour les grilles, grande pour la vignette en grand
 const artSet = artSrc && art && existsSync(`public/img/cartes/${art}-sm.webp`) ? `/img/cartes/${art}-sm.webp 300w, ${artSrc} 560w` : undefined;
+// Version AVIF (plus légère) quand elle existe
+const avifSet = !photo && art && existsSync(`public/img/cartes/${art}-sm.avif`) ? `/img/cartes/${art}-sm.avif 300w, /img/cartes/${art}.avif 560w` : undefined;
 // Pictogramme : rôle principal (`icon`) pour le staff, sinon le rôle du joueur
 const iconRole = icon ?? (role && !role.includes('confirmer') ? role : null);
 const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
@@ -21,7 +23,10 @@ const nameSize = `min(10.5cqi, ${(80 / (name.length * 0.74)).toFixed(2)}cqi)`;
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
-        <img class={!photo && flip ? 'is-flipped' : undefined} src={artSrc} srcset={artSet} sizes="(max-width: 720px) 40vw, 180px" alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="560" height="840" />
+        <picture>
+          {avifSet && <source type="image/avif" srcset={avifSet} sizes="(max-width: 720px) 40vw, 180px" />}
+          <img class={!photo && flip ? 'is-flipped' : undefined} src={artSrc} srcset={artSet} sizes="(max-width: 720px) 40vw, 180px" alt={photo ? `Photo de ${name}` : ''} loading="lazy" width="560" height="840" draggable="false" />
+        </picture>
       ) : iconRole ? (
         <RoleIcon role={iconRole} class="sticker__icon" />
       ) : (

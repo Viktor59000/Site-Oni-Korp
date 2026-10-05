@@ -865,13 +865,23 @@ main { counter-reset: page; }
 .collection { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1.25rem; }
 .collection__item { position: relative; }
 .collection__item .sticker { rotate: 0deg; }
-.collection__item.is-missing .sticker { filter: grayscale(1) brightness(.22) contrast(.8); }
+/* Vignette manquante : emplacement vide, rien ne laisse deviner l'illustration */
+.collection__item.is-missing { border: 2px dashed rgb(127 127 127 / .45); border-radius: 6px; background: rgb(127 127 127 / .08); }
+.collection__item.is-missing .sticker { visibility: hidden; }
 .collection__item.is-missing .sticker:hover { translate: none; }
 .collection__q { display: none; }
 .collection__item.is-missing .collection__q {
   display: grid; place-items: center; position: absolute; inset: 0; z-index: 2;
-  font-family: var(--font-display); font-size: 2.6rem; color: rgb(255 255 255 / .55); pointer-events: none;
+  font-family: var(--font-display); font-size: 2.6rem; color: var(--muted, rgb(127 127 127 / .7)); pointer-events: none;
 }
+/* Pas de glisser-déposer sur les vignettes (ni l'aperçu de l'image sous un dos de booster) */
+.sticker img, .pc img { -webkit-user-drag: none; user-select: none; }
+.pc, .collection__item { -webkit-user-select: none; user-select: none; }
+.sticker__art picture { display: contents; }
+.sp-logo--top { padding: 0 0 70% !important; }
+.sticker .sp-logo--top img { width: 32% !important; filter: brightness(0) !important; }
+.sticker .sp-logo--top img.is-wide { width: 62% !important; }
+.sticker .sp-logo--top img.is-raw { filter: drop-shadow(0 1px 0 #000) drop-shadow(0 0 1px #000) !important; width: 34% !important; }
 .collection__n {
   position: absolute; z-index: 3; top: -.5rem; right: -.5rem; min-width: 1.9rem; height: 1.9rem; padding: 0 .35rem;
   display: grid; place-items: center; background: var(--ink); color: var(--surface); border-radius: 999px; font-weight: 700; font-size: .8rem;

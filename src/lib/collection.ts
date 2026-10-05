@@ -5,7 +5,7 @@
 
 export type Owned = { n: number; holo?: boolean };
 export type Collection = {
-  v: 1;
+  v: 2;
   owned: Record<string, Owned>;
   credits: number;
   daily: string;      // dernier jour où le booster quotidien a été donné (AAAA-MM-JJ)
@@ -14,11 +14,14 @@ export type Collection = {
 };
 export type Pull = { num: number; holo: boolean; isNew: boolean };
 
-const KEY = 'oni-korp-album';
+// v2 (album de 60 vignettes, numéros revus) : tout le monde repart d'un album vide
+const KEY = 'oni-korp-album-v2';
 export const PACK_SIZE = 5;
 export const HOLO_RATE = 1 / 6;
 // Pages qui rapportent un booster à la première visite
-export const BONUS_PAGES: Record<string, string> = { club: 'Le club', vestiaire: 'Vestiaire', recrutement: 'Recrutement' };
+export const BONUS_PAGES: Record<string, string> = {
+  club: 'Le club', agenda: 'Agenda', recrutement: 'Recrutement', partenaires: 'Partenaires', vestiaire: 'Vestiaire',
+};
 
 const today = () => {
   const d = new Date();
@@ -26,8 +29,9 @@ const today = () => {
 };
 
 export function load(): Collection {
-  const empty: Collection = { v: 1, owned: {}, credits: 0, daily: '', pages: [], opened: 0 };
+  const empty: Collection = { v: 2, owned: {}, credits: 0, daily: '', pages: [], opened: 0 };
   try {
+    localStorage.removeItem('oni-korp-album'); // ancien album (v1), abandonné
     const raw = localStorage.getItem(KEY);
     return raw ? { ...empty, ...JSON.parse(raw) } : empty;
   } catch {

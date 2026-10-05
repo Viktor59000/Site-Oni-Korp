@@ -103,11 +103,20 @@ const SERIES = [
     { title: 'Ouverture LoL', sub: 'Janvier 2024', img: '/img/match-lol.webp', pos: '35% 50%' },
     { title: 'Ouverture Valorant', sub: 'Janvier 2024', img: '/img/match-valo.webp', pos: '60% 50%' },
   ] },
+  // Les 12 decals du club : 3 générations (2023 Oni × Carl, 2021, 2022), Octane et Fennec, domicile et visiteur
   { id: 'garage', titre: 'Garage', rarete: 'argent', cartes: [
-    { title: 'Octane', sub: 'Decal domicile', img: '/img/decal-octane-domicile.webp' },
-    { title: 'Octane', sub: 'Decal visiteur', img: '/img/decal-octane-visiteur.webp' },
-    { title: 'Fennec', sub: 'Decal domicile', img: '/img/decal-fennec-domicile.webp' },
-    { title: 'Fennec', sub: 'Decal visiteur', img: '/img/decal-fennec-visiteur.webp' },
+    { title: 'Octane 2023', sub: 'Decal 2023 Oni × Carl · domicile', img: '/img/decal-octane-domicile.webp' },
+    { title: 'Octane 2023', sub: 'Decal 2023 Oni × Carl · visiteur', img: '/img/decal-octane-visiteur.webp' },
+    { title: 'Fennec 2023', sub: 'Decal 2023 Oni × Carl · domicile', img: '/img/decal-fennec-domicile.webp' },
+    { title: 'Fennec 2023', sub: 'Decal 2023 Oni × Carl · visiteur', img: '/img/decal-fennec-visiteur.webp' },
+    { title: 'Octane 2021', sub: 'Decal 2021 · domicile' },
+    { title: 'Octane 2021', sub: 'Decal 2021 · visiteur' },
+    { title: 'Fennec 2021', sub: 'Decal 2021 · domicile' },
+    { title: 'Fennec 2021', sub: 'Decal 2021 · visiteur' },
+    { title: 'Fennec 2022', sub: 'Decal 2022 · domicile' },
+    { title: 'Fennec 2022', sub: 'Decal 2022 · visiteur' },
+    { title: 'Octane 2022', sub: 'Decal 2022 · domicile' },
+    { title: 'Octane 2022', sub: 'Decal 2022 · visiteur' },
   ] },
   { id: 'partenaires', titre: 'Partenaires', rarete: 'argent', cartes: [
     { title: 'Carl & Barl', sub: 'by LNDR · Rocket League', logo: '/img/partenaires/carl-barl.webp', bg: '#1d1d1d' },
@@ -129,6 +138,16 @@ const SERIES = [
   ] },
   { id: 'recrue', titre: 'Recrue', rarete: 'commune', cartes: [
     { title: 'Ta place ici', sub: 'Postule au club', kind: 'recrue' },
+  ] },
+  // Archives des dossiers du club
+  { id: 'archives', titre: 'Archives', rarete: 'argent', cartes: [
+    { title: 'Le tournoi', sub: 'Ronde suisse puis double élimination' },
+    { title: 'Ton mental', sub: 'Prends-en soin, on est là' },
+    { title: 'Le guide de Yasunaii', sub: 'Progresser sur osu!' },
+  ] },
+  { id: 'bonus', titre: 'Bonus', rarete: 'legendaire', cartes: [
+    { title: 'À suivre…', sub: 'La suite s’écrit avec vous' },
+    { title: '4C Korp', sub: 'La petite sœur', logo: '/img/cartes/logo-4c.webp' },
   ] },
 ];
 const players = num;

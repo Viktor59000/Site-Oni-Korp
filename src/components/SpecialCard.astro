@@ -7,13 +7,17 @@ const { title, sub, img, pos, overlay, logo, bg, wide, kind, num, serie, serieTi
 const artSrc = art && existsSync(`public/img/cartes/${art}.webp`) ? `/img/cartes/${art}.webp` : null;
 // Petite version pour les grilles, grande pour la vignette en grand
 const artSet = artSrc && art && existsSync(`public/img/cartes/${art}-sm.webp`) ? `/img/cartes/${art}-sm.webp 300w, ${artSrc} 560w` : undefined;
+const avifSet = artSrc && existsSync(`public/img/cartes/${art}-sm.avif`) ? `/img/cartes/${art}-sm.avif 300w, /img/cartes/${art}.avif 560w` : undefined;
 const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
 ---
 <article class="sticker sticker--special" data-pole="special" data-serie={serie} data-rarete={rarete}>
   <div class="sticker__frame">
     <div class="sticker__art">
       {artSrc ? (
-        <img src={artSrc} srcset={artSet} sizes="(max-width: 720px) 40vw, 180px" alt="" loading="lazy" width="560" height="840" />
+        <picture>
+          {avifSet && <source type="image/avif" srcset={avifSet} sizes="(max-width: 720px) 40vw, 180px" />}
+          <img src={artSrc} srcset={artSet} sizes="(max-width: 720px) 40vw, 180px" alt="" loading="lazy" width="560" height="840" draggable="false" />
+        </picture>
       ) : kind === 'blason' ? (
         <span class="sp-blason"><img src="/img/oni-logo.svg" alt="" width="200" height="200" loading="lazy" /></span>
       ) : kind === 'recrue' ? (
@@ -24,9 +28,10 @@ const nameSize = `min(10.5cqi, ${(80 / (title.length * 0.74)).toFixed(2)}cqi)`;
         <img src={img} alt="" loading="lazy" style={pos ? `object-position:${pos}` : undefined} />
       )}
       {artSrc && kind === 'blason' && <span class="sp-blason sp-blason--over"><img src="/img/oni-logo.svg" alt="" width="200" height="200" loading="lazy" /></span>}
+      {artSrc && logo && <span class="sp-logo sp-logo--over sp-logo--top"><img class={wide ? 'is-wide' : serie === 'bonus' ? 'is-raw' : undefined} src={logo} alt="" loading="lazy" draggable="false" /></span>}
       {artSrc && chest && <img class="sp-chest" src="/img/oni-logo.svg" alt="" width="200" height="200" />}
-      {kind === 'devise' && <span class="sp-devise" aria-hidden="true">Jamais<br />à genoux</span>}
-      {overlay && <span class="sp-overlay" aria-hidden="true">{overlay}</span>}
+      {!artSrc && kind === 'devise' && <span class="sp-devise" aria-hidden="true">Jamais<br />à genoux</span>}
+      {!artSrc && overlay && <span class="sp-overlay" aria-hidden="true">{overlay}</span>}
     </div>
     <img class="sticker__crest" src="/img/oni-blason-blanc.png" alt="" width="218" height="228" loading="lazy" />
     <span class="sticker__num" aria-label={`Vignette numéro ${num}`}>{String(num).padStart(2, '0')}</span>
