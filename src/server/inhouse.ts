@@ -2,7 +2,7 @@
 import type { APIRoute } from 'astro';
 import { rows } from './db';
 
-const MODES = ['rl-3v3', 'rl-2v2', 'rl-1v1', 'lol-5v5', 'valo-5v5'];
+const MODES = ['rl-3v3', 'rl-2v2', 'rl-1v1', 'lol-5v5', 'valo-5v5', 'osu-1v1', 'osu-2v2'];
 
 export const GET: APIRoute = async ({ url }) => {
   const [meta] = await rows<{ value: string }>(`SELECT value FROM meta WHERE key = 'inhouse_season'`).catch(() => []);

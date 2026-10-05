@@ -6,10 +6,10 @@ import site from '../../data/site.json';
 import { srcset } from '../../lib/img.js';
 
 const MODES = [
-  ['rl-3v3', 'RL 3v3'], ['rl-2v2', 'RL 2v2'], ['rl-1v1', 'RL 1v1'], ['lol-5v5', 'LoL 5v5'], ['valo-5v5', 'Valorant 5v5'],
+  ['rl-3v3', 'RL 3v3'], ['rl-2v2', 'RL 2v2'], ['rl-1v1', 'RL 1v1'], ['lol-5v5', 'LoL 5v5'], ['valo-5v5', 'Valorant 5v5'], ['osu-1v1', 'osu! 1v1'], ['osu-2v2', 'osu! 2v2'],
 ];
 ---
-<Base title="Inhouses" description="Classement des inhouses Oni Korp : parties entre membres sur Rocket League, League of Legends et Valorant, équipes équilibrées par Elo.">
+<Base title="Inhouses" description="Classement des inhouses Oni Korp : parties entre membres sur Rocket League, League of Legends, Valorant et osu!, équipes équilibrées par Elo.">
   <header class="page-head">
     <img class="page-head__bg" src="/img/inhouses.webp" srcset={srcset('/img/inhouses.webp')} sizes="100vw" alt="" width="1536" height="1024" fetchpriority="high" />
     <div class="wrap">
@@ -61,7 +61,7 @@ const MODES = [
 <script>
   type P = { name: string; avatar: string | null; rating: number; wins: number; losses: number; streak: number; best: number };
   type D = { season: number; modes: Record<string, P[]>; recent: { id: number; mode: string; at: number; delta: number; winners: string[]; losers: string[] }[] };
-  const LABEL: Record<string, string> = { 'rl-3v3': 'RL 3v3', 'rl-2v2': 'RL 2v2', 'rl-1v1': 'RL 1v1', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valorant 5v5' };
+  const LABEL: Record<string, string> = { 'rl-3v3': 'RL 3v3', 'rl-2v2': 'RL 2v2', 'rl-1v1': 'RL 1v1', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valorant 5v5', 'osu-1v1': 'osu! 1v1', 'osu-2v2': 'osu! 2v2' };
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   const list = document.querySelector<HTMLOListElement>('[data-list]')!;
   const empty = document.querySelector<HTMLElement>('[data-empty]')!;

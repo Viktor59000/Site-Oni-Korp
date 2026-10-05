@@ -58,7 +58,7 @@ import { album } from '../lib/album.js';
       <img class="home-ih__img" src="/img/inhouses-800.webp" srcset={srcset("/img/inhouses.webp")} sizes="(max-width: 860px) 100vw, 560px" alt="" width="800" height="533" loading="lazy" />
       <div>
         <h2 id="ih-title">Les inhouses,<br /> ouverts à tous.</h2>
-        <p>Rejoins une file sur le Discord : le bot équilibre les équipes, crée les vocaux et tient l'Elo. Rocket League en 1v1, 2v2 et 3v3, League of Legends et Valorant en 5v5.</p>
+        <p>Rejoins une file sur le Discord : le bot équilibre les équipes, crée les vocaux et tient l'Elo. Rocket League en 1v1, 2v2 et 3v3, League of Legends et Valorant en 5v5, osu! en 1v1 et 2v2.</p>
         <ol class="home-ih__top" data-ih-top hidden></ol>
         <div class="recruit__actions">
           <a class="btn" href="/inhouses/">Voir le classement</a>
@@ -124,7 +124,7 @@ import { album } from '../lib/album.js';
 
   // Podium des inhouses : les 3 meilleurs Elo, tous modes confondus (au moins 3 parties)
   fetch('/api/inhouse').then((r) => (r.ok ? r.json() : null)).then((d) => {
-    const LABEL: Record<string, string> = { 'rl-3v3': 'RL 3v3', 'rl-2v2': 'RL 2v2', 'rl-1v1': 'RL 1v1', 'lol-5v5': 'LoL', 'valo-5v5': 'Valorant' };
+    const LABEL: Record<string, string> = { 'rl-3v3': 'RL 3v3', 'rl-2v2': 'RL 2v2', 'rl-1v1': 'RL 1v1', 'lol-5v5': 'LoL', 'valo-5v5': 'Valorant', 'osu-1v1': 'osu! 1v1', 'osu-2v2': 'osu! 2v2' };
     const all = Object.entries(d?.modes ?? {}).flatMap(([mode, list]: [string, any]) => list.filter((p: any) => p.wins + p.losses >= 3).map((p: any) => ({ ...p, mode })));
     const top = all.sort((a: any, b: any) => b.rating - a.rating).slice(0, 3);
     if (!top.length) return;

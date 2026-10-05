@@ -54,7 +54,7 @@ const goals = await rows<{ title: string; status: string; progress: number; due:
 const [deb] = await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE user_id = ?', uid);
 const setups = await rows<{ game: string; data: string }>('SELECT game, data FROM setups WHERE user_id = ?', uid);
 // Inhouses de la saison en cours : Elo et bilan par mode
-const IH_LABEL: Record<string, string> = { 'rl-1v1': 'RL 1v1', 'rl-2v2': 'RL 2v2', 'rl-3v3': 'RL 3v3', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valorant 5v5' };
+const IH_LABEL: Record<string, string> = { 'rl-1v1': 'RL 1v1', 'rl-2v2': 'RL 2v2', 'rl-3v3': 'RL 3v3', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valorant 5v5', 'osu-1v1': 'osu! 1v1', 'osu-2v2': 'osu! 2v2' };
 const [ihSeason] = await rows<{ value: string }>(`SELECT value FROM meta WHERE key = 'inhouse_season'`);
 const inhouses = await rows<{ mode: string; rating: number; wins: number; losses: number; best: number }>(
   'SELECT mode, rating, wins, losses, best FROM inhouse_elo WHERE user_id = ? AND season = ? AND wins + losses > 0 ORDER BY rating DESC', uid, Number(ihSeason?.value) || 1);
