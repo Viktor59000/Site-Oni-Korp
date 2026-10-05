@@ -279,6 +279,7 @@ a.game:hover h3 { color: var(--red-text); }
 /* Timeline (vraie séquence chronologique) */
 .timeline { border-left: 2px solid var(--ink); margin-left: .4rem; }
 .timeline li { position: relative; padding: 0 0 2.25rem 2rem; }
+.timeline a { color: var(--ink); }
 .timeline li::before { content: ""; position: absolute; left: -.5rem; top: .35rem; width: .9rem; height: .9rem; background: var(--lacquer); clip-path: polygon(30% 0, 100% 0, 70% 100%, 0 100%); }
 .timeline time { font-family: var(--font-display); font-size: var(--step-1); display: block; }
 .timeline p { margin: .3rem 0 0; }
