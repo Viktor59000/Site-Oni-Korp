@@ -25,6 +25,17 @@ const isCoach = (n: N) => (JSON.parse(n.roles ?? '[]') as string[]).some((r) => 
 const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
 const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 const games = [...new Set(me.rosters.map((r) => r.game))];
+// Débrief automatique LoL (Oni Bot) : une ligne par joueur et une ligne « _equipe »
+type DB = { kind: string; games: any[] };
+const auto = matches.length ? await rows<{ match_id: number; user_id: string; data: string; name: string | null }>(`SELECT s.match_id, s.user_id, s.data, g.name FROM match_stats s LEFT JOIN guild_members g ON g.id = s.user_id
+  WHERE s.match_id IN (${matches.map(() => '?').join(',')})`, ...matches.map((m) => m.id)).catch(() => []) : [];
+const debriefOf = (id: number) => {
+  const list = auto.filter((a) => Number(a.match_id) === Number(id)).map((a) => ({ ...a, d: JSON.parse(a.data) as DB })).filter((a) => a.d.kind === 'lol-debrief');
+  const team = list.find((a) => a.user_id === '_equipe');
+  return team ? { team: team.d.games, players: list.filter((a) => a.user_id !== '_equipe') } : null;
+};
+const ROLE: Record<string, string> = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
+const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', imprecision: '⚠️', gaffe: '❌' };
 ---
 <Qg title="Notes de match · Inside" heading="Notes de match" lead="Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster." current="notes" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="nt">
@@ -42,6 +53,24 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
               </div>
               {avg !== null && <p class="nt-avg"><b>{avg}</b>/10<span>{list.length} débrief{list.length > 1 ? 's' : ''}</span></p>}
             </header>
+
+            {(() => { const db = debriefOf(m.id); return db && (
+              <section class="nt-auto" aria-label="Débrief automatique">
+                <h3>Débrief automatique</h3>
+                <ul class="nt-games">
+                  {db.team.map((g: any, k: number) => <li><strong>Partie {k + 1} · {g.win ? 'victoire' : 'défaite'}</strong> en {g.min} min{g.team.gold15 !== null && <> · {g.team.gold15 >= 0 ? '+' : ''}{g.team.gold15} or à 15 min</>} · dragons {g.team.dragons[0]}-{g.team.dragons[1]} · barons {g.team.barons[0]}-{g.team.barons[1]}</li>)}
+                </ul>
+                <ul class="nt-players">
+                  {db.players.map((p) => p.d.games.map((g: any) => (
+                    <li>
+                      <p class="nt-who"><strong>{p.name ?? 'Joueur'}</strong><span>{ROLE[g.role] ?? ''} · {g.champ} · {g.k}/{g.d}/{g.a}</span><span class="nt-rate">{g.note}/100</span></p>
+                      <p class="nt-metrics">{g.kp} % de participation · {g.dpm} dégâts/min · {g.csMin} CS/min · {g.visionMin} vision/min{g.gold15 !== null && ` · ${g.gold15 >= 0 ? '+' : ''}${g.gold15} or à 15 min`}</p>
+                      {g.badges?.length > 0 && <ul class="nt-badges">{g.badges.map((b: any) => <li class={`is-${b.kind}`}>{ICON[b.kind]} <strong>{b.label}</strong> {b.reason}</li>)}</ul>}
+                    </li>
+                  )))}
+                </ul>
+              </section>
+            ); })()}
 
             {list.length > 0 && (
               <ul class="nt-list">
@@ -98,6 +127,16 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   .nt-rate { margin-left: auto; font-weight: 700; }
   .nt-k { display: inline-block; margin-right: .5rem; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
   .nt-k.is-good { color: #1f8f55; } .nt-k.is-work { color: var(--red-text); }
+  .nt-auto { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-left: 4px solid var(--game, #0f8a9b); display: grid; gap: .75rem; }
+  .nt-auto h3 { margin: 0; font-family: var(--font-body); font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .nt-games { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; font-size: .95rem; }
+  .nt-players { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+  .nt-players > li { display: grid; gap: .3rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+  .nt-players .nt-who span:not(.nt-rate) { color: var(--muted); font-size: .9rem; }
+  .nt-metrics { margin: 0; color: var(--muted); font-size: .85rem; }
+  .nt-badges { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; font-size: .9rem; }
+  .nt-badges .is-gaffe strong, .nt-badges .is-imprecision strong { color: var(--red-text); }
+  .nt-badges .is-brillant strong, .nt-badges .is-excellent strong { color: #1f8f55; }
   .nt-form { margin-top: 1rem; }
   .nt-form summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
   .nt-form form { display: grid; gap: .9rem; margin-top: .9rem; }
