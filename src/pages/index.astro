@@ -53,6 +53,21 @@ import { album } from '../lib/album.js';
     </div>
   </section>
 
+  <section class="section home-ih" aria-labelledby="ih-title">
+    <div class="wrap home-ih__grid">
+      <img class="home-ih__img" src="/img/inhouses-800.webp" srcset={srcset("/img/inhouses.webp")} sizes="(max-width: 860px) 100vw, 560px" alt="" width="800" height="533" loading="lazy" />
+      <div>
+        <h2 id="ih-title">Les inhouses,<br /> ouverts à tous.</h2>
+        <p>Rejoins une file sur le Discord : le bot équilibre les équipes, crée les vocaux et tient l'Elo. Rocket League en 1v1, 2v2 et 3v3, League of Legends et Valorant en 5v5.</p>
+        <ol class="home-ih__top" data-ih-top hidden></ol>
+        <div class="recruit__actions">
+          <a class="btn" href="/inhouses/">Voir le classement</a>
+          <a class="btn btn--ghost" href={site.discord} rel="noopener"><Icon name="discord" />Jouer sur le Discord</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section" aria-labelledby="poles-title">
     <div class="wrap">
       <div class="album-intro">
@@ -102,4 +117,31 @@ import { album } from '../lib/album.js';
     document.querySelector('[data-count-text]')!.textContent = t;
     document.querySelector<HTMLElement>('[data-count]')!.hidden = false;
   }).catch(() => {});
+
+  // Podium des inhouses : les 3 meilleurs Elo, tous modes confondus (au moins 3 parties)
+  fetch('/api/inhouse').then((r) => (r.ok ? r.json() : null)).then((d) => {
+    const LABEL: Record<string, string> = { 'rl-3v3': 'RL 3v3', 'rl-2v2': 'RL 2v2', 'rl-1v1': 'RL 1v1', 'lol-5v5': 'LoL', 'valo-5v5': 'Valorant' };
+    const all = Object.entries(d?.modes ?? {}).flatMap(([mode, list]: [string, any]) => list.filter((p: any) => p.wins + p.losses >= 3).map((p: any) => ({ ...p, mode })));
+    const top = all.sort((a: any, b: any) => b.rating - a.rating).slice(0, 3);
+    if (!top.length) return;
+    const el = document.querySelector<HTMLElement>('[data-ih-top]')!;
+    for (const p of top) {
+      const li = document.createElement('li');
+      const name = document.createElement('strong'); name.textContent = p.name;
+      const info = document.createElement('span'); info.textContent = `${p.rating} Elo · ${LABEL[p.mode] ?? p.mode}`;
+      li.append(name, info); el.append(li);
+    }
+    el.hidden = false;
+  }).catch(() => {});
 </script>
+
+<style>
+  .home-ih__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: center; }
+  .home-ih__img { width: 100%; height: auto; display: block; }
+  .home-ih h2 { font-size: var(--step-3); }
+  .home-ih__top { list-style: none; counter-reset: ih; margin: 1.25rem 0 0; padding: 0; display: grid; gap: .5rem; }
+  .home-ih__top li { counter-increment: ih; display: flex; align-items: baseline; gap: .75rem; }
+  .home-ih__top li::before { content: counter(ih); font-family: var(--font-display); color: var(--lacquer-hi); min-width: 1.2em; }
+  .home-ih__top span { color: var(--ash); font-size: var(--step--1); }
+  @media (max-width: 860px) { .home-ih__grid { grid-template-columns: 1fr; } }
+</style>

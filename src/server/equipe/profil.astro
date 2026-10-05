@@ -53,6 +53,11 @@ const presence = done.length ? Math.round((att.filter((a) => a.status === 'prese
 const goals = await rows<{ title: string; status: string; progress: number; due: number | null }>(`SELECT title, status, progress, due FROM goals WHERE user_id = ? ORDER BY status = 'en-cours' DESC, updated_at DESC LIMIT 8`, uid).catch(() => []);
 const [deb] = await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE user_id = ?', uid);
 const setups = await rows<{ game: string; data: string }>('SELECT game, data FROM setups WHERE user_id = ?', uid);
+// Inhouses de la saison en cours : Elo et bilan par mode
+const IH_LABEL: Record<string, string> = { 'rl-1v1': 'RL 1v1', 'rl-2v2': 'RL 2v2', 'rl-3v3': 'RL 3v3', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valorant 5v5' };
+const [ihSeason] = await rows<{ value: string }>(`SELECT value FROM meta WHERE key = 'inhouse_season'`);
+const inhouses = await rows<{ mode: string; rating: number; wins: number; losses: number; best: number }>(
+  'SELECT mode, rating, wins, losses, best FROM inhouse_elo WHERE user_id = ? AND season = ? AND wins + losses > 0 ORDER BY rating DESC', uid, Number(ihSeason?.value) || 1);
 // Débriefs automatiques LoL du joueur : note par match, du plus récent au plus ancien
 const debriefs = (await rows<{ data: string; opponent: string; at: number }>(`SELECT s.data, m.opponent, m.at FROM match_stats s JOIN matches m ON m.id = s.match_id
   WHERE s.user_id = ? AND s.data LIKE '%lol-debrief%' ORDER BY m.at DESC LIMIT 10`, uid).catch(() => [])).map((d) => {
@@ -100,6 +105,18 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
         </section>
       )}
 
+      {inhouses.length > 0 && (
+        <section class="pf-deb">
+          <h2 class="pf-h">Inhouses · saison {Number(ihSeason?.value) || 1}</h2>
+          <ul class="pf-ih">
+            {inhouses.map((e) => (
+              <li><span>{IH_LABEL[e.mode] ?? e.mode}</span><b>{Number(e.rating)}</b><small>{Number(e.wins)} V · {Number(e.losses)} D · record {Number(e.best)}</small></li>
+            ))}
+          </ul>
+          <p class="eq-note"><a href="/inhouses/">Classement complet</a></p>
+        </section>
+      )}
+
       <div class="pf-cols">
         <section>
           <h2 class="pf-h">Objectifs</h2>
@@ -144,6 +161,10 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
   .pf-game dd { margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
   .pf-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; }
   .pf-deb { margin-bottom: 2rem; }
+  .pf-ih { list-style: none; margin: 0 0 .5rem; padding: 0; display: flex; flex-wrap: wrap; gap: .75rem; }
+  .pf-ih li { display: grid; gap: .15rem; min-width: 140px; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: 8px; }
+  .pf-ih b { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; }
+  .pf-ih span, .pf-ih small { color: var(--muted); font-size: .85rem; }
   .pf-deb__list { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
   .pf-deb__list li { display: grid; grid-template-columns: 8rem 3rem 1fr; gap: .2rem .8rem; align-items: center; }
   .pf-deb__list small { grid-column: 3; color: var(--muted); }
