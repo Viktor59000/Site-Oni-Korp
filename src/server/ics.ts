@@ -56,5 +56,12 @@ export const matchEvent = (m: M): IcsEvent => {
 
 export const GET: APIRoute = async () => {
   const list = await rows<M>(`${MATCH_SQL} WHERE COALESCE(m.kind, 'officiel') != 'scrim' AND m.at > ? ORDER BY m.at`, Date.now() - 90 * 86400_000);
-  return calendar('Oni Korp', list.map(matchEvent));
+  // Tournois du club
+  const tours = await rows<{ id: number; name: string; game: string; size: number; bo: number; starts_at: number; status: string }>(
+    `SELECT id, name, game, size, bo, starts_at, status FROM tournaments WHERE status IN ('inscriptions', 'en_cours', 'termine') AND starts_at > ?`, Date.now() - 90 * 86400_000).catch(() => []);
+  const tEvents: IcsEvent[] = tours.map((t) => ({
+    uid: `tournoi-${t.id}`, start: Number(t.starts_at), minutes: 180, url: 'https://oni-korp.vercel.app/agenda/',
+    title: `Tournoi du club · ${t.name}`, description: `${JEUX[t.game] ?? t.game} ${t.size}v${t.size} · BO${t.bo}\nInscriptions sur le Discord, salon 🏆・tournois.`,
+  }));
+  return calendar('Oni Korp', [...list.map(matchEvent), ...tEvents]);
 };

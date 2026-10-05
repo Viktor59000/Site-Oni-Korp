@@ -84,7 +84,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 </Base>
 
 <script>
-  type Item = { id: number; type: string; code: string; cast: string | null; compo: string[] | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  type Item = { id: number; type: string; code: string; cast: string | null; compo: string[] | null; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null; tournoi?: boolean; statut?: string; vainqueur?: string | null };
   type F = { auteur: string; titre: string; lien: string; image: string | null; jeu: string | null; date: string };
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   const tz = { timeZone: 'Europe/Paris' } as const;
@@ -109,6 +109,13 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     const d = new Date(it.date);
     const score = it.score ? `<b class="ag-score ${it.score[0] > it.score[1] ? 'is-win' : it.score[0] < it.score[1] ? 'is-loss' : ''}">${it.score[0]} – ${it.score[1]}</b>` : '';
     const watch = !it.score && http(it.lien) ? `<a class="ag-watch" href="${esc(it.lien)}" rel="noopener">Regarder</a>` : '';
+    if (it.tournoi) {
+      const act = it.statut === 'inscriptions' && http(it.lien) ? `<a class="ag-watch" href="${esc(it.lien)}" rel="noopener">S’inscrire</a>` : it.vainqueur ? `<b class="ag-score is-win">🏆 ${esc(it.vainqueur)}</b>` : '';
+      return `<li class="ag-item g-${esc(it.code)}" id="m-${it.id}"><span class="ag-dot" aria-hidden="true"></span>
+        <div><p class="ag-vs">🏆 ${esc(it.adversaire)}</p>
+        <p class="ag-meta"><time datetime="${it.date}">${long.format(d)}</time></p>
+        <p class="ag-meta">${[esc(it.type), it.jeu, esc(it.format), it.statut === 'en_cours' ? 'en cours' : ''].filter(Boolean).join(' · ')}</p></div>${act}</li>`;
+    }
     return `<li class="ag-item g-${esc(it.code)}" id="m-${it.id}"><span class="ag-dot" aria-hidden="true"></span>
       <div><p class="ag-vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(it.adversaire)}</p>
       <p class="ag-meta"><time datetime="${it.date}">${long.format(d)}</time></p>

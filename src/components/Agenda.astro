@@ -15,7 +15,7 @@
 </div>
 
 <script>
-  type Item = { id: number; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null };
+  type Item = { id: number; jeu: string; roster: string | null; adversaire: string; format: string; date: string; lien: string | null; score: [number, number] | null; tournoi?: boolean; statut?: string; vainqueur?: string | null };
   const root = document.querySelector<HTMLElement>('[data-agenda]');
   const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -25,6 +25,11 @@
     const meta = [m.jeu, m.roster ? `roster ${esc(m.roster)}` : '', esc(m.format)].filter(Boolean).join(' · ');
     const score = m.score ? `<b class="agenda__score ${m.score[0] > m.score[1] ? 'is-win' : ''}">${m.score[0]} – ${m.score[1]}</b>` : '';
     const live = !m.score && m.lien && /^https?:\/\//.test(m.lien) ? `<a class="agenda__link" href="${esc(m.lien)}" rel="noopener">Regarder</a>` : '';
+    if (m.tournoi) {
+      // Tournoi du club : s'inscrire sur Discord, ou son vainqueur
+      const act = m.statut === 'inscriptions' && m.lien ? `<a class="agenda__link" href="${esc(m.lien)}" rel="noopener">S’inscrire</a>` : m.vainqueur ? `<b class="agenda__score is-win">🏆 ${esc(m.vainqueur)}</b>` : m.statut === 'en_cours' ? '<b class="agenda__score">En cours</b>' : '';
+      return `<li class="agenda__item">${when}<span class="agenda__vs">🏆 ${esc(m.adversaire)}</span><span class="agenda__meta">Tournoi du club · ${[m.jeu, esc(m.format)].join(' · ')}</span>${act}</li>`;
+    }
     return `<li class="agenda__item">${when}<span class="agenda__vs"><span translate="no">Oni Korp</span> <i>vs</i> ${esc(m.adversaire)}</span><span class="agenda__meta">${meta}</span>${score}${live}</li>`;
   };
 
