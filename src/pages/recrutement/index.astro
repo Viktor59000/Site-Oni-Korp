@@ -7,10 +7,10 @@ import site from '../../data/site.json';
 // Postes du staff, groupés par famille
 // Rosters ouverts : un par jeu pour la saison, d'autres s'ouvrent selon les candidatures (plusieurs rosters par jeu possibles)
 const ouverts = [
-  ['rl', 'Rocket League', 'pole-rocket-league', 'Rosters 3v3, plusieurs niveaux possibles.'],
-  ['lol', 'League of Legends', 'pole-lol', 'Un roster 5v5 : les cinq postes sont ouverts.'],
-  ['valo', 'Valorant', 'pole-valorant', 'Un roster 5v5 : tous les rôles sont ouverts.'],
-  ['osu', 'osu!', 'pole-osu', 'Une équipe pour les tournois par équipes et le classement.'],
+  ['rl', 'Rocket League', 'pole-rocket-league', 'Rosters 3v3, plusieurs niveaux possibles.', 'Diamant 3'],
+  ['lol', 'League of Legends', 'pole-lol', 'Un roster 5v5 : les cinq postes sont ouverts.', 'Émeraude'],
+  ['valo', 'Valorant', 'pole-valorant', 'Un roster 5v5 : tous les rôles sont ouverts.', 'Diamant'],
+  ['osu', 'osu!', 'pole-osu', 'Une équipe pour les tournois par équipes et le classement.', '4 000 pp environ'],
 ];
 const staffGroups = [
   ['Encadrement', [
@@ -41,16 +41,17 @@ const staffGroups = [
     <div class="wrap">
       <div class="section__head">
         <h2 id="ouverts-title">Saison 2026-2027 : on monte nos rosters</h2>
-        <p>Les quatre pôles recrutent. Choisis ton jeu : ta candidature arrive directement au staff du pôle.</p>
+        <p>Les quatre pôles recrutent. Choisis ton jeu : ta candidature arrive directement au staff du pôle. Les niveaux indiqués sont des repères, pas des barrières : la régularité et l'envie de progresser comptent autant.</p>
       </div>
       <ul class="open-rosters">
-        {ouverts.map(([key, label, image, desc]) => (
+        {ouverts.map(([key, label, image, desc, repere]) => (
           <li>
             <img src={`/img/${image}-600.webp`} alt="" width="600" height="240" loading="lazy" />
             <div>
               <span class="open-rosters__tag">Roster ouvert</span>
               <h3>{label}</h3>
               <p>{desc}</p>
+              <p class="open-rosters__lvl">Repère : à partir de <strong>{repere}</strong></p>
               <a class="btn" href={`/postuler/?type=joueur&jeu=${key}`}>Postuler<span class="sr-only"> en {label}</span></a>
             </div>
           </li>
@@ -124,7 +125,9 @@ const staffGroups = [
   .open-rosters img { width: 100%; height: auto; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
   .open-rosters li > div { display: flex; flex-direction: column; gap: .5rem; padding: 1rem 1.1rem 1.25rem; flex: 1; }
   .open-rosters h3 { margin: 0; font-family: var(--font-display); font-size: var(--step-1); font-weight: 400; }
-  .open-rosters p { margin: 0; color: var(--muted); flex: 1; }
+  .open-rosters p { margin: 0; color: var(--muted); }
+  .open-rosters p:first-of-type { flex: 1; }
+  .open-rosters__lvl strong { color: var(--fg, inherit); }
   .open-rosters .btn { align-self: flex-start; margin-top: .5rem; }
   .open-rosters__tag { align-self: flex-start; font-size: var(--step--1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--lacquer-hi); }
 </style>
