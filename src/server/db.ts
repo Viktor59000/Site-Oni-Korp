@@ -1,11 +1,15 @@
-// Accès à la base partagée avec Oni Bot (Turso). Variables posées par l'intégration Vercel (ONI_DB_…) ou à la main.
+// Accès à la base partagée avec Oni Bot (Turso).
+// TURSO_DATABASE_URL / TURSO_AUTH_TOKEN : la base du bot, posée à la main sur Vercel, prioritaire.
+// ONI_DB_… : base créée par l'intégration Turso de Vercel (séparée du bot, ne sert que si les premières manquent).
 import { createClient, type Client, type InValue } from '@libsql/client';
 
 let client: Client | null = null;
 export function db(): Client | null {
-  const url = process.env.ONI_DB_TURSO_DATABASE_URL ?? process.env.TURSO_DATABASE_URL;
+  const [url, authToken] = process.env.TURSO_DATABASE_URL
+    ? [process.env.TURSO_DATABASE_URL, process.env.TURSO_AUTH_TOKEN]
+    : [process.env.ONI_DB_TURSO_DATABASE_URL, process.env.ONI_DB_TURSO_AUTH_TOKEN];
   if (!url) return null;
-  return (client ??= createClient({ url, authToken: process.env.ONI_DB_TURSO_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN }));
+  return (client ??= createClient({ url, authToken }));
 }
 
 /** Lecture tolérante : liste vide si la base ou la table n'existe pas encore. */
