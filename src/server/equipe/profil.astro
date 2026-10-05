@@ -53,6 +53,12 @@ const presence = done.length ? Math.round((att.filter((a) => a.status === 'prese
 const goals = await rows<{ title: string; status: string; progress: number; due: number | null }>(`SELECT title, status, progress, due FROM goals WHERE user_id = ? ORDER BY status = 'en-cours' DESC, updated_at DESC LIMIT 8`, uid).catch(() => []);
 const [deb] = await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE user_id = ?', uid);
 const setups = await rows<{ game: string; data: string }>('SELECT game, data FROM setups WHERE user_id = ?', uid);
+// Débriefs automatiques LoL du joueur : note par match, du plus récent au plus ancien
+const debriefs = (await rows<{ data: string; opponent: string; at: number }>(`SELECT s.data, m.opponent, m.at FROM match_stats s JOIN matches m ON m.id = s.match_id
+  WHERE s.user_id = ? AND s.data LIKE '%lol-debrief%' ORDER BY m.at DESC LIMIT 10`, uid).catch(() => [])).map((d) => {
+  const g = (JSON.parse(d.data).games ?? []) as { note: number; champ: string; k: number; d: number; a: number }[];
+  return { opponent: d.opponent, at: Number(d.at), note: g.length ? Math.round(g.reduce((s2, x) => s2 + x.note, 0) / g.length) : null, champs: g.map((x) => `${x.champ} ${x.k}/${x.d}/${x.a}`).join(' · ') };
+}).filter((d) => d.note !== null);
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 ---
@@ -82,6 +88,17 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
           ))}
         </div>
       ) : <p class="eq-note">Pas encore de mesures en jeu. {uid === user.id && <>Relie tes comptes dans <a href="/equipe/joueurs/">Joueurs</a> : rangs et parties arrivent dans les 30 minutes.</>}</p>}
+
+      {debriefs.length > 0 && (
+        <section class="pf-deb">
+          <h2 class="pf-h">Débriefs LoL · moyenne {Math.round(debriefs.reduce((s2, d) => s2 + d.note!, 0) / debriefs.length)}/100</h2>
+          <ol class="pf-deb__list">
+            {debriefs.map((d) => (
+              <li><span class="pf-deb__bar" style={`--n:${d.note}%`}></span><b>{d.note}</b><span>vs {d.opponent} · {fmt.format(new Date(d.at))}</span><small>{d.champs}</small></li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <div class="pf-cols">
         <section>
@@ -126,6 +143,12 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
   .pf-game dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .pf-game dd { margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
   .pf-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; }
+  .pf-deb { margin-bottom: 2rem; }
+  .pf-deb__list { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+  .pf-deb__list li { display: grid; grid-template-columns: 8rem 3rem 1fr; gap: .2rem .8rem; align-items: center; }
+  .pf-deb__list small { grid-column: 3; color: var(--muted); }
+  .pf-deb__bar { height: .55rem; border-radius: 999px; background: linear-gradient(90deg, #0f8a9b var(--n), var(--line) var(--n)); }
+  .pf-deb__list b { font-family: var(--font-display); font-weight: 400; }
   .pf-h { font-family: var(--font-body); font-size: 1rem; font-weight: 700; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: .7rem; }
   .pf-goals { display: grid; gap: .5rem; }
   .pf-goals li { display: grid; gap: .2rem; padding: .6rem .8rem; border: 1px solid var(--line); }
