@@ -18,6 +18,7 @@ const api = {
       route('/api/agenda', './src/server/agenda.ts');
       route('/api/feed', './src/server/feed.ts');
       route('/api/club', './src/server/club.ts');
+      route('/api/inhouse', './src/server/inhouse.ts');
       route('/api/contact', './src/server/contact.ts');
       route('/agenda.ics', './src/server/ics.ts');
       route('/api/equipe/agenda.ics', './src/server/equipe/ics.ts');

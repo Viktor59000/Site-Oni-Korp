@@ -1,0 +1,134 @@
+---
+// Inhouses : classement Elo des parties entre membres (Oni Bot), par mode, et dernières parties.
+// Page statique ; les données arrivent de /api/inhouse.
+import Base from '../../layouts/Base.astro';
+import site from '../../data/site.json';
+
+const MODES = [
+  ['rl-3v3', 'RL 3v3'], ['rl-2v2', 'RL 2v2'], ['rl-1v1', 'RL 1v1'], ['lol-5v5', 'LoL 5v5'], ['valo-5v5', 'Valorant 5v5'],
+];
+---
+<Base title="Inhouses" description="Classement des inhouses Oni Korp : parties entre membres sur Rocket League, League of Legends et Valorant, équipes équilibrées par Elo.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Inhouses</h1>
+      <p>Des parties entre membres, des équipes équilibrées, un classement par saison. Ouvert à toute la communauté.</p>
+      <div class="ih-actions">
+        <a class="btn" href={site.discord} rel="noopener">Jouer sur le Discord</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section" aria-labelledby="ih-title">
+    <div class="wrap">
+      <div class="section__head section__head--row">
+        <div>
+          <h2 id="ih-title">Classement<span data-season></span>.</h2>
+          <p>Tout le monde démarre à 1000. Une victoire contre plus fort rapporte plus.</p>
+        </div>
+      </div>
+      <div class="ih-tabs" role="tablist" aria-label="Mode de jeu">
+        {MODES.map(([k, l], i) => <button type="button" role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-mode={k}>{l}</button>)}
+      </div>
+      <div class="ih-board" role="tabpanel" aria-live="polite">
+        <p class="ih-empty" data-empty>Chargement du classement…</p>
+        <ol class="ih-list" data-list hidden></ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="ih-how">
+    <div class="wrap ih-split">
+      <div>
+        <div class="section__head"><h2 id="ih-how">Comment ça marche.</h2></div>
+        <ol class="ih-steps">
+          <li><strong>Rejoins une file</strong> dans le salon des inhouses du Discord : RL 1v1, 2v2, 3v3, LoL ou Valorant.</li>
+          <li><strong>File pleine, appel « Prêt ? »</strong> : une minute pour confirmer.</li>
+          <li><strong>Équipes équilibrées</strong> selon l’Elo de chacun, avec un vocal par équipe.</li>
+          <li><strong>Résultat confirmé</strong> par un joueur de chaque camp, l’Elo se met à jour.</li>
+        </ol>
+      </div>
+      <div>
+        <h3 class="ih-sub">Dernières parties</h3>
+        <ul class="ih-recent" data-recent><li class="ih-empty">Aucune partie pour l’instant.</li></ul>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  type P = { name: string; avatar: string | null; rating: number; wins: number; losses: number; streak: number; best: number };
+  type D = { season: number; modes: Record<string, P[]>; recent: { id: number; mode: string; at: number; delta: number; winners: string[]; losers: string[] }[] };
+  const LABEL: Record<string, string> = { 'rl-3v3': 'RL 3v3', 'rl-2v2': 'RL 2v2', 'rl-1v1': 'RL 1v1', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valorant 5v5' };
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const list = document.querySelector<HTMLOListElement>('[data-list]')!;
+  const empty = document.querySelector<HTMLElement>('[data-empty]')!;
+  let data: D | null = null;
+  let mode = 'rl-3v3';
+
+  const draw = () => {
+    const players = data?.modes[mode] ?? [];
+    empty.hidden = players.length > 0;
+    list.hidden = players.length === 0;
+    if (!players.length) { empty.textContent = data ? `Personne n’a encore joué en ${LABEL[mode]} cette saison. La première place est libre.` : 'Classement indisponible pour le moment.'; return; }
+    list.innerHTML = players.map((p, i) => {
+      const n = p.wins + p.losses;
+      return `<li class="${i < 3 ? `is-top is-${i + 1}` : ''}">
+        <span class="ih-rank">${i + 1}</span>
+        ${p.avatar ? `<img src="${esc(p.avatar)}" alt="" width="36" height="36" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />` : `<span class="ih-ava">${esc(p.name.slice(0, 1))}</span>`}
+        <span class="ih-name">${esc(p.name)}${p.streak >= 3 ? ` <small title="Série de victoires">🔥 ${p.streak}</small>` : ''}</span>
+        <span class="ih-wl">${p.wins}V ${p.losses}D · ${n ? Math.round((p.wins / n) * 100) : 0} %</span>
+        <span class="ih-elo">${p.rating}</span>
+      </li>`;
+    }).join('');
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    mode = b.dataset.mode!;
+    document.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    draw();
+  }));
+
+  fetch('/api/inhouse').then((r) => (r.ok ? r.json() : null)).then((d: D | null) => {
+    data = d;
+    if (d) {
+      document.querySelector('[data-season]')!.textContent = ` · saison ${d.season}`;
+      // Premier onglet : le mode le plus joué
+      const busiest = Object.entries(d.modes).sort((a, b) => b[1].length - a[1].length)[0];
+      if (busiest && busiest[1].length) document.querySelector<HTMLButtonElement>(`[data-mode="${busiest[0]}"]`)?.click();
+      const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+      if (d.recent.length) document.querySelector('[data-recent]')!.innerHTML = d.recent.map((r) =>
+        `<li><small>${LABEL[r.mode] ?? r.mode} · ${fmt.format(new Date(r.at))}</small><span><strong>${r.winners.map(esc).join(', ')}</strong> battent ${r.losers.map(esc).join(', ')}</span><b>+${r.delta}</b></li>`).join('');
+    }
+    draw();
+  }).catch(() => draw());
+</script>
+
+<style>
+  .ih-actions { margin-top: 1.5rem; }
+  .ih-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem; }
+  .ih-tabs button { min-height: 44px; padding: 0 1.1rem; border: 2px solid var(--line); background: none; color: var(--ink); font: 700 .95rem var(--font-body); cursor: pointer; }
+  .ih-tabs button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .ih-board { min-height: 16rem; }
+  .ih-empty { color: var(--muted); }
+  .ih-list { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; max-width: 48rem; }
+  .ih-list :global(li) { display: grid; grid-template-columns: 2.2rem 36px 1fr auto auto; gap: .9rem; align-items: center; padding: .6rem .9rem; border: 1px solid var(--line); background: var(--paper); }
+  .ih-list :global(.is-top) { border-left: 4px solid var(--lacquer); }
+  .ih-list :global(.ih-rank) { font-family: var(--font-display); font-size: 1.2rem; text-align: center; }
+  .ih-list :global(.is-1 .ih-rank) { color: #c99a2e; }
+  .ih-list :global(img), .ih-list :global(.ih-ava) { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--line); font-weight: 700; }
+  .ih-list :global(.ih-name) { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ih-list :global(.ih-wl) { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+  .ih-list :global(.ih-elo) { font-family: var(--font-display); font-size: 1.3rem; min-width: 3.5rem; text-align: right; }
+  @media (max-width: 560px) { .ih-list :global(li) { grid-template-columns: 1.8rem 32px 1fr auto; } .ih-list :global(.ih-wl) { display: none; } }
+
+  .ih-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: clamp(2rem, 5vw, 4rem); }
+  .ih-steps { display: grid; gap: 1rem; padding-left: 1.25rem; }
+  .ih-steps li { color: var(--muted); }
+  .ih-steps strong { color: var(--ink); }
+  .ih-sub { font-size: var(--step-1); margin-bottom: 1rem; }
+  .ih-recent { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; }
+  .ih-recent :global(li) { display: grid; grid-template-columns: 1fr auto; gap: .1rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .ih-recent :global(small) { grid-column: 1 / -1; color: var(--muted); }
+  .ih-recent :global(b) { color: #1f9d5c; }
+</style>
