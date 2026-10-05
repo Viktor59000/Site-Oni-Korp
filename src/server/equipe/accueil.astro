@@ -80,6 +80,23 @@ if (roster) {
   };
 }
 const g = roster ? GAME[roster.game] ?? { label: roster.game, img: '' } : null;
+// Bien démarrer : ce qu'un nouveau joueur doit faire une fois (disparaît quand tout est fait)
+const ACC: Record<string, [string, string]> = { lol: ['riot', 'ton Riot ID'], valo: ['riot', 'ton Riot ID'], rl: ['rl', 'ton pseudo Rocket League'], osu: ['osu', 'ton pseudo osu!'] };
+const onboarding = roster && data ? await (async () => {
+  const acc = ACC[roster.game];
+  const [linked, guideSeen, setup] = await Promise.all([
+    acc ? rows('SELECT 1 FROM accounts WHERE user_id = ? AND game = ?', user.id, acc[0]) : Promise.resolve([1]),
+    rows(`SELECT 1 FROM meta WHERE key = ?`, `guide:${user.id}`).catch(() => []),
+    rows('SELECT 1 FROM setups WHERE user_id = ?', user.id).catch(() => []),
+  ]);
+  const steps = [
+    { done: linked.length > 0, label: `Relie ${acc?.[1] ?? 'ton compte de jeu'}`, why: roster.game === 'lol' ? 'tes rangs, tes parties et tes débriefs arrivent tout seuls' : 'tes rangs et tes parties arrivent tout seuls', href: '/equipe/joueurs/' },
+    { done: data.dispos, label: 'Coche tes dispos de la semaine', why: 'le staff planifie les séances avec', href: `/equipe/planning/?r=${roster.slug}#dispos-${roster.id}` },
+    { done: setup.length > 0, label: 'Renseigne ton setup', why: 'sensibilité, DPI, matériel : utile au coach', href: '/equipe/setup/' },
+    { done: guideSeen.length > 0, label: 'Lis le guide d’Inside', why: '2 minutes pour tout comprendre', href: '/equipe/guide/' },
+  ];
+  return steps.every((x) => x.done) ? null : steps;
+})() : null;
 const q = roster ? `?r=${roster.slug}` : '';
 const next = data?.events[0] ?? null;
 const maxForm = Math.max(1, ...(data?.form.map((f) => f.n) ?? [1]));
@@ -138,6 +155,17 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
           </ul>
         </div>
       </section>
+
+      {onboarding && (
+        <section class="qg-card ac-start" aria-labelledby="ac-start">
+          <h2 id="ac-start">Bien démarrer · {onboarding.filter((x) => x.done).length}/{onboarding.length}</h2>
+          <ol>
+            {onboarding.map((x) => (
+              <li class:list={{ 'is-done': x.done }}><a href={x.href}><strong>{x.label}</strong><span>{x.why}</span></a></li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <div class="ac-grid">
         <section class="qg-card ac-card">
@@ -232,6 +260,16 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-faces li { margin-right: -.5rem; }
   .ac-faces img, .ac-faces span:not(.sr-only) { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #0b0c0f; display: grid; place-items: center; background: #2a2d33; font-weight: 700; }
 
+  .ac-start { display: grid; gap: .8rem; border-left: 4px solid var(--game); }
+  .ac-start h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .ac-start ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .6rem; margin: 0; padding: 0; list-style: none; counter-reset: st; }
+  .ac-start li { counter-increment: st; }
+  .ac-start a { display: grid; gap: .2rem; height: 100%; box-sizing: border-box; padding: .8rem .9rem .8rem 2.6rem; position: relative; border-radius: 8px; background: color-mix(in srgb, var(--game) 10%, transparent); color: var(--qg-ink); text-decoration: none; }
+  .ac-start a::before { content: counter(st); position: absolute; left: .8rem; top: .8rem; width: 1.3rem; height: 1.3rem; border-radius: 50%; display: grid; place-items: center; background: var(--game); color: var(--game-fg, #fff); font-size: .75rem; font-weight: 700; }
+  .ac-start span { color: var(--qg-muted); font-size: var(--text-sm); }
+  .ac-start .is-done a { background: var(--qg-sunk, rgb(0 0 0 / .04)); }
+  .ac-start .is-done strong { text-decoration: line-through; color: var(--qg-muted); }
+  .ac-start .is-done a::before { content: '✓'; background: #2fbf71; color: #fff; }
   .ac-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: var(--space-4, 1rem); }
   .ac-card { display: grid; gap: .9rem; align-content: start; }
   .ac-card h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }

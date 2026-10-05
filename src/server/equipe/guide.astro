@@ -1,4 +1,5 @@
 ---
+import { exec } from '../db';
 // Guide de l'espace équipe : démarrage rapide (joueurs, encadrement) et rôle de chaque outil, avec les commandes Discord liées.
 import Qg from './Qg.astro';
 import { teamUser } from './outils';
@@ -6,6 +7,8 @@ import { teamUser } from './outils';
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
+// Pour la carte « Bien démarrer » de l'accueil
+await exec('INSERT INTO meta VALUES (?, ?) ON CONFLICT(key) DO NOTHING', `guide:${t.user.id}`, String(Date.now())).catch(() => {});
 const { me } = t;
 const JOUEUR = [
   ['Relie tes comptes', 'Onglet Joueurs : Riot ID (LoL et Valorant), pseudo Rocket League, pseudo osu!. Tes rangs et tes parties arrivent tout seuls.', '/equipe/joueurs/'],
