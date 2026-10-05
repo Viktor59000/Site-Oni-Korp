@@ -20,6 +20,11 @@ const decals = [
     size: '9,1 Mo',
   },
 ];
+// Générations précédentes (textures et presets dans les zip)
+const archives = [
+  { year: '2021', text: 'Le tout premier decal, l’année de la fondation : camo gris et noir, touches de rouge.', file: '/downloads/oni-korp-decals-2021.zip', size: '6,3 Mo' },
+  { year: '2022', text: 'La deuxième génération : carrosserie noire, grand panneau rouge sur le flanc.', file: '/downloads/oni-korp-decals-2022.zip', size: '12,3 Mo' },
+];
 ---
 <Base title="Vestiaire" description="Decals Rocket League Oni Korp × Carl & Barl à télécharger gratuitement (Octane, Fennec) et merch du club.">
   <header class="page-head">
@@ -56,6 +61,42 @@ const decals = [
       </section>
     ))}
 
+    <section class="section archive" aria-labelledby="archive-title">
+      <div class="section__head">
+        <h2 id="archive-title">Les anciens decals.</h2>
+        <p>Les deux premières générations du club, avant Carl & Barl. Toujours jouables, toujours gratuites.</p>
+      </div>
+      {archives.map((y) => (
+        <div class="archive__year">
+          <div class="archive__head">
+            <h3>{y.year}</h3>
+            <p>{y.text}</p>
+            <a class="btn btn--ghost" href={y.file} download>Télécharger {y.year} ({y.size})</a>
+          </div>
+          <ul class="archive__cars">
+            {['octane', 'fennec'].map((car) => (
+              <li data-decal>
+                <div class="archive__stage">
+                  {['domicile', 'visiteur'].map((side, i) => (
+                    <picture data-side={side} hidden={i > 0}>
+                      <source type="image/avif" srcset={`/img/decals/${y.year}-${car}-${side}.avif`} />
+                      <img src={`/img/decals/${y.year}-${car}-${side}.webp`} alt={`${car === 'octane' ? 'Octane' : 'Fennec'} Oni Korp ${y.year}, version ${side}`} width="800" height="450" loading="lazy" />
+                    </picture>
+                  ))}
+                </div>
+                <div class="archive__meta">
+                  <strong>{car === 'octane' ? 'Octane' : 'Fennec'}</strong>
+                  <div class="switch" role="group" aria-label="Variante affichée">
+                    <button type="button" aria-pressed="true" data-show="domicile">Domicile</button>
+                    <button type="button" aria-pressed="false" data-show="visiteur">Visiteur</button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
     <section class="section" aria-labelledby="merch-title">
       <div class="merch">
         <figure class="merch__shot">
@@ -85,10 +126,23 @@ const decals = [
       btn.addEventListener('click', () => {
         const side = btn.getAttribute('data-show');
         buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
-        block.querySelectorAll('img[data-side]').forEach((img) => {
+        block.querySelectorAll('[data-side]').forEach((img) => {
           img.toggleAttribute('hidden', img.getAttribute('data-side') !== side);
         });
       });
     });
   });
 </script>
+
+<style>
+  .archive__year { display: grid; grid-template-columns: minmax(0, 16rem) 1fr; gap: 2rem; padding-block: 2rem; border-top: 1px solid var(--line); }
+  .archive__head h3 { font-family: var(--font-display); font-size: var(--step-3); line-height: 1; }
+  .archive__head p { color: var(--muted); margin: .75rem 0 1.25rem; }
+  .archive__cars { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1.25rem; margin: 0; padding: 0; list-style: none; }
+  .archive__stage { aspect-ratio: 16 / 9; background: #0a0a0a; border-radius: 4px; overflow: hidden; }
+  .archive__stage img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .archive__stage [hidden] { display: none; }
+  .archive__meta .switch { margin-top: 0; }
+  .archive__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .6rem; }
+  @media (max-width: 760px) { .archive__year { grid-template-columns: 1fr; gap: 1rem; } }
+</style>
