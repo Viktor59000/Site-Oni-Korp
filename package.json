@@ -9,7 +9,8 @@
     "preview": "astro preview",
     "cartes": "node scripts/cartes.mjs",
     "mesure": "node scripts/lighthouse.mjs",
-    "mesure:equipe": "node scripts/lighthouse-equipe.mjs"
+    "mesure:equipe": "node scripts/lighthouse-equipe.mjs",
+    "og": "node scripts/og.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@astrojs/node": "^11.1.6",
+    "@resvg/resvg-js": "^2.6.2",
     "lighthouse": "^12.8.2"
   }
 }

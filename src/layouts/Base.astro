@@ -9,7 +9,11 @@ import '@fontsource/zen-kaku-gothic-new/latin-700.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-const { qg = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert.", image = '/og.jpg' } = Astro.props;
+import { existsSync } from 'node:fs';
+const { qg = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert." } = Astro.props;
+// Image d'aperçu propre à la page (public/og/<page>.jpg, générée par scripts/og.mjs), sinon celle du club
+const section = Astro.url.pathname.split('/')[1];
+const image = Astro.props.image ?? (section && existsSync(`public/og/${section}.jpg`) ? `/og/${section}.jpg` : '/og.jpg');
 const fullTitle = title ? `${title} | Oni Korp` : "Oni Korp | Club esport, jamais à genoux";
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // URL absolue d'un fichier de public/, base GitHub Pages comprise
