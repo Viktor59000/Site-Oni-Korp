@@ -552,7 +552,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-frames :global(button[aria-pressed="true"]) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
   .wb-frames :global([data-frame-add]), .wb-frames :global([data-frame-del]), .wb-frames :global([data-frame-rename]) { border-style: dashed; color: var(--muted); }
   .wb-tools { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; padding: .5rem; border: 1px solid var(--line); margin-bottom: .75rem; background: var(--surface); position: sticky; top: 76px; z-index: 3; }
-  .wb-group { display: flex; gap: .25rem; align-items: center; }
+  .wb-group { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
   .wb-group + .wb-group { padding-left: .9rem; border-left: 1px solid var(--line); }
   .wb-tools button { min-width: 38px; min-height: 38px; padding: 0 .5rem; border: 1.5px solid transparent; background: none; color: var(--ink); font: 700 .78rem var(--font-body); cursor: pointer; display: grid; place-items: center; }
   .wb-tools button:hover { border-color: var(--line); }
