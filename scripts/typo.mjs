@@ -9,12 +9,16 @@ const NNBSP = ' '; // espace fine insécable
 const NBSP = ' ';  // espace insécable
 
 function fix(t) {
+  // Les entités HTML (&amp; &#39;…) finissent par « ; » : on les met de côté, sinon « &amp; » devenait « &amp ; »
+  const ents = [];
+  t = t.replace(/&#?[a-z0-9]+;/gi, (m) => `${ents.push(m) - 1}`);
   return t
     .replace(/(\p{L})'(\p{L})/gu, '$1’$2')
     .replace(/\.\.\./g, '…')
     .replace(/[  ]([;!?])/g, `${NNBSP}$1`)
     .replace(/(\S)([;!?])(?=\s|$)/gu, (m, a, p) => (/[\p{L}\d)»]/u.test(a) ? `${a}${NNBSP}${p}` : m))
-    .replace(/ :(?=\s|$)/g, `${NBSP}:`);
+    .replace(/ :(?=\s|$)/g, `${NBSP}:`)
+    .replace(/(\d+)/g, (_, i) => ents[i]);
 }
 
 function process(html) {
