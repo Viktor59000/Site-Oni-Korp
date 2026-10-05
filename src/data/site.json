@@ -9,7 +9,7 @@
   },
   "socials": [
     { "label": "Twitch", "url": "https://www.twitch.tv/oni_korp", "icon": "twitch" },
-    { "label": "YouTube", "url": "https://youtube.com/channel/UCbjfbZaMnTJBZ2IXrjQGsNQ", "icon": "youtube" },
+    { "label": "YouTube", "url": "https://www.youtube.com/@OniKorp_Officiel", "icon": "youtube" },
     { "label": "TikTok", "url": "https://www.tiktok.com/@onikorp.officiel", "icon": "tiktok" },
     { "label": "X", "url": "https://x.com/Oni_Korp", "icon": "x" },
     { "label": "Discord", "url": "https://discord.gg/RGdEsjrC6a", "icon": "discord" }
