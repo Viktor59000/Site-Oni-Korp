@@ -35,22 +35,42 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 // Les rangs viennent d'Oni Bot : on regarde s'il en a déjà déposé
 const seen = await rows<{ key: string }>(`SELECT key FROM stats_cache WHERE key LIKE 'lol:%' OR key LIKE 'osu:%' LIMIT 50`);
 const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.startsWith('lol:')), osu: !!process.env.OSU_CLIENT_ID || seen.some((k) => k.key.startsWith('osu:')) };
+// Jeu mis en avant (lien du parcours d'arrivée) : lol et valo partagent le Riot ID
+const jeuParam = Astro.url.searchParams.get('jeu');
+const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 'rl' || jeuParam === 'osu' ? jeuParam : null;
 ---
 <Qg title="Joueurs · Inside" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {true && (
-    <details class="qg-drawer" slot="actions">
+    <details class="qg-drawer" slot="actions" open={!!focus}>
       <summary class="btn btn--ghost">Relier mes comptes</summary>
       <div class="qg-drawer__panel" role="dialog" aria-label="Mes comptes de jeu">
         <div class="qg-drawer__head"><h2>Mes comptes de jeu</h2><button type="button" class="qg-close" aria-label="Fermer" onclick="this.closest('details').open = false">×</button></div>
       <form method="post" action="/api/equipe/outils" class="jo-me">
         <input type="hidden" name="action" value="comptes" /><input type="hidden" name="back" value={`/equipe/joueurs/${sc.active ? `?r=${sc.active}` : ''}`} />
         
+        {/* Arrivée depuis le parcours d'une recrue (?jeu=…) : son jeu d'abord, les autres repliés et facultatifs.
+            Tous les champs restent dans le formulaire : rien n'est effacé en enregistrant. */}
         <div class="jo-fields">
-          <label>Riot ID <small>(LoL et Valorant)</small><input name="riot" value={get('riot')?.ident ?? ''} placeholder="Pseudo#TAG" maxlength="60" pattern=".+#.+" /></label>
-          <label>Région<select name="region">{Object.entries(REGIONS).map(([k, v]) => <option value={k} selected={(get('riot')?.region ?? 'euw') === k}>{v.label}</option>)}</select></label>
-          <label>Rocket League <small>(pseudo Epic)</small><input name="rl" value={get('rl')?.ident ?? ''} maxlength="60" /></label>
-          <label>osu! <small>(pseudo)</small><input name="osu" value={get('osu')?.ident ?? ''} maxlength="60" /></label>
+          {(!focus || focus === 'riot') && <>
+            <label>Riot ID <small>(LoL et Valorant)</small><input name="riot" value={get('riot')?.ident ?? ''} placeholder="Pseudo#TAG" maxlength="60" pattern=".+#.+" /></label>
+            <label>Région<select name="region">{Object.entries(REGIONS).map(([k, v]) => <option value={k} selected={(get('riot')?.region ?? 'euw') === k}>{v.label}</option>)}</select></label>
+          </>}
+          {(!focus || focus === 'rl') && <label>Rocket League <small>(pseudo Epic)</small><input name="rl" value={get('rl')?.ident ?? ''} maxlength="60" /></label>}
+          {(!focus || focus === 'osu') && <label>osu! <small>(pseudo)</small><input name="osu" value={get('osu')?.ident ?? ''} maxlength="60" /></label>}
         </div>
+        {focus && (
+          <details class="jo-more">
+            <summary>Autres jeux (facultatif)</summary>
+            <div class="jo-fields">
+              {focus !== 'riot' && <>
+                <label>Riot ID <small>(LoL et Valorant)</small><input name="riot" value={get('riot')?.ident ?? ''} placeholder="Pseudo#TAG" maxlength="60" pattern=".+#.+" /></label>
+                <label>Région<select name="region">{Object.entries(REGIONS).map(([k, v]) => <option value={k} selected={(get('riot')?.region ?? 'euw') === k}>{v.label}</option>)}</select></label>
+              </>}
+              {focus !== 'rl' && <label>Rocket League <small>(pseudo Epic)</small><input name="rl" value={get('rl')?.ident ?? ''} maxlength="60" /></label>}
+              {focus !== 'osu' && <label>osu! <small>(pseudo)</small><input name="osu" value={get('osu')?.ident ?? ''} maxlength="60" /></label>}
+            </div>
+          </details>
+        )}
         <button class="btn">Enregistrer</button>
       </form>
       </div>
@@ -120,4 +140,6 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
   .jo-keys { max-width: 60ch; }
   .eq-note { color: var(--muted); font-size: var(--step--1); }
   @media (max-width: 640px) { .jo-list li { grid-template-columns: 1fr; } .jo-links { justify-content: flex-start; } }
+  .jo-more { margin: .75rem 0 1rem; }
+  .jo-more summary { cursor: pointer; color: var(--muted); font-weight: 700; }
 </style>
