@@ -5,7 +5,7 @@ import { currentSession, sameOrigin } from '../session';
 import { exec, rows } from '../db';
 
 export const JEUX = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' } as const;
-export const POSTES = ['Coach', 'Manager', 'Casteur', 'Graphiste', 'Community manager', 'Modérateur', 'Créateur de contenu'];
+export const POSTES = ['Coach', 'Manager', 'Casteur', 'Graphiste', 'Monteur vidéo', 'Community manager', 'Responsable marketing', 'Modérateur', 'Créateur de contenu'];
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const user = await currentSession(cookies);
