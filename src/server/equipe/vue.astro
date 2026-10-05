@@ -27,6 +27,15 @@ const stats = meta['club:stats'] ? JSON.parse(meta['club:stats']) : null;
 const guildId = process.env.DISCORD_GUILD_ID ?? '';
 const tickets = await rows<{ thread_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
   `SELECT t.thread_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind IN ('joueur', 'staff') ORDER BY t.opened_at`);
+// Recrues en parcours d'arrivée (Oni Bot) : comptes, guide, dispos, setup, premier message
+const recruits = await rows<{ user_id: string; game: string | null; started_at: number; name: string | null; acc: number; guide: number; dispo: number; setup: number; msg: number }>(
+  `SELECT r.user_id, r.game, r.started_at, g.name,
+     EXISTS(SELECT 1 FROM accounts a WHERE a.user_id = r.user_id) AS acc,
+     EXISTS(SELECT 1 FROM meta m WHERE m.key = 'guide:' || r.user_id) AS guide,
+     EXISTS(SELECT 1 FROM availability v WHERE v.user_id = r.user_id) AS dispo,
+     EXISTS(SELECT 1 FROM setups s WHERE s.user_id = r.user_id) AS setup,
+     COALESCE((SELECT messages FROM levels l WHERE l.user_id = r.user_id), 0) > 0 AS msg
+   FROM recruits r LEFT JOIN guild_members g ON g.id = r.user_id WHERE r.done_at IS NULL ORDER BY r.started_at`).catch(() => []);
 const support = await rows<{ thread_id: string; game: string; opened_at: number; name: string | null }>(
   `SELECT t.thread_id, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind = 'support' ORDER BY t.opened_at`);
 const MOTIF: Record<string, string> = { question: 'Question', probleme: 'Problème avec un membre', partenariat: 'Partenariat', bot: 'Bot ou site', autre: 'Autre' };
@@ -120,6 +129,15 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
 
       <div class="ov-cols">
         <section class="ov-block">
+          {recruits.length > 0 && (<>
+            <h2>Nouvelles recrues</h2>
+            <ul class="ov-list">
+              {recruits.map((r) => { const left = [!Number(r.guide) && 'guide', !Number(r.acc) && 'compte', !Number(r.dispo) && 'dispos', !Number(r.setup) && 'setup', !Number(r.msg) && 'premier message'].filter(Boolean); return (
+                <li><a href={`/equipe/profil/?u=${r.user_id}`}>{r.name ?? 'Recrue'}</a>
+                  <span>{left.length ? `reste : ${left.join(', ')}` : 'presque fini'} · {ago(Number(r.started_at))}</span></li>
+              ); })}
+            </ul>
+          </>)}
           <h2>Candidatures ouvertes</h2>
           {tickets.length ? (
             <ul class="ov-list">
