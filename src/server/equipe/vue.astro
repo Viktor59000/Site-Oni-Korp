@@ -16,7 +16,7 @@ const ago = (ms: number) => { const m = Math.round((now - ms) / 60_000); return 
 const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 const GAMES: Record<string, { label: string; color: string }> = {
   rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
-  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#2fa877' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#ff66aa' },
 };
 
 // Club

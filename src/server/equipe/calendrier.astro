@@ -19,7 +19,7 @@ const start = Date.UTC(y, mo - 1, 1) - 86400_000, end = Date.UTC(y, mo, 1) + 864
 const dayKey = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 const hour = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: tz });
 const marks = ids.map(() => '?').join(',') || 'NULL';
-const color = new Map(me.rosters.map((r) => [Number(r.id), ({ rl: '#2f6bff', lol: '#0f8a9b', valo: '#ff4655', osu: '#2fa877' } as Record<string, string>)[r.game] ?? '#e5251f']));
+const color = new Map(me.rosters.map((r) => [Number(r.id), ({ rl: '#2f6bff', lol: '#0f8a9b', valo: '#ff4655', osu: '#ff66aa' } as Record<string, string>)[r.game] ?? '#e5251f']));
 const rname = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
 
 type Ev = { at: number; kind: 'seance' | 'match' | 'scrim' | 'objectif'; title: string; href: string; roster: number; mine?: string | null };
@@ -108,6 +108,7 @@ const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeri
   .ca-ev time { font-weight: 700; }
   .ca-ev:hover { background: color-mix(in srgb, var(--g) 25%, transparent); }
   .ca-ev.k-match { background: var(--g); color: #fff; }
+  .ca-ev.k-match[style*="#ff66aa"] { color: #1a0b13; } /* texte foncé sur le rose osu! (contraste) */
   .ca-ev.k-objectif { border-left-style: dotted; }
   .ca-ev.k-seance.is-ok { box-shadow: inset -4px 0 #1f8f55; } .ca-ev.k-seance.is-maybe { box-shadow: inset -4px 0 #c98a16; } .ca-ev.k-seance.is-ko { box-shadow: inset -4px 0 var(--lacquer); opacity: .7; }
   .ca-ev.k-seance.is-none { outline: 1.5px dashed var(--g); outline-offset: -1.5px; }

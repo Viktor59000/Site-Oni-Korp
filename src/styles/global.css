@@ -404,7 +404,7 @@ a.game:hover h3 { color: var(--red-text); }
 .sticker[data-pole="rl"]   { --c1: #1450d6; --c2: #ff7a18; --accent: #ffb347; }
 .sticker[data-pole="lol"]  { --c1: #0a2b36; --c2: #0f5f6b; --accent: #d8b25a; }
 .sticker[data-pole="valo"] { --c1: #ff4655; --c2: #0f1923; --accent: #ece8e1; }
-.sticker[data-pole="osu"]  { --c1: #72d3a8; --c2: #0e6b4c; --accent: #86e3b4; }
+.sticker[data-pole="osu"]  { --c1: #ff66aa; --c2: #5b1a4a; --accent: #ff8fc4; }
 
 .sticker__frame {
   position: relative; isolation: isolate; overflow: hidden; height: 100%;

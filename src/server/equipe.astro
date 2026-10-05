@@ -18,7 +18,7 @@ const me = user ? await access(user.id) : null;
 
 const GAME: Record<string, { label: string; color: string; img: string }> = {
   rl: { label: 'Rocket League', color: '#2f6bff', img: 'pole-rocket-league-600' }, lol: { label: 'League of Legends', color: '#0f8a9b', img: 'pole-lol-600' },
-  valo: { label: 'Valorant', color: '#ff4655', img: 'pole-valorant-600' }, osu: { label: 'osu!', color: '#72d3a8', img: 'pole-osu-600' },
+  valo: { label: 'Valorant', color: '#ff4655', img: 'pole-valorant-600' }, osu: { label: 'osu!', color: '#ff66aa', img: 'pole-osu-600' },
 };
 const DAYS: [string, string][] = [['lun', 'Lun'], ['mar', 'Mar'], ['mer', 'Mer'], ['jeu', 'Jeu'], ['ven', 'Ven'], ['sam', 'Sam'], ['dim', 'Dim']];
 const tz = { timeZone: 'Europe/Paris' } as const;

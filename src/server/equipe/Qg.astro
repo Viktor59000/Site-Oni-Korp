@@ -14,7 +14,7 @@ interface Props {
 const { title, heading = title, lead, current = '', rosters = [], staff = false, active = null, user = null, bare = false } = Astro.props;
 const GAMES: Record<string, { label: string; color: string }> = {
   rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
-  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#2fa877' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#ff66aa' },
 };
 // Roster de travail : celui choisi, ou le seul qu'on ait
 const activeRoster = rosters.find((r) => r.slug === active) ?? (rosters.length === 1 && !staff ? rosters[0] : null);
@@ -43,7 +43,7 @@ const accent = activeRoster ? GAMES[activeRoster.game]?.color ?? '#e5251f' : '#e
 const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === current)?.[1] ?? heading;
 ---
 <Base title={title} qg>
-  <div class="qg-app" style={`--game:${accent}`}>
+  <div class="qg-app" style={`--game:${accent};--game-fg:${accent === '#ff66aa' ? '#1a0b13' : '#fff'}`}>
     <header class="qg-top">
       <a class="qg-brand" href="/equipe/" aria-label="QG Oni Korp, accueil de l'espace équipe"><img src="/img/oni-logo.svg" alt="" width="28" height="28" /><span>QG <b translate="no">Oni Korp</b></span></a>
       {!bare && rosters.length > 0 && (
