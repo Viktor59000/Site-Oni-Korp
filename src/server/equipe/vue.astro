@@ -26,7 +26,10 @@ const botOnline = now - beat < 3 * 60_000;
 const stats = meta['club:stats'] ? JSON.parse(meta['club:stats']) : null;
 const guildId = process.env.DISCORD_GUILD_ID ?? '';
 const tickets = await rows<{ thread_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
-  `SELECT t.thread_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL ORDER BY t.opened_at`);
+  `SELECT t.thread_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind IN ('joueur', 'staff') ORDER BY t.opened_at`);
+const support = await rows<{ thread_id: string; game: string; opened_at: number; name: string | null }>(
+  `SELECT t.thread_id, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind = 'support' ORDER BY t.opened_at`);
+const MOTIF: Record<string, string> = { question: 'Question', probleme: 'Problème avec un membre', partenariat: 'Partenariat', bot: 'Bot ou site', autre: 'Autre' };
 const [contacts] = await rows<{ n: number }>(`SELECT COUNT(*) AS n FROM contacts WHERE status = 'nouveau'`);
 const upcoming = await rows<{ id: number; opponent: string; at: number; kind: string | null; caster: string | null; signup_by: number | null; roster: string | null }>(
   `SELECT m.id, m.opponent, m.at, m.kind, m.caster, m.signup_by, r.name AS roster FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id
@@ -126,6 +129,15 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
               ))}
             </ul>
           ) : <p class="ov-calm">Aucune en attente.</p>}
+          {support.length > 0 && (<>
+            <h2>Tickets de support</h2>
+            <ul class="ov-list">
+              {support.map((c) => (
+                <li><a href={`https://discord.com/channels/${guildId}/${c.thread_id}`} rel="noopener">{c.name ?? 'Membre'}</a>
+                  <span>{MOTIF[c.game] ?? c.game} · {ago(Number(c.opened_at))}</span></li>
+              ))}
+            </ul>
+          </>)}
         </section>
         <section class="ov-block">
           <h2>Prochains matchs</h2>

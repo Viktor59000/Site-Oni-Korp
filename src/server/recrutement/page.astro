@@ -17,7 +17,7 @@ const guild = process.env.DISCORD_GUILD_ID ?? '';
 // Candidature déjà en cours ?
 type Ap = { kind: string; value: string; thread_id: string | null; status: string };
 const current = user ? (await rows<Ap>(`SELECT kind, value, thread_id, status FROM applications WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`, user.id))[0] : undefined;
-const ticket = user ? (await rows<{ thread_id: string; kind: string; game: string }>(`SELECT thread_id, kind, game FROM tickets WHERE user_id = ? AND closed_at IS NULL`, user.id))[0] : undefined;
+const ticket = user ? (await rows<{ thread_id: string; kind: string; game: string }>(`SELECT thread_id, kind, game FROM tickets WHERE user_id = ? AND closed_at IS NULL AND kind IN ('joueur', 'staff')`, user.id))[0] : undefined;
 const threadId = ticket?.thread_id ?? (current?.status === 'ouverte' ? current.thread_id : null);
 const waiting = current?.status === 'attente';
 const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typeof JEUX] ?? ticket.game : ticket.game) : current ? (current.kind === 'joueur' ? JEUX[current.value as keyof typeof JEUX] ?? current.value : current.value) : '';
