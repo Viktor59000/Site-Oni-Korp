@@ -3,6 +3,7 @@
 // Page statique ; les données arrivent de /api/inhouse.
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
+import { srcset } from '../../lib/img.js';
 
 const MODES = [
   ['rl-3v3', 'RL 3v3'], ['rl-2v2', 'RL 2v2'], ['rl-1v1', 'RL 1v1'], ['lol-5v5', 'LoL 5v5'], ['valo-5v5', 'Valorant 5v5'],
@@ -10,6 +11,7 @@ const MODES = [
 ---
 <Base title="Inhouses" description="Classement des inhouses Oni Korp : parties entre membres sur Rocket League, League of Legends et Valorant, équipes équilibrées par Elo.">
   <header class="page-head">
+    <img class="page-head__bg" src="/img/inhouses.webp" srcset={srcset('/img/inhouses.webp')} sizes="100vw" alt="" width="1536" height="1024" fetchpriority="high" />
     <div class="wrap">
       <h1>Inhouses</h1>
       <p>Des parties entre membres, des équipes équilibrées, un classement par saison. Ouvert à toute la communauté.</p>

@@ -28,6 +28,7 @@ export const variants = {
   'sweat-dos': [400, 600],
   'carl-barl': [152, 304],
   'lolineup': [450, 903],
+  'inhouses': [800, 1536],
 };
 // Dossiers autres que public/img
 export const folders = { 'carl-barl': 'public/img/partenaires', lolineup: 'public/img/partenaires' };
