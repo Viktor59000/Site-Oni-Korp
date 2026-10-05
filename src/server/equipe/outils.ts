@@ -85,7 +85,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
     const data = clip(f.get('data'), 4000);
-    try { JSON.parse(data); } catch { return redirect(back); }
+    try { const d = JSON.parse(data); if (!d || typeof d !== 'object' || Array.isArray(d)) return redirect(back); } catch { return redirect(back); }
     await exec('INSERT INTO drafts (roster_id, title, data, author, at) VALUES (?,?,?,?,?)', roster, clip(f.get('title'), 80) || 'Draft', data, user.id, Date.now());
     return redirect(back);
   }
@@ -130,7 +130,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const roster = Number(f.get('roster'));
     const url = clip(f.get('url'), 300);
     if (!canRoster(roster) || !/^https?:\/\//.test(url)) return redirect(back);
-    await exec('INSERT INTO vods (roster_id, title, url, match_id, added_by, at) VALUES (?,?,?,?,?,?)', roster, clip(f.get('title'), 100) || 'VOD', url, Number(f.get('match')) || null, user.id, Date.now());
+    // Le match doit appartenir au même roster
+    const [m] = Number(f.get('match')) ? await rows<{ id: number }>('SELECT id FROM matches WHERE id = ? AND roster_id = ?', Number(f.get('match')), roster) : [];
+    await exec('INSERT INTO vods (roster_id, title, url, match_id, added_by, at) VALUES (?,?,?,?,?,?)', roster, clip(f.get('title'), 100) || 'VOD', url, m ? Number(m.id) : null, user.id, Date.now());
     return redirect(back);
   }
 

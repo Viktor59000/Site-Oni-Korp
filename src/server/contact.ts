@@ -18,8 +18,7 @@ export const POST: APIRoute = async ({ request, redirect, clientAddress }) => {
   await exec(`CREATE TABLE IF NOT EXISTS contacts (id INTEGER PRIMARY KEY, type TEXT, name TEXT, reply TEXT, message TEXT, at INTEGER, ip TEXT, message_id TEXT, status TEXT DEFAULT 'nouveau')`);
   const hour = Date.now() - 3600_000;
   const [mine] = await rows<{ n: number }>('SELECT COUNT(*) AS n FROM contacts WHERE ip = ? AND at > ?', ip, hour);
-  const [all] = await rows<{ n: number }>('SELECT COUNT(*) AS n FROM contacts WHERE at > ?', hour);
-  if (Number(mine?.n ?? 0) >= 3 || Number(all?.n ?? 0) >= 30) return redirect('/contact/?erreur=limite');
+  if (Number(mine?.n ?? 0) >= 3) return redirect('/contact/?erreur=limite');
   await exec('INSERT INTO contacts (type, name, reply, message, at, ip) VALUES (?,?,?,?,?,?)', type, name, reply, message, Date.now(), ip);
   return redirect('/contact/?envoye=1');
 };

@@ -38,7 +38,7 @@ const label = ticket ? (ticket.kind === 'joueur' ? JEUX[ticket.game as keyof typ
           {erreur === 'connexion' && <p class="pz-alert">La connexion a échoué, réessaie.</p>}
           <ol class="pz-steps">
             <li><strong>Rejoins le Discord</strong><p>C'est là que le staff te répondra.</p><a class="btn btn--ghost" href={site.discord} rel="noopener">Rejoindre le serveur</a></li>
-            <li><strong>Connecte-toi avec Discord</strong><p>Aucun mot de passe : le site lit seulement ton pseudo et ton avatar.</p><a class="btn" href={`/api/auth/login?next=${encodeURIComponent(`/postuler/?type=${type}`)}`}>Se connecter avec Discord</a></li>
+            <li><strong>Connecte-toi avec Discord</strong><p>Aucun mot de passe : le site lit seulement ton pseudo et ton avatar.</p><a class="btn" href={`/api/auth/login?next=${encodeURIComponent(`/postuler/${Astro.url.search || `?type=${type}`}`)}`}>Se connecter avec Discord</a></li>
             <li><strong>Remplis le formulaire</strong><p>Deux minutes. Ton fil privé s'ouvre aussitôt sur le serveur.</p></li>
           </ol>
         </div>

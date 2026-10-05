@@ -156,7 +156,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
 <script>
   const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
-  const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   let valoMaps: { name: string; icon: string }[] = [];
   // Garde le fond actuel dans la liste même s'il vient d'un autre jeu (ancien tableau)
   const opts_keep = (bg: string): string[][] => (['blanc', 'grille', 'url'].includes(bg) || /^https?:/.test(bg) ? [] : [[bg, bg === 'Terrain' ? 'Terrain Rocket League' : bg === 'Faille' ? "Faille de l'invocateur" : `Valorant · ${bg}`]]);
@@ -255,11 +255,11 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     // ---------- Rendu ----------
     const P = (v: number) => v * 1000;
     const shapeSvg = (it: Item, extra = '') => {
-      const c = esc(it.color ?? '#ff4655'), w = it.w ?? 6, cls = `wb-shape${sel === it.id ? ' is-sel' : ''}`;
-      if (it.type === 'arrow' || it.type === 'line') return `<line data-id="${it.id}" class="${cls}" x1="${P(it.x)}" y1="${P(it.y)}" x2="${P(it.x2!)}" y2="${P(it.y2!)}" stroke="${c}" stroke-width="${w}" ${it.type === 'arrow' ? `marker-end="url(#ah${c.slice(1)})"` : ''} ${extra}/>`;
+      const c = esc(it.color ?? '#ff4655'), w = Number(it.w) || 6, id = esc(it.id), cls = `wb-shape${sel === it.id ? ' is-sel' : ''}`;
+      if (it.type === 'arrow' || it.type === 'line') return `<line data-id="${id}" class="${cls}" x1="${P(it.x)}" y1="${P(it.y)}" x2="${P(it.x2!)}" y2="${P(it.y2!)}" stroke="${c}" stroke-width="${w}" ${it.type === 'arrow' ? `marker-end="url(#ah${c.slice(1)})"` : ''} ${extra}/>`;
       const x = Math.min(it.x, it.x2!), y = Math.min(it.y, it.y2!), wd = Math.abs(it.x2! - it.x), ht = Math.abs(it.y2! - it.y);
-      if (it.type === 'rect') return `<rect data-id="${it.id}" class="${cls}" x="${P(x)}" y="${P(y)}" width="${P(wd)}" height="${P(ht)}" stroke="${c}" stroke-width="${w}" fill="none" ${extra}/>`;
-      return `<ellipse data-id="${it.id}" class="${cls}" cx="${P(x + wd / 2)}" cy="${P(y + ht / 2)}" rx="${P(wd / 2)}" ry="${P(ht / 2)}" stroke="${c}" stroke-width="${it.type === 'zone' ? 2 : w}" fill="${it.type === 'zone' ? c : 'none'}" fill-opacity="${it.type === 'zone' ? .35 : 0}" ${extra}/>`;
+      if (it.type === 'rect') return `<rect data-id="${id}" class="${cls}" x="${P(x)}" y="${P(y)}" width="${P(wd)}" height="${P(ht)}" stroke="${c}" stroke-width="${w}" fill="none" ${extra}/>`;
+      return `<ellipse data-id="${id}" class="${cls}" cx="${P(x + wd / 2)}" cy="${P(y + ht / 2)}" rx="${P(wd / 2)}" ry="${P(ht / 2)}" stroke="${c}" stroke-width="${it.type === 'zone' ? 2 : w}" fill="${it.type === 'zone' ? c : 'none'}" fill-opacity="${it.type === 'zone' ? .35 : 0}" ${extra}/>`;
     };
     function render() {
       background();
@@ -268,16 +268,16 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         + `<button type="button" data-frame-add title="Nouvelle étape (copie de l'étape actuelle)">+ Étape</button>`
         + `<button type="button" data-frame-rename>Renommer</button>`
         + (state.frames.length > 1 ? `<button type="button" data-frame-del>Supprimer l'étape</button>` : '');
-      $('[data-layer]').innerHTML = f.strokes.map((s) => `<polyline data-stroke="${s.id}" points="${s.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(s.color)}" stroke-width="${s.w}" />`).join('')
+      $('[data-layer]').innerHTML = f.strokes.map((s) => `<polyline data-stroke="${esc(s.id)}" points="${s.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(s.color)}" stroke-width="${Number(s.w) || 6}" />`).join('')
         + f.items.filter((it) => ['arrow', 'line', 'rect', 'circle', 'zone'].includes(it.type)).map((it) => shapeSvg(it)).join('')
-        + (drawing ? `<polyline points="${drawing.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(drawing.color)}" stroke-width="${drawing.w}" />` : '')
+        + (drawing ? `<polyline points="${drawing.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(drawing.color)}" stroke-width="${Number(drawing.w) || 6}" />` : '')
         + (shape ? shapeSvg(shape, 'opacity=".7"') : '');
       $('[data-items]').innerHTML = f.items.filter((it) => ['tok', 'ping', 'note', 'text'].includes(it.type)).map((it) => {
         const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
-        if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${it.id}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
-        if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${it.id}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
-        if (it.type === 'ping') return `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${it.id}" style="${s}">${esc(it.label)}</div>`;
-        return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${it.id}" style="${s}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
+        if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${esc(it.id)}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
+        if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${esc(it.id)}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
+        if (it.type === 'ping') return `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s}">${esc(it.label)}</div>`;
+        return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${esc(it.id)}" style="${s}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
       }).join('');
       const n = $<HTMLTextAreaElement>('[data-notes]');
       if (document.activeElement !== n) n.value = state.notes ?? '';

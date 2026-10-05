@@ -30,12 +30,24 @@ export const GET: APIRoute = async ({ url, cookies }) => {
   return json({ changed: true, at: Number(r.b.updated_at), by: r.b.updated_by, byName: r.b.name, state: JSON.parse(r.b.state || '{}') });
 };
 
+/** État du tableau : identifiants courts, nombres finis, couleurs hexadécimales (rien qui puisse finir en HTML). */
+function safe(v: unknown, key = '', depth = 0): boolean {
+  if (depth > 8) return false;
+  if (Array.isArray(v)) return v.every((x) => safe(x, key, depth + 1));
+  if (v && typeof v === 'object') return Object.entries(v).every(([k, x]) => safe(x, k, depth + 1));
+  if (key === 'id') return (typeof v === 'string' && /^[\w-]{1,64}$/.test(v)) || Number.isFinite(v);
+  if (key === 'color') return typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v);
+  if (['x', 'y', 'x2', 'y2', 'w'].includes(key)) return v == null || Number.isFinite(v);
+  return v == null || ['string', 'number', 'boolean'].includes(typeof v);
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!sameOrigin(request)) return json({ error: 'origine' }, 403);
   const body = await request.json().catch(() => null) as { id: number; state: unknown } | null;
   if (!body) return json({ error: 'format' }, 400);
   const r = await board(Number(body.id), cookies);
   if (!r) return json({ error: 'acces' }, 403);
+  if (!safe(body.state ?? {})) return json({ error: 'format' }, 400);
   const state = JSON.stringify(body.state ?? {});
   if (state.length > 200_000) return json({ error: 'trop gros' }, 413);
   const at = Date.now();
