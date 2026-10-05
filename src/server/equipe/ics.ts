@@ -26,7 +26,7 @@ export const GET: APIRoute = async ({ url }) => {
     ...trainings.map((t) => ({
       uid: `seance-${t.id}`, start: Number(t.at), minutes: Number(t.duration),
       title: `${t.kind} · ${name.get(Number(t.roster_id)) ?? 'Roster'}`,
-      description: `${t.note ? t.note + '\n' : ''}Réponds Présent / Absent : https://oni-korp.vercel.app/equipe/#seance-${t.id}`,
+      description: `${t.note ? t.note + '\n' : ''}Réponds Présent / Absent : https://oni-korp.vercel.app/equipe/planning/#seance-${t.id}`,
     })),
     ...[...own, ...club].map(matchEvent),
   ];

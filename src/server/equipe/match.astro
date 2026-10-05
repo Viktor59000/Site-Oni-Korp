@@ -42,7 +42,7 @@ const CHECK: Record<string, string[]> = {
 };
 const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
 ---
-<Qg title="Avant-match · QG" heading="Avant-match" lead="Compo, adversaire, strats et checklist : tout le match au même endroit." current="match" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Avant-match · Inside" heading="Avant-match" lead="Compo, adversaire, strats et checklist : tout le match au même endroit." current="match" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {!m ? (
       <div class="am-list">
         <section>

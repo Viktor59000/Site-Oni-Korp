@@ -43,7 +43,7 @@ const SECTIONS: [keyof O, string, string][] = [
   ['forces', 'Forces', '- …'], ['faiblesses', 'Faiblesses', '- …'], ['plan', 'Notre plan', 'Ce qu\'on fait contre eux : picks, bans, cartes, appels'],
 ];
 ---
-<Qg title="Scouting · QG" heading="Scouting" lead="Une fiche par adversaire : qui ils sont, comment ils jouent, comment on les bat." current="scouting" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Scouting · Inside" heading="Scouting" lead="Une fiche par adversaire : qui ils sont, comment ils jouent, comment on les bat." current="scouting" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {current && edit ? (
       <form method="post" action="/api/equipe/outils" class="sc-form">
         <input type="hidden" name="action" value="adversaire" /><input type="hidden" name="id" value={current.id} /><input type="hidden" name="back" value={listUrl} />

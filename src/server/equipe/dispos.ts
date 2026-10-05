@@ -17,5 +17,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const slots = f.getAll('slot').map(String).filter((s) => SLOTS.includes(s));
   await exec('INSERT INTO availability VALUES (?,?,?,?) ON CONFLICT(roster_id, week, user_id) DO UPDATE SET slots = excluded.slots',
     roster, week, user.id, JSON.stringify(slots));
-  return redirect(`/equipe/#dispos-${roster}`);
+  return redirect(`/equipe/planning/#dispos-${roster}`);
 };

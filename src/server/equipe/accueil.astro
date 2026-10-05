@@ -1,0 +1,280 @@
+---
+// Accueil d'Inside : la page d'arrivée du roster. Ce qui compte maintenant (prochaine échéance, réponses en attente),
+// la forme de la semaine, les objectifs en cours et ce qui a bougé. Sans roster choisi : choix du roster.
+// Sans accès (non connecté, pas membre d'un roster) : la page Planning gère la connexion et les messages.
+import Qg from './Qg.astro';
+import { scope, teamUser } from './outils';
+import { rows, weekKey } from '../db';
+import { srcset } from '../../lib/img.js';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/planning/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+// Un joueur d'un seul roster arrive directement dessus ; sinon on choisit
+const roster = sc.active ? sc.list[0] : me.rosters.length === 1 && !me.staff ? me.rosters[0] : null;
+
+const GAME: Record<string, { label: string; img: string; tool?: [string, string] }> = {
+  rl: { label: 'Rocket League', img: 'pole-rocket-league' },
+  lol: { label: 'League of Legends', img: 'pole-lol', tool: ['/equipe/lol/', 'Drafter'] },
+  valo: { label: 'Valorant', img: 'pole-valorant', tool: ['/equipe/valo/', 'Lineups'] },
+  osu: { label: 'osu!', img: 'pole-osu', tool: ['/equipe/osu/', 'Défis et maps'] },
+};
+const tz = { timeZone: 'Europe/Paris' } as const;
+const fWhen = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', ...tz });
+const fShort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', ...tz });
+const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); return m < 60 ? `il y a ${Math.max(1, m)} min` : m < 2880 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+const inDays = (ms: number) => { const d = Math.round((ms - Date.now()) / 86400_000); return d <= 0 ? "aujourd'hui" : d === 1 ? 'demain' : `dans ${d} jours`; };
+const DAY = 86400_000;
+const now = Date.now();
+
+type Mb = { id: string; name: string; avatar: string };
+type Ev = { type: 'seance' | 'match'; id: number; at: number; title: string; sub: string; mine?: string | null };
+let data: null | {
+  members: Mb[]; events: Ev[]; pending: number; dispos: boolean; last: { opponent: string; us: number; them: number; at: number } | null;
+  goals: { title: string; progress: number; due: number | null; who: string | null }[];
+  form: { m: Mb; n: number; wins: number | null }[]; activity: { kind: string; title: string; at: number; href: string }[];
+} = null;
+
+if (roster) {
+  const rid = roster.id;
+  const [members, trainings, matches, lastMatch, goals, boards, docs, vods, dispo] = await Promise.all([
+    rows<Mb>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${roster.role_id}"%`),
+    rows<{ id: number; at: number; kind: string; duration: number }>('SELECT id, at, kind, duration FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 6', rid, now - 2 * 3600_000),
+    rows<{ id: number; at: number; opponent: string; format: string; kind: string | null }>('SELECT id, at, opponent, format, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 3', rid, now - 3 * 3600_000),
+    rows<{ opponent: string; score_us: number; score_them: number; at: number }>('SELECT opponent, score_us, score_them, at FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NOT NULL ORDER BY at DESC LIMIT 1', rid),
+    rows<{ title: string; progress: number; due: number | null; user_id: string | null }>(`SELECT title, progress, due, user_id FROM goals WHERE roster_id = ? AND status = 'en-cours' ORDER BY (user_id = ?) DESC, due IS NULL, due LIMIT 4`, rid, user.id).catch(() => []),
+    rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM boards WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
+    rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM docs WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
+    rows<{ id: number; title: string; at: number }>('SELECT id, title, at FROM vods WHERE roster_id = ? ORDER BY at DESC LIMIT 3', rid).catch(() => []),
+    rows<{ user_id: string }>('SELECT user_id FROM availability WHERE roster_id = ? AND week = ? AND user_id = ?', rid, weekKey(true), user.id).catch(() => []),
+  ]);
+  const ids = members.map((m) => m.id);
+  const [answers, perfs] = await Promise.all([
+    trainings.length ? rows<{ training_id: number; status: string }>(`SELECT training_id, status FROM attendance WHERE user_id = ? AND training_id IN (${trainings.map(() => '?').join(',')})`, user.id, ...trainings.map((x) => x.id)) : [],
+    ids.length ? rows<{ user_id: string; data: string }>(`SELECT user_id, data FROM perf WHERE game = ? AND at > ? AND user_id IN (${ids.map(() => '?').join(',')})`, roster.game, now - 7 * DAY, ...ids).catch(() => []) : [],
+  ]);
+  const mine = new Map(answers.map((a) => [Number(a.training_id), a.status]));
+  const events: Ev[] = [
+    ...trainings.map((x) => ({ type: 'seance' as const, id: Number(x.id), at: Number(x.at), title: x.kind, sub: `${x.duration} min`, mine: mine.get(Number(x.id)) ?? null })),
+    ...matches.map((x) => ({ type: 'match' as const, id: Number(x.id), at: Number(x.at), title: `vs ${x.opponent}`, sub: `${x.format}${x.kind === 'scrim' ? ' · scrim' : ''}` })),
+  ].sort((a, b) => a.at - b.at).slice(0, 4);
+  const names = new Map(members.map((m) => [m.id, m.name]));
+  data = {
+    members, events,
+    pending: trainings.filter((x) => !mine.has(Number(x.id))).length,
+    dispos: dispo.length > 0,
+    last: lastMatch[0] ? { opponent: lastMatch[0].opponent, us: Number(lastMatch[0].score_us), them: Number(lastMatch[0].score_them), at: Number(lastMatch[0].at) } : null,
+    goals: goals.map((g) => ({ title: g.title, progress: Number(g.progress) || 0, due: g.due ? Number(g.due) : null, who: g.user_id ? names.get(g.user_id) ?? null : null })),
+    form: members.map((m) => {
+      const games = perfs.filter((p) => p.user_id === m.id).map((p) => { try { return JSON.parse(p.data); } catch { return {}; } });
+      const withWin = games.filter((g) => typeof g.win === 'boolean');
+      return { m, n: games.length, wins: withWin.length ? withWin.filter((g) => g.win).length : null };
+    }).sort((a, b) => b.n - a.n),
+    activity: [
+      ...boards.map((b) => ({ kind: 'Tableau', title: b.title, at: Number(b.updated_at), href: `/equipe/tactique/?b=${b.id}&r=${roster.slug}` })),
+      ...docs.map((d) => ({ kind: 'Doc', title: d.title, at: Number(d.updated_at), href: `/equipe/docs/?r=${roster.slug}&d=${d.id}` })),
+      ...vods.map((v) => ({ kind: 'VOD', title: v.title, at: Number(v.at), href: `/equipe/vod/?r=${roster.slug}&v=${v.id}` })),
+    ].sort((a, b) => b.at - a.at).slice(0, 4),
+  };
+}
+const g = roster ? GAME[roster.game] ?? { label: roster.game, img: '' } : null;
+const q = roster ? `?r=${roster.slug}` : '';
+const next = data?.events[0] ?? null;
+const maxForm = Math.max(1, ...(data?.form.map((f) => f.n) ?? [1]));
+const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, img: '' } }));
+---
+<Qg title={roster ? `${roster.name} · Inside` : 'Inside'} heading={roster ? roster.name : 'Choisis ton roster'}
+  lead={roster ? undefined : me.staff ? 'Ouvre un roster pour voir son accueil, ou passe par la vue d’ensemble de l’encadrement.' : 'Tu fais partie de plusieurs rosters : choisis celui sur lequel tu travailles.'}
+  current="accueil" rosters={me.rosters} staff={me.staff} active={roster?.slug ?? null} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+
+  {!roster && (
+    <ul class="ac-pick">
+      {me.staff && (
+        <li><a class="ac-pick__card ac-pick__card--vue" href="/equipe/vue/"><span>Vue d’ensemble</span><small>Santé des rosters, alertes, candidatures</small></a></li>
+      )}
+      {choices.map(({ r, g }, i) => (
+        <li>
+          <a class="ac-pick__card" href={`/equipe/?r=${r.slug}`} style={`--g:var(--game-${r.game}, #e5251f)`}>
+            {g.img && <img src={`/img/${g.img}.webp`} srcset={srcset(`/img/${g.img}.webp`)} sizes="(max-width: 700px) 90vw, 320px" alt="" width="1200" height="800" loading={i < 2 ? undefined : 'lazy'} />}
+            <span>{r.name}</span><small>{g.label}</small>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
+
+  {roster && data && g && (
+    <div class="ac">
+      <section class="ac-hero">
+        {g.img && <img class="ac-hero__bg" src={`/img/${g.img}.webp`} srcset={srcset(`/img/${g.img}.webp`)} sizes="(max-width: 900px) 100vw, 900px" alt="" width="1200" height="800" fetchpriority="high" />}
+        <div class="ac-hero__body">
+          {next ? (
+            <>
+              <p class="ac-hero__label">{next.type === 'match' ? 'Prochain match' : 'Prochaine séance'} · {inDays(next.at)}</p>
+              <p class="ac-hero__title">{next.title}</p>
+              <p class="ac-hero__when">{fWhen.format(new Date(next.at))} · {next.sub}</p>
+              {next.type === 'seance' ? (
+                <form method="post" action="/api/equipe/presence" class="ac-answer">
+                  <input type="hidden" name="training" value={next.id} />
+                  <button name="status" value="present" class:list={{ 'is-on': next.mine === 'present' }} aria-pressed={next.mine === 'present'}>Je suis là</button>
+                  <button name="status" value="peut-etre" class:list={{ 'is-on': next.mine === 'peut-etre' }} aria-pressed={next.mine === 'peut-etre'}>Peut-être</button>
+                  <button name="status" value="absent" class:list={{ 'is-on': next.mine === 'absent' }} aria-pressed={next.mine === 'absent'}>Absent</button>
+                </form>
+              ) : (
+                <a class="btn" href={`/equipe/match/${q}`}>Préparer le match</a>
+              )}
+            </>
+          ) : (
+            <>
+              <p class="ac-hero__label">Rien de prévu pour l’instant</p>
+              <p class="ac-hero__title">À vous de jouer</p>
+              <p class="ac-hero__when">Les séances et les matchs se créent sur Discord avec <code>/entrainement</code> et <code>/match</code>.</p>
+            </>
+          )}
+          <ul class="ac-faces" aria-label="Joueurs du roster">
+            {data.members.slice(0, 8).map((m) => <li title={m.name}>{m.avatar ? <img src={m.avatar} alt="" width="34" height="34" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span>{m.name.slice(0, 1)}</span>}<span class="sr-only">{m.name}</span></li>)}
+          </ul>
+        </div>
+      </section>
+
+      <div class="ac-grid">
+        <section class="qg-card ac-card">
+          <h2>Ta semaine</h2>
+          <ul class="ac-todo">
+            <li class:list={{ 'is-done': data.pending === 0 }}><a href={`/equipe/planning/${q}`}>{data.pending === 0 ? 'Toutes tes séances ont une réponse' : `${data.pending} séance${data.pending > 1 ? 's' : ''} sans ta réponse`}</a></li>
+            <li class:list={{ 'is-done': data.dispos }}><a href={`/equipe/planning/${q}#dispos-${roster.id}`}>{data.dispos ? 'Tes dispos de la semaine sont cochées' : 'Coche tes dispos de la semaine'}</a></li>
+          </ul>
+          {data.events.length > 1 && (
+            <ol class="ac-next">
+              {data.events.slice(1).map((e) => (
+                <li><time datetime={new Date(e.at).toISOString()}>{fShort.format(new Date(e.at))}</time><span>{e.title}</span><small>{e.type === 'match' ? 'Match' : 'Séance'}</small></li>
+              ))}
+            </ol>
+          )}
+          <a class="ac-more" href={`/equipe/calendrier/${q}`}>Voir le calendrier</a>
+        </section>
+
+        <section class="qg-card ac-card">
+          <h2>Forme de la semaine</h2>
+          {data.form.some((f) => f.n > 0) ? (
+            <ul class="ac-form">
+              {data.form.map((f) => (
+                <li>
+                  <span class="ac-form__name">{f.m.name}</span>
+                  <span class="ac-form__bar" aria-hidden="true"><span style={`width:${(f.n / maxForm) * 100}%`}></span></span>
+                  <span class="ac-form__n">{f.n} partie{f.n > 1 ? 's' : ''}{f.wins !== null && f.n ? ` · ${Math.round((f.wins / f.n) * 100)} %` : ''}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p class="ac-empty">Pas encore de parties suivies cette semaine. Relie ton compte de jeu dans ton profil pour apparaître ici.</p>
+          )}
+          {data.last && <p class="ac-last">Dernier résultat : <strong class:list={{ 'is-win': data.last.us > data.last.them }}>{data.last.us}-{data.last.them}</strong> contre {data.last.opponent}, le {fShort.format(new Date(data.last.at))}</p>}
+          <a class="ac-more" href={`/equipe/stats/${q}`}>Toutes les stats</a>
+        </section>
+
+        <section class="qg-card ac-card">
+          <h2>Objectifs en cours</h2>
+          {data.goals.length ? (
+            <ul class="ac-goals">
+              {data.goals.map((x) => (
+                <li>
+                  <p><strong>{x.title}</strong>{x.who && <small>{x.who}</small>}{x.due && <small>avant le {fShort.format(new Date(x.due))}</small>}</p>
+                  <span class="ac-goals__bar" role="progressbar" aria-label={x.title} aria-valuemin="0" aria-valuemax="100" aria-valuenow={x.progress}><span style={`width:${x.progress}%`}></span></span>
+                </li>
+              ))}
+            </ul>
+          ) : <p class="ac-empty">Aucun objectif en cours. Fixez-en un pour la semaine.</p>}
+          <a class="ac-more" href={`/equipe/objectifs/${q}`}>Gérer les objectifs</a>
+        </section>
+
+        <section class="qg-card ac-card">
+          <h2>Ça a bougé</h2>
+          {data.activity.length ? (
+            <ul class="ac-activity">
+              {data.activity.map((a) => <li><a href={a.href}><small>{a.kind}</small><span>{a.title}</span><time datetime={new Date(a.at).toISOString()}>{ago(a.at)}</time></a></li>)}
+            </ul>
+          ) : <p class="ac-empty">Rien de neuf. Lancez un tableau ou un doc pour le roster.</p>}
+          <div class="ac-shortcuts">
+            <a class="btn btn--ghost" href={`/equipe/tactique/${q}`}>Tableau blanc</a>
+            {g.tool && <a class="btn btn--ghost" href={`${g.tool[0]}${q}`}>{g.tool[1]}</a>}
+            <a class="btn btn--ghost" href={`/equipe/notes/${q}`}>Notes de match</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  )}
+</Qg>
+
+<script is:inline>
+  // Anciens liens (Discord, agenda) vers l'ancienne page d'accueil : séance, dispos, roster → Planning
+  if (/^#(seance|dispos|roster)-/.test(location.hash)) location.replace('/equipe/planning/' + location.search + location.hash);
+</script>
+
+<style>
+  .ac { display: grid; gap: var(--space-5, 1.5rem); }
+  .ac-hero { position: relative; overflow: hidden; border-radius: var(--radius); background: #0b0c0f; color: #fff; min-height: 18rem; display: grid; align-items: end; isolation: isolate; }
+  .ac-hero__bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+  .ac-hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(8 9 12 / .92) 0%, rgb(8 9 12 / .75) 55%, rgb(8 9 12 / .35) 100%); }
+  .ac-hero__body { padding: clamp(1.25rem, 4vw, 2.25rem); display: grid; gap: .35rem; max-width: 40rem; }
+  .ac-hero__label { margin: 0; font-weight: 700; color: rgb(255 255 255 / .8); }
+  .ac-hero__title { margin: 0; font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.05; }
+  .ac-hero__title::first-letter { text-transform: uppercase; }
+  .ac-hero__when { margin: 0 0 .75rem; color: rgb(255 255 255 / .85); }
+  .ac-hero code { background: rgb(255 255 255 / .12); padding: 0 .3rem; border-radius: 4px; }
+  .ac-answer { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .ac-answer button { min-height: 44px; padding: 0 1.1rem; border-radius: 999px; border: 1.5px solid rgb(255 255 255 / .55); background: transparent; color: #fff; font: 700 .95rem var(--font-body); cursor: pointer; }
+  .ac-answer button:hover { border-color: #fff; }
+  .ac-answer button.is-on { background: #fff; color: #0b0c0f; border-color: #fff; }
+  .ac-faces { display: flex; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .ac-faces li { margin-right: -.5rem; }
+  .ac-faces img, .ac-faces span:not(.sr-only) { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #0b0c0f; display: grid; place-items: center; background: #2a2d33; font-weight: 700; }
+
+  .ac-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: var(--space-4, 1rem); }
+  .ac-card { display: grid; gap: .9rem; align-content: start; }
+  .ac-card h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .ac-more { justify-self: start; font-weight: 700; font-size: var(--text-sm); color: var(--qg-ink); }
+  .ac-empty { margin: 0; color: var(--qg-muted); font-size: var(--text-sm); }
+
+  .ac-todo { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+  .ac-todo a { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border-radius: 8px; background: color-mix(in srgb, var(--game) 10%, transparent); color: var(--qg-ink); text-decoration: none; font-weight: 700; }
+  .ac-todo a::before { content: ''; width: .6rem; height: .6rem; border-radius: 50%; background: var(--game); flex: none; }
+  .ac-todo .is-done a { background: var(--qg-sunk, rgb(0 0 0 / .04)); font-weight: 400; color: var(--qg-muted); }
+  .ac-todo .is-done a::before { background: #2fbf71; }
+  .ac-next { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+  .ac-next li { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: .5rem; align-items: baseline; font-size: var(--text-sm); }
+  .ac-next time, .ac-next small { color: var(--qg-muted); }
+
+  .ac-form { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+  .ac-form li { display: grid; grid-template-columns: minmax(0, 7rem) 1fr auto; gap: .6rem; align-items: center; font-size: var(--text-sm); }
+  .ac-form__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .ac-form__bar { height: .5rem; border-radius: 999px; background: var(--qg-sunk, rgb(0 0 0 / .06)); overflow: hidden; }
+  .ac-form__bar span { display: block; height: 100%; background: var(--game); border-radius: inherit; }
+  .ac-form__n { color: var(--qg-muted); white-space: nowrap; }
+  .ac-last { margin: 0; font-size: var(--text-sm); color: var(--qg-muted); }
+  .ac-last strong { color: var(--qg-ink); }
+  .ac-last strong.is-win { color: #1f9d5c; }
+
+  .ac-goals { display: grid; gap: .8rem; margin: 0; padding: 0; list-style: none; }
+  .ac-goals p { margin: 0 0 .35rem; display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline; }
+  .ac-goals small { color: var(--qg-muted); }
+  .ac-goals__bar { display: block; height: .45rem; border-radius: 999px; background: var(--qg-sunk, rgb(0 0 0 / .06)); overflow: hidden; }
+  .ac-goals__bar span { display: block; height: 100%; background: var(--game); }
+
+  .ac-activity { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; }
+  .ac-activity a { display: grid; grid-template-columns: 4rem 1fr auto; gap: .5rem; align-items: baseline; padding: .45rem 0; border-bottom: 1px solid var(--qg-border); color: var(--qg-ink); text-decoration: none; font-size: var(--text-sm); }
+  .ac-activity small, .ac-activity time { color: var(--qg-muted); }
+  .ac-activity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .ac-shortcuts { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+  .ac-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-4, 1rem); margin: 0; padding: 0; list-style: none; }
+  .ac-pick__card { position: relative; display: grid; align-content: end; gap: .15rem; min-height: 10rem; padding: 1rem; border-radius: var(--radius); overflow: hidden; isolation: isolate; color: #fff; text-decoration: none; background: #15181c; }
+  .ac-pick__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: scale .3s; }
+  .ac-pick__card::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(8 9 12 / .9), rgb(8 9 12 / .2)); }
+  .ac-pick__card:hover img { scale: 1.04; }
+  .ac-pick__card span { font-family: var(--font-display); font-size: 1.5rem; line-height: 1.1; }
+  .ac-pick__card small { color: rgb(255 255 255 / .8); }
+  .ac-pick__card--vue { background: var(--game, #e5251f); }
+</style>

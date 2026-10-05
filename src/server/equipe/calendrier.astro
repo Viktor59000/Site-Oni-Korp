@@ -44,7 +44,7 @@ const STATUS: Record<string, string> = { present: 'is-ok', 'peut-etre': 'is-mayb
 const upcoming = events.filter((e) => e.at > Date.now()).slice(0, 8);
 const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: tz });
 ---
-<Qg title="Calendrier · QG" heading="Calendrier" lead="Séances, matchs, scrims et échéances : le mois du roster d'un coup d'œil." current="calendrier" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Calendrier · Inside" heading="Calendrier" lead="Séances, matchs, scrims et échéances : le mois du roster d'un coup d'œil." current="calendrier" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ca">
       <div class="ca-bar">
         <a class="ca-btn" href={link(shift(-1))} aria-label="Mois précédent">‹</a>

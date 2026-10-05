@@ -26,7 +26,7 @@ const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
 const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 const games = [...new Set(me.rosters.map((r) => r.game))];
 ---
-<Qg title="Notes de match · QG" heading="Notes de match" lead="Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster." current="notes" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Notes de match · Inside" heading="Notes de match" lead="Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster." current="notes" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="nt">
       {!matches.length && <p class="nt-empty">Pas encore de match joué ces quatre derniers mois. Dès qu'un match ou un scrim de ton roster est passé (<code>/match ajouter</code> sur Discord), il apparaît ici pour le débrief.</p>}
       {matches.map((m) => {

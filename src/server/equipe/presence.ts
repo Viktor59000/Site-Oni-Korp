@@ -18,5 +18,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   await exec(`INSERT INTO attendance (training_id, user_id, status, reason, at) VALUES (?,?,?,?,?)
     ON CONFLICT(training_id, user_id) DO UPDATE SET status = excluded.status, reason = excluded.reason, at = excluded.at`,
     id, user.id, status, reason, Date.now());
-  return redirect(`/equipe/#seance-${id}`);
+  return redirect(`/equipe/planning/#seance-${id}`);
 };

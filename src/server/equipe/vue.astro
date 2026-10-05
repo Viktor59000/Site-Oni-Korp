@@ -69,7 +69,7 @@ const oldTickets = tickets.filter((x) => now - Number(x.opened_at) > 3 * DAY);
 if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouverte(s) depuis plus de 3 jours`, null]);
 if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, null]);
 ---
-<Qg title="Vue d'ensemble · QG" heading="Vue d'ensemble" lead="Tout le club en un écran : ce qui va, ce qui demande une action." current="vue" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Vue d'ensemble · Inside" heading="Vue d'ensemble" lead="Tout le club en un écran : ce qui va, ce qui demande une action." current="vue" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ov">
       <ul class="ov-kpis">
         <li class:list={{ 'is-ok': botOnline, 'is-ko': !botOnline }}><b>{botOnline ? 'En ligne' : 'Arrêté'}</b><span>Oni Bot {meta['bot:version'] ? `v${meta['bot:version']}` : ''}</span></li>

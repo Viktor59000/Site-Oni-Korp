@@ -36,7 +36,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 const seen = await rows<{ key: string }>(`SELECT key FROM stats_cache WHERE key LIKE 'lol:%' OR key LIKE 'osu:%' LIMIT 50`);
 const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.startsWith('lol:')), osu: !!process.env.OSU_CLIENT_ID || seen.some((k) => k.key.startsWith('osu:')) };
 ---
-<Qg title="Joueurs · QG" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Joueurs · Inside" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {true && (
     <details class="qg-drawer" slot="actions">
       <summary class="btn btn--ghost">Relier mes comptes</summary>

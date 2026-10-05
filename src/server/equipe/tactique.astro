@@ -36,7 +36,7 @@ const TOOLS: [string, string, string][] = [
 ];
 const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ['vision', '◉', 'Vision / ward'], ['balle', '●', 'Balle / spike']];
 ---
-<Qg title="Tableau blanc · QG" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Tableau blanc · Inside" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {!current && usable.length > 0 && (
     <details class="qg-drawer" slot="actions">
       <summary class="btn">+ Nouveau tableau</summary>
@@ -50,9 +50,9 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             <label>Roster<select name="roster" data-roster>{usable.map((r) => <option value={r.id} data-g={r.game}>{r.name}</option>)}</select></label>
             <label>Fond<select name="map" data-bg>
               <optgroup label="Neutre"><option value="blanc">Tableau blanc</option><option value="grille">Quadrillage</option></optgroup>
-              <optgroup label="Rocket League"><option value="Terrain">Terrain</option></optgroup>
-              <optgroup label="League of Legends"><option value="Faille">Faille de l'invocateur</option></optgroup>
-              <optgroup label="Valorant" data-valo></optgroup>
+              <optgroup label="Rocket League" data-for="rl"><option value="Terrain">Terrain</option></optgroup>
+              <optgroup label="League of Legends" data-for="lol"><option value="Faille">Faille de l'invocateur</option></optgroup>
+              <optgroup data-for="valo" label="Valorant" data-valo></optgroup>
               <optgroup label="Autre"><option value="url">Image (lien)…</option></optgroup>
             </select></label>
             <label data-url hidden>Lien de l'image<input name="url" type="url" placeholder="https://…" /></label>
@@ -112,7 +112,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         </div>
 
         <div class="wb-main">
-          <div class="wb-stage" data-stage>
+          <div class="wb-stage" data-stage data-game={current?.game ?? ''}>
             <div class="wb-bg" data-bg></div>
             <svg class="wb-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg>
               <defs>{COLORS.map((c) => <marker id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={c} /></marker>)}</defs>
@@ -158,6 +158,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
   const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   let valoMaps: { name: string; icon: string }[] = [];
+  // Garde le fond actuel dans la liste même s'il vient d'un autre jeu (ancien tableau)
+  const opts_keep = (bg: string): string[][] => (['blanc', 'grille', 'url'].includes(bg) || /^https?:/.test(bg) ? [] : [[bg, bg === 'Terrain' ? 'Terrain Rocket League' : bg === 'Faille' ? "Faille de l'invocateur" : `Valorant · ${bg}`]]);
   const loadValo = () => fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
     valoMaps = d.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ name: m.displayName, icon: m.displayIcon })).sort((a: any, b: any) => a.name.localeCompare(b.name, 'fr'));
   }).catch(() => {});
@@ -176,6 +178,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       const g = roster.selectedOptions[0]?.dataset.g ?? '';
       bg.value = g === 'rl' ? 'Terrain' : g === 'lol' ? 'Faille' : g === 'valo' && valoMaps[0] ? valoMaps[0].name : 'blanc';
       form.querySelector<HTMLInputElement>('[data-game]')!.value = g;
+      // Seuls les fonds du jeu du roster (et les fonds neutres) sont proposés
+      form.querySelectorAll<HTMLOptGroupElement>('optgroup[data-for]').forEach((o) => { const off = o.dataset.for !== g; o.hidden = off; o.disabled = off; });
       sync();
     };
     bg.addEventListener('change', sync); roster.addEventListener('change', pick);
@@ -237,9 +241,15 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       else if (/^https?:\/\//.test(bg)) el.style.backgroundImage = `url("${bg.replace(/["()\\]/g, '')}")`;
       else { const m = valoMaps.find((x) => x.name === bg); if (m) el.style.backgroundImage = `url("${m.icon}")`; }
       const s = $<HTMLSelectElement>('[data-bg-select]');
-      const opts: string[][] = [['blanc', 'Tableau blanc'], ['grille', 'Quadrillage'], ['Terrain', 'Terrain Rocket League'], ['Faille', "Faille de l'invocateur"], ...valoMaps.map((m) => [m.name, `Valorant · ${m.name}`]), ['url', 'Image (lien)…']];
+      // Fonds proposés : neutres + ceux du jeu du tableau (un tableau osu! ne propose pas la Faille)
+      const bg_game = stage.dataset.game ?? '';
+      const opts: string[][] = [['blanc', 'Tableau blanc'], ['grille', 'Quadrillage'],
+        ...(!bg_game || bg_game === 'rl' ? [['Terrain', 'Terrain Rocket League']] : []),
+        ...(!bg_game || bg_game === 'lol' ? [['Faille', "Faille de l'invocateur"]] : []),
+        ...(!bg_game || bg_game === 'valo' ? valoMaps.map((m) => [m.name, `Valorant · ${m.name}`]) : []),
+        ...(opts_keep(bg)), ['url', 'Image (lien)…']];
       if (/^https?:\/\//.test(bg)) opts.unshift([bg, 'Image actuelle']);
-      if (document.activeElement !== s) s.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}" ${v === bg ? 'selected' : ''}>${esc(l)}</option>`).join('');
+      if (document.activeElement !== s) s.innerHTML = opts.filter(([v], i) => opts.findIndex(([w]) => w === v) === i).map(([v, l]) => `<option value="${esc(v)}" ${v === bg ? 'selected' : ''}>${esc(l)}</option>`).join('');
     }
 
     // ---------- Rendu ----------

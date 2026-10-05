@@ -10,8 +10,8 @@ const { me } = t;
 const JOUEUR = [
   ['Relie tes comptes', 'Onglet Joueurs : Riot ID (LoL et Valorant), pseudo Rocket League, pseudo osu!. Tes rangs et tes parties arrivent tout seuls.', '/equipe/joueurs/'],
   ['Remplis ton setup', 'Sensibilité, viseur, caméra, zone de tablette : utile à tout le roster.', '/equipe/setup/'],
-  ['Réponds aux séances', 'Présent, peut-être ou absent, ici ou sur Discord : c\'est la même réponse.', '/equipe/'],
-  ['Coche tes dispos', 'Chaque semaine, tes créneaux : le staff planifie avec.', '/equipe/'],
+  ['Réponds aux séances', 'Présent, peut-être ou absent, ici ou sur Discord : c\'est la même réponse.', '/equipe/planning/'],
+  ['Coche tes dispos', 'Chaque semaine, tes créneaux : le staff planifie avec.', '/equipe/planning/'],
   ['Écris ton débrief', 'Après chaque match ou scrim, deux minutes : ce qui a marché, ce qu\'on travaille.', '/equipe/notes/'],
 ];
 const STAFF = [
@@ -35,7 +35,7 @@ const OUTILS = [
   ['Setups · Joueurs · Docs', 'Réglages de chacun, comptes de jeu et profils, documents du roster (routines, règles, appels).', ''],
 ];
 ---
-<Qg title="Guide · QG" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Guide · Inside" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="gd">
       <section>
         <h2 class="gd-h">Joueur : démarrer en 5 minutes</h2>

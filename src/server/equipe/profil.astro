@@ -56,7 +56,7 @@ const setups = await rows<{ game: string; data: string }>('SELECT game, data FRO
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 ---
-<Qg title={`${m?.name ?? 'Profil'} · QG`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title={`${m?.name ?? 'Profil'} · Inside`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="pf">
       <ul class="pf-kpis">
         <li><b>{presence === null ? '—' : `${presence} %`}</b><span>présence aux séances (90 j)</span></li>
