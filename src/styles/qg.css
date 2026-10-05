@@ -126,7 +126,7 @@ body.qg :is(.ov-kpis li, .pf-kpis li, .sc-list a) { border-top-width: 1px; }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
-  .qg-body { grid-template-columns: 1fr; }
+  .qg-body { grid-template-columns: 1fr; align-content: start; }
   .qg-nav { position: static; max-height: none; padding: var(--space-2) var(--space-4) 0; border-right: 0; }
   .qg-nav summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-3); list-style: none; cursor: pointer;
     font-weight: 700; font-size: var(--text-sm); background: var(--qg-card); border: 1px solid var(--qg-border); border-radius: var(--radius); }

@@ -336,6 +336,9 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
   .st-table td { padding: .55rem .6rem; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
   .st-table tr:hover td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
   .st-who { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+  /* Dans un tableau, la cellule reste une cellule (sinon le nom passe sous la colonne suivante sur mobile) */
+  td.st-who { display: table-cell; }
+  td.st-who img { display: inline-block; vertical-align: middle; margin-right: .5rem; }
   .st-table a.st-name { color: inherit; font-weight: 700; }
   .st-who img, .st-champs img { border-radius: 50%; background: var(--line); }
   .st-champs { display: flex; gap: 2px; }
