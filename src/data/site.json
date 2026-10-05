@@ -8,7 +8,7 @@
     "staff": "https://tinyurl.com/FomulaireStaff-OniKorp"
   },
   "socials": [
-    { "label": "Twitch", "url": "https://www.twitch.tv/oni_korp", "icon": "twitch" },
+    { "label": "Twitch", "url": "https://www.twitch.tv/onikorp", "icon": "twitch" },
     { "label": "YouTube", "url": "https://youtube.com/channel/UCbjfbZaMnTJBZ2IXrjQGsNQ", "icon": "youtube" },
     { "label": "TikTok", "url": "https://www.tiktok.com/@onikorp.officiel", "icon": "tiktok" },
     { "label": "X", "url": "https://x.com/OniKorpPro", "icon": "x" },
