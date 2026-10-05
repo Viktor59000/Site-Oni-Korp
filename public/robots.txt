@@ -1,0 +1,8 @@
+# Oni Korp : tout le site public est indexable.
+# Inside (espace équipe) et l'API sont privés : connexion obligatoire.
+User-agent: *
+Allow: /
+Disallow: /equipe/
+Disallow: /api/
+
+Sitemap: https://oni-korp.vercel.app/sitemap-index.xml

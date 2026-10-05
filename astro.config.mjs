@@ -58,7 +58,8 @@ export default defineConfig({
   site: 'https://oni-korp.vercel.app',
   // ONI_NODE=1 : build de production servi en local (mesures Lighthouse de l'espace équipe, scripts/lighthouse-equipe.mjs)
   adapter: onVercel ? vercel() : process.env.ONI_NODE ? node({ mode: 'standalone' }) : undefined,
-  integrations: [sitemap(), api],
+  // Sitemap : pages publiques seulement (Inside est privé, pages en noindex)
+  integrations: [sitemap({ filter: (page) => !page.includes('/equipe/') }), api],
   // CSS du site (~15 Ko) intégré dans chaque page : supprime la requête bloquante
   build: { inlineStylesheets: 'always' },
 });
