@@ -7,7 +7,9 @@
     "dev": "astro dev",
     "build": "astro build && node scripts/typo.mjs",
     "preview": "astro preview",
-    "deploy": "bash scripts/deploy.sh"
+    "cartes": "node scripts/cartes.mjs",
+    "mesure": "node scripts/lighthouse.mjs",
+    "mesure:equipe": "node scripts/lighthouse-equipe.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

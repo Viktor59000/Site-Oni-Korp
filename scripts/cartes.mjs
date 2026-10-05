@@ -1,9 +1,9 @@
-// Intègre les vignettes de visuels/a-integrer dans public/img/cartes :
+// Intègre les vignettes de visuels/cartes dans public/img/cartes :
 // <nom>.webp/.avif en 560 px de large et <nom>-sm.webp/.avif en 300 px.
 // Usage : node scripts/cartes.mjs
 import sharp from 'sharp';
 import { readdirSync, mkdirSync } from 'node:fs';
-const SRC = 'visuels/a-integrer', OUT = 'public/img/cartes';
+const SRC = 'visuels/cartes', OUT = 'public/img/cartes';
 mkdirSync(OUT, { recursive: true });
 const files = readdirSync(SRC).filter((f) => /\.(webp|png|jpg)$/.test(f) && !/^reference-|variante/.test(f));
 for (const f of files) {

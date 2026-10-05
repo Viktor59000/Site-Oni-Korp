@@ -5,7 +5,7 @@ import node from '@astrojs/node';
 
 // Hébergement : Vercel (VERCEL=1 fourni par la plateforme). Les pages restent statiques ;
 // seules les routes /api/* tournent à la demande (lecture de la base Turso partagée avec Oni Bot).
-// Sans Vercel (local, ancien déploiement GitHub Pages), le site est 100 % statique et l'API est absente.
+// Sans Vercel (build local), le site est 100 % statique et l'API est absente.
 const onVercel = !!process.env.VERCEL;
 // En local, ONI_API=1 active aussi les routes serveur (test de l'espace équipe avec npm run dev)
 const withApi = onVercel || !!process.env.ONI_API;
@@ -53,8 +53,7 @@ const api = {
 };
 
 export default defineConfig({
-  site: process.env.SITE_URL || (onVercel ? 'https://oni-korp.vercel.app' : 'https://viktor59000.github.io'),
-  base: process.env.BASE_PATH ? `/${process.env.BASE_PATH}/` : '/',
+  site: 'https://oni-korp.vercel.app',
   // ONI_NODE=1 : build de production servi en local (mesures Lighthouse de l'espace équipe, scripts/lighthouse-equipe.mjs)
   adapter: onVercel ? vercel() : process.env.ONI_NODE ? node({ mode: 'standalone' }) : undefined,
   integrations: [sitemap(), api],
