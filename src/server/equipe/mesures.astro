@@ -256,7 +256,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                     </tbody>
                   </table>
                 </div>
-              ) : <p class="eq-note">Pas encore de partie trouvée. Les joueurs relient leur pseudo Rocket League dans <a href="/equipe/joueurs/">Joueurs</a> ; il faut que leurs replays soient sur ballchasing.com (envoi automatique avec BakkesMod, extension « ballchasing »).</p>}
+              ) : <p class="eq-note">Pas encore de partie trouvée. Les joueurs relient leur pseudo Rocket League dans <a href="/equipe/joueurs/">Joueurs</a> ; il faut que leurs replays soient sur ballchasing.com (envoi des fichiers .replay sur le site), ou colle les liens des replays ci-dessous après un match.</p>}
               {b.auto.filter((p) => p.last.length).map((p) => (
                 <details class="st-games">
                   <summary>Parties de {p.m.name}</summary>
@@ -345,9 +345,9 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
   .st-table a { color: var(--red-text); font-weight: 700; }
   .st-games summary, .st-entry summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
   .st-games ul { display: grid; gap: .3rem; margin-top: .6rem; }
-  .st-games li { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; padding: .4rem .6rem; border-left: 4px solid var(--lacquer); background: color-mix(in srgb, var(--lacquer) 5%, transparent); font-size: .88rem; }
+  .st-games li { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; padding: .4rem .6rem; border-left: 4px solid var(--lacquer); background: var(--qg-surface); font-size: .88rem; }
   .st-games li.is-win { border-left-color: #1f8f55; background: color-mix(in srgb, #1f8f55 6%, transparent); }
-  .st-games img { border-radius: 4px; }
+  .st-games img { border-radius: 0; }
   .st-games small { color: var(--muted); margin-left: auto; }
   .st-best { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1.5rem; }
   .st-best ol { display: grid; gap: .35rem; margin-top: .5rem; padding-left: 1.2rem; }

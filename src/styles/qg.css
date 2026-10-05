@@ -1,171 +1,270 @@
 /* ==========================================================
-   QG Oni Korp — système de l'espace équipe
-   Un outil, pas une vitrine : fond clair, cartes, une seule couleur forte (celle du jeu du roster : --game).
+   Oni Inside · système de l'espace équipe
+   D'après Agrume v3 (kit de Yuzu, github.com/Yuzuctus/Agrume_Design, repris ici, jamais modifié là-bas) :
+   encre et papier, la structure passe par les filets et la typographie, rayon 0, pas d'ombre (sauf panneau
+   flottant), étiquettes en mono, une couleur = un sens, grain papier. Palette de la Oni : washi, encre, vermillon.
+   - vermillon : l'action et l'état rempli (bouton, sélection) ;
+   - couleur du jeu (--game) : l'identité du roster, en repère seulement (point, filet de l'élément courant) ;
+   - vert / ambre / rouge : des états (présent, peut-être, absent), toujours avec un texte.
    Les variables de la vitrine (--surface, --ink…) sont redéfinies ici : tous les outils suivent sans changement.
    ========================================================== */
 
+@font-face { font-family: "IBM Plex Sans"; src: url("/fonts/plex/ibm-plex-sans-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans"; src: url("/fonts/plex/ibm-plex-sans-600.woff2") format("woff2"); font-weight: 600 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Sans Condensed"; src: url("/fonts/plex/ibm-plex-sans-condensed-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/fonts/plex/ibm-plex-mono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+
 body.qg {
-  /* Palette du QG */
-  --qg-bg: #eef0f3;
-  --qg-card: #ffffff;
-  --qg-sunk: #f6f7f9;
-  --qg-border: #dcdfe5;
-  --qg-ink: #16181d;
-  --qg-muted: #5c6370;
-  --ok: #1f8f55;
-  --warn: #b7791f;
-  --danger: #d0312b;
-  /* Typographie : 5 tailles */
-  --text-xs: .75rem; --text-sm: .875rem; --text-md: 1rem; --text-lg: 1.25rem; --text-xl: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
-  /* Espacements */
+  /* Rôles (clair). Contrastes : encre ≥ 14:1, atténué ≥ 6:1, méta ≥ 4.6:1, filet fort ≥ 3:1 sur papier et surface */
+  --qg-paper: #f3f1ec;          /* le fond : washi */
+  --qg-surface: #ebe8e1;        /* bandes, ligne survolée */
+  --qg-sunken: #e2ded5;         /* pistes, cases vides */
+  --qg-raised: #fbfaf7;         /* panneau flottant, menu */
+  --qg-ink: #141210;            /* texte, filets majeurs */
+  --qg-muted: #514c46;          /* texte secondaire */
+  --qg-faint: #666059;          /* méta, dates */
+  --qg-rule: #d8d3ca;           /* filet décoratif entre éléments comparables */
+  --qg-rule-strong: #7d776f;    /* bord de contrôle, séparation de groupes */
+  --qg-accent: #e5251f;         /* vermillon : action, état rempli */
+  --qg-accent-ink: #ffffff;
+  --qg-accent-text: #b3241e;    /* vermillon en texte (lien, nom courant) */
+  --qg-marker: #f6cfc9;         /* surlignage derrière les lettres */
+  --qg-focus: #156b85;
+  --ok: #1d7a49; --warn: #8a5a0a; --danger: #b3241e;
+  --qg-shadow-overlay: 0 1px 0 rgb(20 18 16 / .05), 0 14px 36px -10px rgb(20 18 16 / .3);
+  --qg-grain-color: rgb(0 0 0 / .04);
+  --qg-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.4 1.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+
+  /* Typographie : une famille. Plex Sans (texte, interface), Plex Sans resserrée (grands titres, gros chiffres), Plex Mono (étiquettes, méta) */
+  --qg-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --qg-title: "IBM Plex Sans Condensed", "IBM Plex Sans", "Arial Narrow", sans-serif;
+  --qg-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --text-2xs: .6875rem; --text-xs: .75rem; --text-sm: .8125rem; --text-md: .9375rem; --text-lg: 1.125rem; --text-xl: clamp(1.75rem, 3vw, 2.5rem);
+  /* Espacements (4 · 8 · 12 · 16 · 24 · 40) et traits (filet 1 · ouverture 2 · courant 3) */
   --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-5: 1.5rem; --space-6: 2.5rem;
-  --radius: 8px;
-  /* Les variables de la vitrine, réglées pour le QG */
-  --surface: var(--qg-bg); --paper: var(--qg-card); --ink: var(--qg-ink); --muted: var(--qg-muted);
-  --line: var(--qg-border); --red-text: #b3241e;
-  background: var(--qg-bg); color: var(--qg-ink);
-  font-size: var(--text-md); line-height: 1.5;
+  --hair: 1px; --rule: 2px; --mark: 3px;
+  --radius: 0;
+  --ease: cubic-bezier(.2, 0, 0, 1);
+
+  /* Les variables de la vitrine, réglées pour Inside */
+  --surface: var(--qg-paper); --paper: var(--qg-raised); --ink: var(--qg-ink); --muted: var(--qg-muted);
+  --line: var(--qg-rule); --red-text: var(--qg-accent-text); --lacquer: var(--qg-accent);
+  --font-body: var(--qg-sans); --font-display: var(--qg-title);
+  /* Anciens noms encore lus par les outils */
+  --qg-bg: var(--qg-paper); --qg-card: var(--qg-raised); --qg-sunk: var(--qg-sunken); --qg-border: var(--qg-rule);
+
+  background: var(--qg-paper); color: var(--qg-ink);
+  font: 400 1rem / 1.55 var(--qg-sans);
+  font-synthesis: none; -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
 }
+/* Sombre composé (pas inversé) : encre chaude, papier de nuit */
 :root[data-theme="dark"] body.qg {
-  --qg-bg: #111317; --qg-card: #1a1d22; --qg-sunk: #15181c; --qg-border: #2b3038; --qg-ink: #e7e9ee; --qg-muted: #9aa2ae;
-  --red-text: #ff6a5f; --ok: #3ccf86; --warn: #e6a640; --danger: #ff5b54;
+  --qg-paper: #131210; --qg-surface: #1b1916; --qg-sunken: #23201c; --qg-raised: #26231f;
+  --qg-ink: #eeebe4; --qg-muted: #bbb5ab; --qg-faint: #9c968c; --qg-rule: #2f2b26; --qg-rule-strong: #7a746b;
+  --qg-accent: #e5251f; --qg-accent-ink: #ffffff; --qg-accent-text: #ff7a70; --qg-marker: #5a1d18; --qg-focus: #87cfe6;
+  --ok: #4fd18f; --warn: #e6b04a; --danger: #ff7a70;
+  --qg-shadow-overlay: 0 1px 0 rgb(238 235 228 / .06), 0 14px 36px -10px rgb(0 0 0 / .7);
+  --qg-grain-color: rgb(255 255 255 / .03);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body.qg {
+    --qg-paper: #131210; --qg-surface: #1b1916; --qg-sunken: #23201c; --qg-raised: #26231f;
+    --qg-ink: #eeebe4; --qg-muted: #bbb5ab; --qg-faint: #9c968c; --qg-rule: #2f2b26; --qg-rule-strong: #7a746b;
+    --qg-accent-text: #ff7a70; --qg-marker: #5a1d18; --qg-focus: #87cfe6;
+    --ok: #4fd18f; --warn: #e6b04a; --danger: #ff7a70;
+    --qg-shadow-overlay: 0 1px 0 rgb(238 235 228 / .06), 0 14px 36px -10px rgb(0 0 0 / .7);
+    --qg-grain-color: rgb(255 255 255 / .03);
+  }
 }
 
-/* Les titres de section sont ceux d'un outil : texte gras, pas la police d'affiche */
-body.qg :is(h2, h3) { font-family: var(--font-body); font-weight: 700; letter-spacing: 0; line-height: 1.25; }
+/* Grain papier : une couche fixe et inerte sur toute la page */
+body.qg::after { content: ""; position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; background: var(--qg-grain-color);
+  -webkit-mask: var(--qg-grain) 0 0 / 180px 180px; mask: var(--qg-grain) 0 0 / 180px 180px; }
+@media (forced-colors: active), print { body.qg::after { display: none; } }
+
+body.qg ::selection { background: var(--qg-accent); color: var(--qg-accent-ink); }
+body.qg :focus-visible { outline: 2px solid var(--qg-focus); outline-offset: 2px; }
+body.qg a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* Titres : ceux d'un outil. Plex en gras, la resserrée pour le titre de page et les gros chiffres */
+body.qg :is(h1, h2, h3, h4) { font-family: var(--qg-sans); font-weight: 600; letter-spacing: 0; line-height: 1.2; }
 body.qg h2 { font-size: var(--text-lg); }
 body.qg h3 { font-size: var(--text-md); }
 body.qg p { max-width: 72ch; }
+body.qg :is(strong, b, th) { font-weight: 600; }
 
 /* ---------- Cadre ---------- */
 .qg-app { min-height: 100vh; display: flex; flex-direction: column; }
 .qg-top { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--space-3); height: 56px; padding: 0 var(--space-4);
-  background: var(--qg-card); border-bottom: 1px solid var(--qg-border); box-shadow: inset 0 -3px 0 -1px var(--game); }
-.qg-brand { display: flex; align-items: center; gap: var(--space-2); text-decoration: none; color: var(--qg-ink); font-size: var(--text-sm); white-space: nowrap; }
-.qg-brand span { font-weight: 700; letter-spacing: .06em; }
-.qg-brand b { font-family: var(--font-display); font-weight: 400; letter-spacing: 0; margin-left: .2rem; }
+  background: var(--qg-paper); border-bottom: var(--rule) solid var(--qg-ink); }
+/* Mot-symbole : la seule place de la police d'affiche du club dans Inside */
+.qg-brand { display: flex; align-items: center; gap: var(--space-2); text-decoration: none; color: var(--qg-ink); white-space: nowrap; }
+.qg-brand span { font: 500 var(--text-2xs) / 1 var(--qg-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--qg-muted); }
+.qg-brand b { font: 400 1.05rem / 1 "Dela Gothic One", var(--qg-title); letter-spacing: 0; text-transform: none; color: var(--qg-ink); margin-right: .35rem; }
 .qg-spacer { flex: 1; }
 .qg-switch, .qg-account { position: relative; }
-.qg-switch summary, .qg-account summary { list-style: none; display: flex; align-items: center; gap: var(--space-2); min-height: 38px; padding: 0 var(--space-3);
-  border: 1px solid var(--qg-border); border-radius: var(--radius); cursor: pointer; font-size: var(--text-sm); font-weight: 700; background: var(--qg-sunk); }
+.qg-switch summary, .qg-account summary { list-style: none; display: flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-3);
+  border: var(--hair) solid var(--qg-rule-strong); cursor: pointer; font-size: var(--text-sm); font-weight: 600; background: transparent; }
+.qg-switch summary:hover, .qg-account summary:hover { border-color: var(--qg-ink); }
 .qg-switch summary::-webkit-details-marker, .qg-account summary::-webkit-details-marker, .qg-nav summary::-webkit-details-marker, .qg-drawer summary::-webkit-details-marker { display: none; }
-.qg-dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--game); }
-.qg-caret { width: .5rem; height: .5rem; border-right: 2px solid var(--qg-muted); border-bottom: 2px solid var(--qg-muted); transform: rotate(45deg) translateY(-2px); margin-left: var(--space-1); }
-.qg-menu { position: absolute; top: calc(100% + 6px); left: 0; min-width: 15rem; max-height: 70vh; overflow: auto; padding: var(--space-2); z-index: 40;
-  background: var(--qg-card); border: 1px solid var(--qg-border); border-radius: var(--radius); box-shadow: 0 12px 32px rgb(0 0 0 / .14); display: grid; gap: 2px; }
+.qg-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--game); }
+.qg-caret { width: .45rem; height: .45rem; border-right: 1.5px solid var(--qg-muted); border-bottom: 1.5px solid var(--qg-muted); transform: rotate(45deg) translateY(-2px); margin-left: var(--space-1); }
+.qg-menu { position: absolute; top: calc(100% + 6px); left: 0; min-width: 15rem; max-height: 70vh; overflow: auto; padding: var(--space-2) 0; z-index: 40;
+  background: var(--qg-raised); border: var(--hair) solid var(--qg-ink); box-shadow: var(--qg-shadow-overlay); display: grid; }
 .qg-menu--right { left: auto; right: 0; }
-.qg-menu a { padding: var(--space-2) var(--space-3); border-radius: 6px; color: var(--qg-ink); text-decoration: none; font-size: var(--text-sm); }
-.qg-menu a:hover, .qg-menu a[aria-current] { background: var(--qg-sunk); }
+.qg-menu a { padding: var(--space-2) var(--space-4); color: var(--qg-ink); text-decoration: none; font-size: var(--text-sm); border-left: var(--mark) solid transparent; }
+.qg-menu a:hover { background: var(--qg-surface); }
+.qg-menu a[aria-current] { font-weight: 600; border-left-color: var(--game); }
 .qg-menu form { margin: 0; display: flex; }
-.qg-menu__btn { flex: 1; text-align: left; padding: var(--space-2) var(--space-3); border: 0; border-radius: 6px; background: none; color: var(--qg-ink); font: inherit; font-size: var(--text-sm); cursor: pointer; }
-.qg-menu__btn:hover { background: var(--qg-sunk); }
-.qg-menu a[aria-current] { font-weight: 700; }
-.qg-menu p { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) var(--space-3) 0; font-size: var(--text-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted); }
+.qg-menu__btn { flex: 1; text-align: left; padding: var(--space-2) var(--space-4); border: 0; border-left: var(--mark) solid transparent; background: none; color: var(--qg-ink); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.qg-menu__btn:hover { background: var(--qg-surface); }
+.qg-menu p { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) var(--space-4) var(--space-1); padding-top: var(--space-2); border-top: var(--hair) solid var(--qg-rule);
+  font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); }
 .qg-menu p span { width: .5rem; height: .5rem; border-radius: 50%; background: var(--g); }
-.qg-icon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--qg-border); border-radius: var(--radius); background: var(--qg-sunk); color: var(--qg-ink); cursor: pointer; }
-.qg-icon svg { width: 18px; height: 18px; fill: currentColor; }
-.qg-account summary { padding: 0 var(--space-2) 0 4px; }
-.qg-account img, .qg-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--qg-border); display: grid; place-items: center; }
-.qg-back { font-size: var(--text-sm); font-weight: 700; color: var(--qg-ink); }
+.qg-icon { display: grid; place-items: center; width: 36px; height: 36px; border: var(--hair) solid var(--qg-rule-strong); background: transparent; color: var(--qg-ink); cursor: pointer; }
+.qg-icon:hover { border-color: var(--qg-ink); }
+.qg-icon svg { width: 17px; height: 17px; fill: currentColor; }
+.qg-account summary { padding: 0 var(--space-3) 0 3px; }
+.qg-account img, .qg-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--qg-sunken); display: grid; place-items: center; font-weight: 600; font-size: var(--text-sm); }
+.qg-back { font-size: var(--text-sm); font-weight: 600; color: var(--qg-ink); }
 
 .qg-body { flex: 1; display: grid; grid-template-columns: 14rem minmax(0, 1fr); width: 100%; max-width: 1440px; margin: 0 auto; }
 .qg-body.is-bare { grid-template-columns: minmax(0, 1fr); max-width: 60rem; }
-.qg-nav { position: sticky; top: 56px; align-self: start; max-height: calc(100vh - 56px); overflow-y: auto; padding: var(--space-5) var(--space-3); border-right: 1px solid var(--qg-border); }
+/* Navigation : une liste à filets ; l'élément courant porte le trait du jeu */
+.qg-nav { position: sticky; top: 56px; align-self: start; max-height: calc(100vh - 56px); overflow-y: auto; padding: var(--space-5) var(--space-4) var(--space-5) clamp(1rem, 2vw, 1.5rem); border-right: var(--hair) solid var(--qg-rule); }
 .qg-nav summary { display: none; }
-.qg-group { display: grid; gap: 1px; margin-bottom: var(--space-4); }
-.qg-group p { margin: 0 0 var(--space-1) var(--space-3); font-size: var(--text-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--qg-muted); }
-.qg-group a { padding: .45rem var(--space-3); border-radius: 6px; color: var(--qg-ink); text-decoration: none; font-size: var(--text-sm); }
-.qg-group a:hover { background: var(--qg-card); }
-.qg-group a[aria-current] { background: var(--qg-card); font-weight: 700; box-shadow: inset 3px 0 0 var(--game), 0 1px 2px rgb(0 0 0 / .06); }
-.qg-group--foot { padding-top: var(--space-3); border-top: 1px solid var(--qg-border); }
+.qg-group { display: grid; margin-bottom: var(--space-5); }
+.qg-group p { margin: 0 0 var(--space-2); padding-bottom: var(--space-2); border-bottom: var(--rule) solid var(--qg-ink);
+  font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); }
+.qg-group a { padding: .4rem var(--space-3); color: var(--qg-ink); text-decoration: none; font-size: var(--text-sm); border-left: var(--mark) solid transparent; border-bottom: var(--hair) solid var(--qg-rule); }
+.qg-group a:hover { background: var(--qg-surface); }
+.qg-group a[aria-current] { font-weight: 600; border-left-color: var(--game); background: var(--qg-surface); }
+.qg-group--foot { padding-top: 0; }
 
 .qg-main { min-width: 0; padding: var(--space-5) clamp(1rem, 3vw, 2.5rem) var(--space-6); }
-.qg-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3) var(--space-4); margin-bottom: var(--space-5); }
-.qg-head h1 { font-size: var(--text-xl); line-height: 1.1; }
-.qg-kicker { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1); font-size: var(--text-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted); }
+/* En-tête d'écran : étiquette mono, titre resserré, filet d'ouverture */
+.qg-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3) var(--space-4); margin-bottom: var(--space-5); padding-bottom: var(--space-4); border-bottom: var(--rule) solid var(--qg-ink); }
+.qg-head h1 { font: 600 var(--text-xl) / .95 var(--qg-title); letter-spacing: -.015em; }
+.qg-kicker { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); }
 .qg-kicker span { width: .55rem; height: .55rem; border-radius: 50%; background: var(--game); }
-.qg-lead { margin: var(--space-1) 0 0; color: var(--qg-muted); font-size: var(--text-sm); }
+.qg-lead { margin: var(--space-2) 0 0; color: var(--qg-muted); font-size: var(--text-md); }
 .qg-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .qg-actions:empty { display: none; }
 
 /* ---------- Composants ---------- */
-/* Boutons : rectangles d'outil (la vitrine garde ses boutons biseautés) */
-body.qg .btn { clip-path: none; border-radius: var(--radius); min-height: 38px; padding: 0 var(--space-4); font-size: var(--text-sm); font-weight: 700;
-  --bg: var(--game); --fg: var(--game-fg, #fff); background: var(--bg); color: var(--fg); box-shadow: none; text-transform: none; letter-spacing: 0; }
-body.qg .btn:hover { filter: brightness(1.08); }
-body.qg .btn--ghost { --bg: var(--qg-card); --fg: var(--qg-ink); box-shadow: inset 0 0 0 1px var(--qg-border); }
-body.qg .btn--ghost:hover { box-shadow: inset 0 0 0 1px var(--qg-ink); filter: none; }
-.qg-card { background: var(--qg-card); border: 1px solid var(--qg-border); border-radius: var(--radius); padding: var(--space-4); }
-.qg-empty { padding: var(--space-6) var(--space-4); text-align: center; color: var(--qg-muted); background: var(--qg-card); border: 1px dashed var(--qg-border); border-radius: var(--radius); }
-.qg-empty strong { display: block; color: var(--qg-ink); font-size: var(--text-md); margin-bottom: var(--space-1); }
-.qg-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .5rem; border-radius: 999px; font-size: var(--text-xs); font-weight: 700; background: var(--qg-sunk); border: 1px solid var(--qg-border); }
+/* Boutons : plein = encre, le vermillon balaie au survol ; fantôme = cadre d'encre. Rectangles, casse normale */
+body.qg .btn { position: relative; isolation: isolate; overflow: hidden; clip-path: none; border-radius: 0; min-height: 36px; padding: 0 var(--space-4);
+  font: 600 var(--text-sm) / 1.2 var(--qg-sans); text-transform: none; letter-spacing: 0; box-shadow: none;
+  --bg: var(--qg-ink); --fg: var(--qg-paper); background: var(--bg); color: var(--fg); border: var(--hair) solid var(--qg-ink); transition: color .18s var(--ease); }
+body.qg .btn::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--qg-accent); transform: translateX(-110%) skewX(-12deg); transition: transform .28s var(--ease); }
+body.qg .btn:is(:hover, :focus-visible) { color: var(--qg-accent-ink); filter: none; }
+body.qg .btn:is(:hover, :focus-visible)::before { transform: none; }
+body.qg .btn--ghost { --bg: transparent; --fg: var(--qg-ink); }
+body.qg .btn--ghost::before { background: var(--qg-surface); }
+body.qg .btn--ghost:is(:hover, :focus-visible) { color: var(--qg-ink); }
+@media (prefers-reduced-motion: reduce) { body.qg .btn::before { transition: none; } }
 
-/* Champs : tous les formulaires du QG */
+/* Bloc : pas une carte, un filet d'ouverture */
+.qg-card { background: transparent; border: 0; border-top: var(--rule) solid var(--qg-ink); padding: var(--space-4) 0; }
+.qg-empty { padding: var(--space-5) var(--space-4); text-align: left; color: var(--qg-muted); background: var(--qg-surface); border: 0; font: 500 var(--text-xs) / 1.5 var(--qg-mono); }
+.qg-empty strong { display: block; color: var(--qg-ink); font: 600 var(--text-md) / 1.3 var(--qg-sans); margin-bottom: var(--space-1); }
+/* Étiquette : cadre fin, mono */
+.qg-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .45rem; border-radius: 0; border: var(--hair) solid var(--qg-rule-strong); background: transparent;
+  font: 500 var(--text-2xs) / 1.4 var(--qg-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--qg-ink); }
+
+/* Champs : tous les formulaires d'Inside */
 body.qg :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) {
-  border-radius: 6px !important; border: 1px solid var(--qg-border) !important; background: var(--qg-card) !important; color: var(--qg-ink) !important; font-size: var(--text-sm) !important;
+  border-radius: 0 !important; border: var(--hair) solid var(--qg-rule-strong) !important; background: var(--qg-raised) !important; color: var(--qg-ink) !important; font: 400 var(--text-md) / 1.4 var(--qg-sans) !important;
 }
-body.qg :is(input, select, textarea):focus-visible { outline: 2px solid var(--game) !important; outline-offset: 1px; }
-body.qg :focus-visible { outline-color: var(--game); }
+body.qg :is(input, select, textarea):hover { border-color: var(--qg-ink) !important; }
+body.qg :is(input, select, textarea):focus-visible { outline: 2px solid var(--qg-focus) !important; outline-offset: 2px; }
+body.qg :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--qg-accent); }
 
-/* Les blocs encadrés des outils deviennent des cartes arrondies */
-body.qg :is(.eq-seance, .jo-me, .ob-goal, .nt-list li, .su-card, .lu-detail, .lu-form, .vd-mark, .tb-list a, .dr-bottom > *, .ov-card, .ov-kpis li, .pf-kpis li, .pf-game, .am-card, .sc-sec, .sc-list a, .dc-list a, .ou-chal, .ou-maps li, .st-entry form, .st-replay, .ob-new form, .tb-new, .vd-add, .ou-add, .eq-staff, .wb-tools, .wb-side details, .wb-stage, .gd-steps a, .gd-steps div) {
-  border-radius: var(--radius); background-color: var(--qg-card); border-color: var(--qg-border);
+/* Les blocs encadrés des outils : plus de cartes arrondies, des cadres fins et carrés sur le papier */
+body.qg :is(.eq-seance, .jo-me, .ob-goal, .nt-list li, .su-card, .lu-detail, .lu-form, .vd-mark, .tb-list a, .dr-bottom > *, .ov-card, .am-card, .sc-sec, .sc-list a, .dc-list a, .ou-chal, .ou-maps li, .st-entry form, .st-replay, .ob-new form, .tb-new, .vd-add, .ou-add, .eq-staff, .wb-tools, .wb-side details, .wb-stage, .gd-steps a, .gd-steps div, .pf-game) {
+  border-radius: 0 !important; background-color: transparent; border-color: var(--qg-rule-strong); box-shadow: none !important;
 }
-body.qg :is(.ov-kpis li, .pf-kpis li, .sc-list a) { border-top-width: 1px; }
+body.qg :is(.tb-list a, .sc-list a, .dc-list a, .gd-steps a):hover { background-color: var(--qg-surface); border-color: var(--qg-ink); }
+/* Chiffres clés : une ligne de faits (filet d'encre au-dessus, chiffre resserré, étiquette mono), pas des tuiles */
+body.qg :is(.ov-kpis li, .pf-kpis li) { border: 0 !important; border-top: var(--rule) solid var(--qg-ink) !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; padding: var(--space-3) 0 0 !important; }
+body.qg :is(.ov-kpis, .pf-kpis) :is(b, strong) { font-family: var(--qg-title); font-weight: 600; letter-spacing: -.01em; }
+/* Étiquettes et petits textes des outils en mono */
+body.qg :is([class$="__meta"], .eq-note, .ag-meta) { font-family: var(--qg-mono); font-size: var(--text-xs); color: var(--qg-faint); }
+/* Tableaux : en-têtes en mono, filets */
+body.qg table { border-collapse: collapse; }
+body.qg th { font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); text-align: left; border-bottom: var(--rule) solid var(--qg-ink); }
+body.qg td { border-bottom: var(--hair) solid var(--qg-rule); }
+body.qg tbody tr:hover td { background: var(--qg-surface); }
 
-/* ---------- Panneau latéral (formulaires « + Ajouter ») ---------- */
+/* ---------- Panneau latéral (formulaires « + Ajouter ») : le seul élément qui flotte, donc le seul avec une ombre ---------- */
 .qg-drawer > summary { list-style: none; cursor: pointer; }
-.qg-drawer[open] > summary::before { content: ''; position: fixed; inset: 0; z-index: 50; background: rgb(10 12 16 / .45); cursor: default; }
+.qg-drawer[open] > summary::before { content: ''; position: fixed; inset: 0; z-index: 50; background: rgb(20 18 16 / .45); cursor: default; }
 .qg-drawer__panel { position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; width: min(30rem, 100vw); overflow-y: auto; padding: var(--space-5);
-  background: var(--qg-card); border-left: 1px solid var(--qg-border); box-shadow: -16px 0 40px rgb(0 0 0 / .18); display: grid; align-content: start; gap: var(--space-4); }
-.qg-drawer__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.qg-drawer__head h2 { font-size: var(--text-lg); }
-.qg-close { width: 36px; height: 36px; border: 1px solid var(--qg-border); border-radius: var(--radius); background: var(--qg-sunk); color: var(--qg-ink); font-size: 1.2rem; cursor: pointer; }
+  background: var(--qg-raised); border-left: var(--rule) solid var(--qg-ink); box-shadow: var(--qg-shadow-overlay); display: grid; align-content: start; gap: var(--space-4); }
+.qg-drawer__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: var(--rule) solid var(--qg-ink); }
+.qg-drawer__head h2 { font: 600 1.5rem / 1 var(--qg-title); }
+.qg-close { width: 36px; height: 36px; border: var(--hair) solid var(--qg-rule-strong); border-radius: 0; background: transparent; color: var(--qg-ink); font-size: 1.2rem; cursor: pointer; }
+.qg-close:hover { border-color: var(--qg-ink); }
 .qg-drawer__panel form { display: grid; gap: var(--space-3); grid-template-columns: 1fr !important; padding: 0 !important; border: 0 !important; background: none !important; }
-.qg-drawer__panel label { display: grid; gap: var(--space-1); font-weight: 700; font-size: var(--text-sm); }
-.qg-drawer__panel :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .45rem .6rem; }
+.qg-drawer__panel label { display: grid; gap: var(--space-1); font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); }
+.qg-drawer__panel :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .45rem .6rem; text-transform: none; letter-spacing: 0; }
 .qg-drawer__panel .btn { justify-self: start; }
-@media (prefers-reduced-motion: no-preference) { .qg-drawer[open] .qg-drawer__panel { animation: qg-slide .18s ease-out; } @keyframes qg-slide { from { transform: translateX(24px); opacity: 0; } } }
+@media (prefers-reduced-motion: no-preference) { .qg-drawer[open] .qg-drawer__panel { animation: qg-slide .18s var(--ease); } @keyframes qg-slide { from { transform: translateX(24px); opacity: 0; } } }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
   .qg-body { grid-template-columns: 1fr; align-content: start; }
   .qg-nav { position: static; max-height: none; padding: var(--space-2) var(--space-4) 0; border-right: 0; }
   .qg-nav summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-3); list-style: none; cursor: pointer;
-    font-weight: 700; font-size: var(--text-sm); background: var(--qg-card); border: 1px solid var(--qg-border); border-radius: var(--radius); }
-  .qg-nav[open] nav { margin-top: var(--space-2); padding: var(--space-3); background: var(--qg-card); border: 1px solid var(--qg-border); border-radius: var(--radius); }
+    font-weight: 600; font-size: var(--text-sm); background: transparent; border: var(--hair) solid var(--qg-rule-strong); }
+  .qg-nav[open] nav { margin-top: var(--space-2); padding: var(--space-3) 0; background: var(--qg-paper); border-top: var(--rule) solid var(--qg-ink); }
   .qg-name, .qg-brand span { display: none; }
   .qg-main { padding-top: var(--space-4); }
 }
 
-/* ---------- Ce que le QG n'hérite pas de la vitrine ---------- */
+/* ---------- Ce qu'Inside n'hérite pas de la vitrine ---------- */
 :root body.qg { background-image: none; }
-/* Titres de section des outils : un filet discret plutôt que le trait noir épais de la vitrine */
-body.qg :is([class$="-h"], .eq-roster h3, .ov-block h2, .nt-match, .dr-bottom, .ag-h) { border-bottom-width: 1px !important; border-bottom-color: var(--qg-border) !important; border-top-color: var(--qg-border); }
-body.qg .nt-match { border-top: 1px solid var(--qg-border); }
-/* Bloc d'un roster dans le planning : une carte, sans bandeau en double */
-body.qg .eq { gap: var(--space-5); }
-body.qg .eq-roster { background: var(--qg-card); border: 1px solid var(--qg-border); border-top: 3px solid var(--team, var(--game)); border-radius: var(--radius); padding: var(--space-4) var(--space-5); }
-body.qg .eq-roster__head > img { width: 48px; height: 48px; border-radius: 6px; }
-body.qg .eq-roster__head h2 { font-size: var(--text-lg); }
+/* Titres de section des outils : filet d'ouverture d'encre, titre en Plex */
+body.qg :is([class$="-h"], .eq-roster h3, .ov-block h2, .nt-match, .ag-h) { font-family: var(--qg-sans) !important; border-bottom-width: var(--rule) !important; border-bottom-color: var(--qg-ink) !important; border-top-color: var(--qg-rule); }
+body.qg .nt-match { border-top: var(--hair) solid var(--qg-rule); }
+body.qg .dr-bottom { border-color: var(--qg-rule-strong) !important; }
+/* Bloc d'un roster dans le planning : filet du jeu au-dessus, pas de carte */
+body.qg .eq { gap: var(--space-6); }
+body.qg .eq-roster { background: transparent; border: 0; border-top: var(--mark) solid var(--team, var(--game)); border-radius: 0; padding: var(--space-4) 0 0; }
+body.qg .eq-roster__head > img { width: 48px; height: 48px; border-radius: 0; }
+body.qg .eq-roster__head h2 { font: 600 1.5rem / 1 var(--qg-title); }
 body.qg .eq-roster h3 { margin-top: var(--space-5); font-size: var(--text-md); }
 body.qg .eq-roster__head.is-single { display: none; }
 body.qg .eq-roster__head.is-single + h3 { margin-top: 0; }
 
-/* ---------- États vides : une seule présentation pour tous les outils ---------- */
-body.qg :is(.eq-empty, .nt-empty, .ag-empty, .ou .eq-note:only-child) { padding: var(--space-5) var(--space-4); text-align: center; color: var(--qg-muted); background: var(--qg-card); border: 1px dashed var(--qg-border); border-radius: var(--radius); max-width: none; }
+/* ---------- États vides : une seule présentation pour tous les outils (surface calme, texte mono) ---------- */
+body.qg :is(.eq-empty, .nt-empty, .ag-empty, .ou .eq-note:only-child) { padding: var(--space-5) var(--space-4); text-align: left; color: var(--qg-muted); background: var(--qg-surface); border: 0 !important; border-radius: 0; max-width: none; font: 500 var(--text-xs) / 1.5 var(--qg-mono); }
 
 /* ---------- Mobile : barre d'onglets en bas ---------- */
 .qg-tabs { display: none; }
 @media (max-width: 900px) {
   .qg-tabs { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
-    background: var(--qg-card); border-top: 1px solid var(--qg-border); padding-bottom: env(safe-area-inset-bottom); }
-  .qg-tabs a, .qg-tabs button { display: grid; justify-items: center; gap: 2px; padding: .45rem 0 .5rem; border: 0; background: none; color: var(--qg-muted); text-decoration: none; font: 700 .68rem var(--font-body); cursor: pointer; }
-  .qg-tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .qg-tabs [aria-current] { color: var(--qg-ink); box-shadow: inset 0 3px 0 var(--game); }
+    background: var(--qg-paper); border-top: var(--rule) solid var(--qg-ink); padding-bottom: env(safe-area-inset-bottom); }
+  .qg-tabs a, .qg-tabs button { display: grid; justify-items: center; gap: 3px; padding: .45rem 0 .5rem; border: 0; background: none; color: var(--qg-muted); text-decoration: none;
+    font: 500 .625rem / 1.2 var(--qg-mono); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  .qg-tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; }
+  .qg-tabs [aria-current] { color: var(--qg-ink); box-shadow: inset 0 var(--mark) 0 var(--game); }
   .qg-main { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
-  /* La navigation complète s'ouvre depuis l'onglet « Menu » ; le résumé du haut suffit à s'orienter */
 }
 /* Un seul roster affiché : son nom est déjà dans l'en-tête, pas besoin de le répéter */
 body.qg :is(.st-roster, .ob-roster, .jo-roster):only-of-type > :is(.st-h, .ob-h, .jo-roster__head h2, .jo-h) { display: none; }
 body.qg .jo-roster:only-of-type .jo-roster__head { border-bottom: 0; padding-bottom: 0; justify-content: flex-end; }
+
+/* ---------- Accueil du roster ---------- */
+/* Bandeau du prochain match : toujours sombre (photo), donc bouton clair */
+body.qg .ac-hero .btn { --bg: #f3f1ec; --fg: #141210; border-color: #f3f1ec; justify-self: start; }
+body.qg .ac-hero .btn:is(:hover, :focus-visible) { color: #fff; }
+body.qg .ac-hero__title { font-family: var(--qg-title); font-weight: 600; letter-spacing: -.015em; }
+body.qg .ac-hero__label { font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; }
+/* « Bien démarrer » et « À faire » : des lignes avec un repère, plus des cartes teintées */
+body.qg .ac-start { border-left: 0; border-top: var(--rule) solid var(--qg-ink); padding-top: var(--space-3); }
+body.qg :is(.ac-start a, .ac-todo a) { border-left: var(--mark) solid var(--game); }
+body.qg :is(.ac-start .is-done a, .ac-todo .is-done a) { border-left-color: var(--qg-rule-strong); }
+body.qg :is(.ac-start a, .ac-todo a):hover { background: var(--qg-sunken); }
+/* Cartes de choix du roster : images carrées, titre resserré */
+body.qg .ac-pick__card span { font-family: var(--qg-title); font-weight: 600; }

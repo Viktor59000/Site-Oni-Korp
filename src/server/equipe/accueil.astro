@@ -243,7 +243,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
 
 <style>
   .ac { display: grid; gap: var(--space-5, 1.5rem); }
-  .ac-hero { position: relative; overflow: hidden; border-radius: var(--radius); background: #0b0c0f; color: #fff; min-height: 18rem; display: grid; align-items: end; isolation: isolate; }
+  .ac-hero { position: relative; overflow: hidden; border-radius: 0; background: #0b0c0f; color: #fff; min-height: 18rem; display: grid; align-items: end; isolation: isolate; }
   .ac-hero__bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
   .ac-hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(8 9 12 / .92) 0%, rgb(8 9 12 / .75) 55%, rgb(8 9 12 / .35) 100%); }
   .ac-hero__body { padding: clamp(1.25rem, 4vw, 2.25rem); display: grid; gap: .35rem; max-width: 40rem; }
@@ -251,9 +251,9 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-hero__title { margin: 0; font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.05; }
   .ac-hero__title::first-letter { text-transform: uppercase; }
   .ac-hero__when { margin: 0 0 .75rem; color: rgb(255 255 255 / .85); }
-  .ac-hero code { background: rgb(255 255 255 / .12); padding: 0 .3rem; border-radius: 4px; }
+  .ac-hero code { background: rgb(255 255 255 / .12); padding: 0 .3rem; border-radius: 0; }
   .ac-answer { display: flex; flex-wrap: wrap; gap: .5rem; }
-  .ac-answer button { min-height: 44px; padding: 0 1.1rem; border-radius: 999px; border: 1.5px solid rgb(255 255 255 / .55); background: transparent; color: #fff; font: 700 .95rem var(--font-body); cursor: pointer; }
+  .ac-answer button { min-height: 44px; padding: 0 1.1rem; border-radius: 0; border: 1.5px solid rgb(255 255 255 / .55); background: transparent; color: #fff; font: 700 .95rem var(--font-body); cursor: pointer; }
   .ac-answer button:hover { border-color: #fff; }
   .ac-answer button.is-on { background: #fff; color: #0b0c0f; border-color: #fff; }
   .ac-faces { display: flex; margin: 1rem 0 0; padding: 0; list-style: none; }
@@ -264,7 +264,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-start h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
   .ac-start ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .6rem; margin: 0; padding: 0; list-style: none; counter-reset: st; }
   .ac-start li { counter-increment: st; }
-  .ac-start a { display: grid; gap: .2rem; height: 100%; box-sizing: border-box; padding: .8rem .9rem .8rem 2.6rem; position: relative; border-radius: 8px; background: color-mix(in srgb, var(--game) 10%, transparent); color: var(--qg-ink); text-decoration: none; }
+  .ac-start a { display: grid; gap: .2rem; height: 100%; box-sizing: border-box; padding: .8rem .9rem .8rem 2.6rem; position: relative; border-radius: 0; background: var(--qg-surface); color: var(--qg-ink); text-decoration: none; }
   .ac-start a::before { content: counter(st); position: absolute; left: .8rem; top: .8rem; width: 1.3rem; height: 1.3rem; border-radius: 50%; display: grid; place-items: center; background: var(--game); color: var(--game-fg, #fff); font-size: .75rem; font-weight: 700; }
   .ac-start span { color: var(--qg-muted); font-size: var(--text-sm); }
   .ac-start .is-done a { background: var(--qg-sunk, rgb(0 0 0 / .04)); }
@@ -277,7 +277,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-empty { margin: 0; color: var(--qg-muted); font-size: var(--text-sm); }
 
   .ac-todo { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
-  .ac-todo a { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border-radius: 8px; background: color-mix(in srgb, var(--game) 10%, transparent); color: var(--qg-ink); text-decoration: none; font-weight: 700; }
+  .ac-todo a { display: flex; align-items: center; gap: .6rem; padding: .7rem .8rem; border-radius: 0; background: var(--qg-surface); color: var(--qg-ink); text-decoration: none; font-weight: 700; }
   .ac-todo a::before { content: ''; width: .6rem; height: .6rem; border-radius: 50%; background: var(--game); flex: none; }
   .ac-todo .is-done a { background: var(--qg-sunk, rgb(0 0 0 / .04)); font-weight: 400; color: var(--qg-muted); }
   .ac-todo .is-done a::before { background: #2fbf71; }
@@ -288,7 +288,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-form { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
   .ac-form li { display: grid; grid-template-columns: minmax(0, 7rem) 1fr auto; gap: .6rem; align-items: center; font-size: var(--text-sm); }
   .ac-form__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
-  .ac-form__bar { height: .5rem; border-radius: 999px; background: var(--qg-sunk, rgb(0 0 0 / .06)); overflow: hidden; }
+  .ac-form__bar { height: .5rem; border-radius: 0; background: var(--qg-sunk, rgb(0 0 0 / .06)); overflow: hidden; }
   .ac-form__bar span { display: block; height: 100%; background: var(--game); border-radius: inherit; }
   .ac-form__n { color: var(--qg-muted); white-space: nowrap; }
   .ac-last { margin: 0; font-size: var(--text-sm); color: var(--qg-muted); }
@@ -298,7 +298,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-goals { display: grid; gap: .8rem; margin: 0; padding: 0; list-style: none; }
   .ac-goals p { margin: 0 0 .35rem; display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline; }
   .ac-goals small { color: var(--qg-muted); }
-  .ac-goals__bar { display: block; height: .45rem; border-radius: 999px; background: var(--qg-sunk, rgb(0 0 0 / .06)); overflow: hidden; }
+  .ac-goals__bar { display: block; height: .45rem; border-radius: 0; background: var(--qg-sunk, rgb(0 0 0 / .06)); overflow: hidden; }
   .ac-goals__bar span { display: block; height: 100%; background: var(--game); }
 
   .ac-activity { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; }
@@ -308,7 +308,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-shortcuts { display: flex; flex-wrap: wrap; gap: .5rem; }
 
   .ac-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-4, 1rem); margin: 0; padding: 0; list-style: none; }
-  .ac-pick__card { position: relative; display: grid; align-content: end; gap: .15rem; min-height: 10rem; padding: 1rem; border-radius: var(--radius); overflow: hidden; isolation: isolate; color: #fff; text-decoration: none; background: #15181c; }
+  .ac-pick__card { position: relative; display: grid; align-content: end; gap: .15rem; min-height: 10rem; padding: 1rem; border-radius: 0; overflow: hidden; isolation: isolate; color: #fff; text-decoration: none; background: #15181c; }
   .ac-pick__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: scale .3s; }
   .ac-pick__card::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(8 9 12 / .9), rgb(8 9 12 / .2)); }
   .ac-pick__card:hover img { scale: 1.04; }

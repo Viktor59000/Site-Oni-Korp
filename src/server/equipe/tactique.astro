@@ -560,7 +560,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-tools svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
   .wb-colors button { min-width: 26px; min-height: 26px; width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); border: 2px solid var(--line); }
   .wb-colors button[aria-pressed="true"] { background: var(--c); outline: 3px solid var(--ink); outline-offset: 1px; }
-  .wb-group [data-width] span { display: block; width: 18px; background: currentColor; border-radius: 2px; }
+  .wb-group [data-width] span { display: block; width: 18px; background: currentColor; border-radius: 0; }
   .wb-main { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1rem; align-items: start; }
   .wb-stage { position: relative; aspect-ratio: 1; max-width: 52rem; margin-inline: auto; width: 100%; border: 1px solid var(--line); touch-action: none; user-select: none; overflow: hidden; background: #0f1923; }
   .wb-stage[data-tool="pen"], .wb-stage[data-tool="arrow"], .wb-stage[data-tool="line"], .wb-stage[data-tool="rect"], .wb-stage[data-tool="circle"], .wb-stage[data-tool="zone"] { cursor: crosshair; }

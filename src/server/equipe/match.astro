@@ -37,7 +37,7 @@ const kindLabel = (k: string | null) => ({ tournoi: 'Tournoi', ligue: 'Ligue', s
 const CHECK: Record<string, string[]> = {
   valo: ['Client et jeu à jour, redémarrés', 'Viseur et sensibilité vérifiés', 'Vocal 20 min avant', 'Strats de la carte relues (tableau blanc)', 'Échauffement : 1 DM + range'],
   lol: ['Client à jour, runes et sorts préparés', 'Drafts relues (drafter)', 'Vocal 20 min avant', 'Champions de l\'adversaire revus (scouting)', 'Échauffement : 1 partie ou practice tool'],
-  rl: ['Jeu à jour, BakkesMod prêt (replays ballchasing)', 'Réglages caméra vérifiés', 'Vocal 20 min avant', 'Kickoffs revus (tableau blanc)', 'Échauffement : free play + 1 partie'],
+  rl: ['Jeu à jour, enregistrement des replays activé', 'Réglages caméra vérifiés', 'Vocal 20 min avant', 'Kickoffs revus (tableau blanc)', 'Échauffement : free play + 1 partie'],
   osu: ['Client à jour, skin et réglages prêts', 'Tablette branchée, zone vérifiée (Osurea)', 'Vocal 15 min avant', 'Maps du pool révisées', 'Échauffement : 2 ou 3 maps'],
 };
 const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];

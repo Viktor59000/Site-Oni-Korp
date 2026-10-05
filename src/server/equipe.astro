@@ -285,7 +285,7 @@ const date = (ms: number) => new Date(Number(ms));
   .eq-cands span { color: var(--muted); font-size: var(--step--1); }
   @media (max-width: 640px) { .eq-staff { grid-template-columns: 1fr; } }
   .eq-login { max-width: 42rem; display: grid; gap: 1.25rem; justify-items: start; }
-  .eq-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: color-mix(in srgb, var(--lacquer) 10%, transparent); }
+  .eq-alert { border-left: 4px solid var(--lacquer); padding: .6rem 1rem; background: var(--qg-surface); }
   .eq-note, .eq-empty { color: var(--muted); font-size: var(--step--1); }
   .eq-jump { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: -1.5rem; }
   .eq-jump a { padding: .4rem .9rem; border: 1.5px solid var(--line); border-left: 4px solid var(--team); font-weight: 700; color: var(--ink); text-decoration: none; }
@@ -293,7 +293,7 @@ const date = (ms: number) => new Date(Number(ms));
 
   .eq-roster { border-top: 4px solid var(--team); padding-top: 1.5rem; scroll-margin-top: 90px; }
   .eq-roster__head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-  .eq-roster__head > img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; }
+  .eq-roster__head > img { width: 72px; height: 72px; object-fit: cover; border-radius: 0; }
   .eq-roster__head h2 { font-size: var(--step-2); line-height: 1; }
   .eq-roster__head p { color: var(--muted); font-size: var(--step--1); padding-top: .3rem; }
   .eq-faces { display: flex; margin-left: auto; }
@@ -335,7 +335,7 @@ const date = (ms: number) => new Date(Number(ms));
   .eq-count { font-size: var(--step--1); color: var(--muted); margin-right: .25rem; }
   .eq-count b { color: var(--ink); }
   .eq-chips { display: contents; }
-  .eq-chips li { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem .15rem .2rem; border-radius: 999px; font-size: .82rem; border: 1.5px solid var(--line); }
+  .eq-chips li { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem .15rem .2rem; border-radius: 0; font-size: .82rem; border: 1.5px solid var(--line); }
   .eq-chips img { border-radius: 50%; }
   .eq-chips small { color: var(--muted); }
   .eq-chips.is-ok li { border-color: #1f8f55; }
