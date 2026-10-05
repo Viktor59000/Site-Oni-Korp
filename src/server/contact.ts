@@ -11,7 +11,11 @@ export const POST: APIRoute = async ({ request, redirect, clientAddress }) => {
   const s = (k: string, max: number) => String(f.get(k) ?? '').trim().slice(0, max);
   if (s('site', 10)) return redirect('/contact/?envoye=1'); // champ piège rempli : robot, on ne dit rien
   const type = TYPES.includes(s('type', 20)) ? s('type', 20) : 'autre';
-  const name = s('nom', 120), reply = s('reponse', 200), message = s('message', 2000);
+  const name = s('nom', 120), reply = s('reponse', 200);
+  // Match amical ou scrim : les champs du match passent en tête du message relayé au staff
+  const fiche = type === 'scrim' ? [['Jeu', s('jeu', 40)], ['Type', s('format', 40)], ['Niveau', s('niveau', 80)], ['Dispos', s('dispos', 120)], ['Lien', s('lien', 200)]]
+    .filter(([, v]) => v).map(([k, v]) => `**${k}** : ${v}`).join('\n') : '';
+  const message = [fiche, s('message', 2000)].filter(Boolean).join('\n\n');
   if (!name || reply.length < 3 || message.length < 10) return redirect(`/contact/?erreur=champs&type=${type}`);
 
   const ip = createHash('sha256').update(`${clientAddress ?? ''}${process.env.SESSION_SECRET ?? ''}`).digest('hex').slice(0, 24);

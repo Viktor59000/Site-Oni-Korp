@@ -10,6 +10,7 @@ import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import { existsSync } from 'node:fs';
+import site from '../data/site.json';
 const { qg = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert." } = Astro.props;
 // Image d'aperçu propre à la page (public/og/<page>.jpg, générée par scripts/og.mjs), sinon celle du club
 const section = Astro.url.pathname.split('/')[1];

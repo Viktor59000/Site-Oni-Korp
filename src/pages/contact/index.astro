@@ -37,6 +37,16 @@ const TYPES = [
         </fieldset>
         <label class="ct-field">Ton nom ou celui de ta structure<input name="nom" required maxlength="120" autocomplete="organization" /></label>
         <label class="ct-field">Comment te répondre<input name="reponse" required maxlength="200" placeholder="E-mail, pseudo Discord ou X" autocomplete="email" /></label>
+        <fieldset class="ct-match" data-match hidden>
+          <legend>Le match</legend>
+          <label class="ct-field">Jeu
+            <select name="jeu"><option value="">Choisir</option><option>Rocket League</option><option>League of Legends</option><option>Valorant</option><option>osu!</option></select>
+          </label>
+          <label class="ct-field">Type<select name="format"><option>Showmatch (casté, en public)</option><option>Scrim (entraînement)</option><option>Les deux</option></select></label>
+          <label class="ct-field">Niveau de ton équipe<input name="niveau" maxlength="80" placeholder="Rang moyen, division, ligue…" /></label>
+          <label class="ct-field">Tes disponibilités<input name="dispos" maxlength="120" placeholder="Ex. mercredi et dimanche soir, à partir de 20 h" /></label>
+          <label class="ct-field">Lien de ton équipe (facultatif)<input name="lien" maxlength="200" placeholder="Discord, X, page de ligue…" inputmode="url" /></label>
+        </fieldset>
         <label class="ct-field">Message<textarea name="message" required minlength="10" maxlength="2000" rows="6"></textarea></label>
         <label class="ct-trap" aria-hidden="true">Ne pas remplir<input name="site" tabindex="-1" autocomplete="off" /></label>
         <button class="btn">Envoyer</button>
@@ -56,6 +66,10 @@ const TYPES = [
   if (err) document.querySelector<HTMLElement>(`[data-err="${CSS.escape(err)}"]`)?.removeAttribute('hidden');
   const type = q.get('type');
   if (type) document.querySelector<HTMLInputElement>(`input[name="type"][value="${CSS.escape(type)}"]`)?.click();
+  // Match amical ou scrim : les infos du match en champs à part (le staff reçoit tout, prêt à répondre)
+  const match = document.querySelector<HTMLElement>('[data-match]')!;
+  const sync = () => { match.hidden = document.querySelector<HTMLInputElement>('input[name="type"]:checked')?.value !== 'scrim'; };
+  document.querySelectorAll('input[name="type"]').forEach((el) => el.addEventListener('change', sync)); sync();
 </script>
 
 <style>
@@ -72,6 +86,10 @@ const TYPES = [
   .ct-types input { margin-top: .25rem; accent-color: var(--lacquer); }
   .ct-types span { display: grid; gap: .2rem; }
   .ct-types small { color: var(--muted); font-size: var(--step--1); }
+  .ct-match { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; border: 1.5px solid var(--line); padding: 1rem; margin: 0; }
+  .ct-match[hidden] { display: none; }
+  .ct-match legend { font-weight: 700; padding: 0 .4rem; }
+  .ct-field select { width: 100%; min-height: 44px; padding: .6rem .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
   .ct-field { display: grid; gap: .4rem; font-weight: 700; }
   .ct-field input, .ct-field textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: .6rem .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
   .ct-field :is(input, textarea):focus-visible { outline: 3px solid var(--lacquer-hi); outline-offset: 0; }
