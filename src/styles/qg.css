@@ -268,3 +268,51 @@ body.qg :is(.ac-start .is-done a, .ac-todo .is-done a) { border-left-color: var(
 body.qg :is(.ac-start a, .ac-todo a):hover { background: var(--qg-sunken); }
 /* Cartes de choix du roster : images carrées, titre resserré */
 body.qg .ac-pick__card span { font-family: var(--qg-title); font-weight: 600; }
+
+/* ==========================================================
+   Hiérarchie (v2) : trois niveaux nets
+   1. titre de page (resserré, grand), sans filet : il respire ;
+   2. titres de section (resserrés, moyens), qui ouvrent leur section par un filet d'encre ;
+   3. contenu (Plex 15-16 px) et méta (mono, petit).
+   ========================================================== */
+/* Navigation : resserrée, sans ascenseur visible au milieu de l'écran */
+.qg-nav { padding-top: var(--space-4); padding-bottom: var(--space-4); scrollbar-width: none; }
+.qg-nav::-webkit-scrollbar { display: none; }
+.qg-group { margin-bottom: var(--space-4); }
+.qg-group p { margin-bottom: var(--space-1); padding-bottom: var(--space-1); }
+.qg-group a { padding: .3rem var(--space-3); }
+/* 1. Titre de page */
+.qg-head { border-bottom: 0; padding-bottom: 0; margin-bottom: var(--space-6); }
+.qg-head h1 { font-size: clamp(2.25rem, 4.2vw, 3.25rem); }
+.qg-lead { font-size: var(--text-md); max-width: 60ch; }
+/* 2. Titres de section : tous les outils */
+body.qg .qg-main :is(section > h2, .ov-block h2, .pf-h, [class$="-h"], .ac-card > h2, .ac-start > h2) {
+  font: 600 1.375rem / 1.1 var(--qg-title) !important; letter-spacing: -.01em; color: var(--qg-ink);
+  padding-bottom: var(--space-2); margin-bottom: var(--space-4); border-bottom: var(--rule) solid var(--qg-ink) !important;
+}
+body.qg .qg-main :is(.ov-block, .pf-deb, .pf-cols > *, .ov-cols > *) { margin-top: var(--space-6); }
+body.qg .qg-main .ov-cols { gap: var(--space-6); }
+/* Message calme (« rien à signaler ») : même voix que les états vides, sans boîte */
+body.qg :is(.ov-calm) { color: var(--qg-muted); font: 500 var(--text-xs) / 1.6 var(--qg-mono); max-width: 60ch; }
+body.qg :is(.ov-calm) code { font: inherit; color: var(--qg-ink); }
+
+/* ---------- Profil ---------- */
+/* Liens vers les trackers : un répertoire de raccourcis, pas une ligne de liens rouges */
+body.qg .pf-links { gap: var(--space-2) !important; align-content: start; }
+body.qg .pf-links a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 var(--space-3); border: var(--hair) solid var(--qg-rule-strong); color: var(--qg-ink) !important;
+  font: 500 var(--text-2xs) / 1 var(--qg-mono); letter-spacing: .06em; text-transform: uppercase; text-decoration: none; }
+body.qg .pf-links a::after { content: " ↗"; margin-left: .3em; color: var(--qg-faint); }
+body.qg .pf-links a:hover { border-color: var(--qg-ink); background: var(--qg-surface); }
+/* Un jeu = une colonne ouverte par le trait de sa couleur, pas une carte */
+body.qg .pf-games { gap: var(--space-6); }
+body.qg .pf-game { border: 0 !important; border-top: var(--mark) solid var(--g) !important; padding: var(--space-3) 0 0 !important; background: transparent !important; }
+body.qg .pf-game h2 { font: 500 var(--text-2xs) / 1.35 var(--qg-mono) !important; letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); border: 0 !important; padding: 0 !important; margin: 0 !important; }
+body.qg .pf-rank { font: 600 1.6rem / 1.05 var(--qg-title); letter-spacing: -.01em; }
+body.qg .pf-game dl { border-top: var(--hair) solid var(--qg-rule); padding-top: var(--space-3); }
+body.qg .pf-game dt { font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; }
+body.qg .pf-game dd { font: 600 1.25rem / 1.2 var(--qg-title); }
+body.qg :is(.pf-ih b, .pf-deb__list b, .pf-kpis b) { font-family: var(--qg-title); font-weight: 600; }
+body.qg .pf-goals li { border: 0; border-bottom: var(--hair) solid var(--qg-rule); padding: var(--space-3) 0; }
+
+/* ---------- Calendrier ---------- */
+body.qg :is(.ca-day) { border-color: var(--qg-rule) !important; }
