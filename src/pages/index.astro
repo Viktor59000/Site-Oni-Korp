@@ -24,6 +24,19 @@ import { album } from '../lib/album.js';
     </div>
   </section>
 
+  <section class="section home-live" aria-labelledby="live-title" data-home-live hidden>
+    <div class="wrap">
+      <div class="section__head section__head--row">
+        <h2 id="live-title"><span class="home-live__dot" aria-hidden="true"></span><span data-live-title>En direct.</span></h2>
+        <a class="btn btn--ghost" href="/createurs/">Nos créateurs</a>
+      </div>
+      <div class="home-live__grid">
+        <div class="home-live__player" data-live-player></div>
+        <ul class="home-live__others" data-live-others></ul>
+      </div>
+    </div>
+  </section>
+
   <section class="section section--red section--brush" aria-labelledby="today-title">
     <div class="wrap today">
       <div>
@@ -114,6 +127,35 @@ import { album } from '../lib/album.js';
 </Base>
 
 <script>
+  // En direct : le live du club passe en premier (lecteur Twitch intégré), les autres créateurs en dessous
+  type L = { titre: string; lien: string; image: string | null; jeu: string | null; club: boolean; chaine: string | null };
+  fetch('/api/feed').then((r) => (r.ok ? r.json() : null)).then((d: { live: L[] } | null) => {
+    const lives = d?.live ?? []; if (!lives.length) return;
+    const [main, ...others] = lives;
+    const section = document.querySelector<HTMLElement>('[data-home-live]')!;
+    if (main.club) section.classList.add('home-live--club');
+    document.querySelector('[data-live-title]')!.textContent = main.club ? 'Oni Korp est en direct.' : 'En direct chez nos créateurs.';
+    const box = document.querySelector<HTMLElement>('[data-live-player]')!;
+    if (main.chaine) {
+      const f = document.createElement('iframe');
+      f.src = `https://player.twitch.tv/?channel=${encodeURIComponent(main.chaine)}&parent=${location.hostname}&muted=true&autoplay=false`;
+      f.title = `Live Twitch : ${main.titre}`; f.allowFullscreen = true; f.loading = 'lazy';
+      box.append(f);
+    }
+    const cap = document.createElement('a'); cap.className = 'home-live__cap'; cap.href = main.lien; cap.rel = 'noopener';
+    const t = document.createElement('strong'); t.textContent = main.titre;
+    const g = document.createElement('span'); g.textContent = main.jeu ? `${main.jeu} · regarder sur Twitch` : 'Regarder sur Twitch';
+    cap.append(t, g); box.append(cap);
+    const ul = document.querySelector<HTMLElement>('[data-live-others]')!;
+    for (const o of others) {
+      const li = document.createElement('li'); const a = document.createElement('a'); a.href = o.lien; a.rel = 'noopener';
+      if (o.image) { const img = document.createElement('img'); img.src = o.image; img.alt = ''; img.width = 320; img.height = 180; img.loading = 'lazy'; a.append(img); }
+      const tt = document.createElement('span'); tt.textContent = o.titre; a.append(tt); li.append(a); ul.append(li);
+    }
+    if (!others.length) ul.remove();
+    section.hidden = false;
+  }).catch(() => {});
+
   // Membres et personnes en ligne sur le Discord (relevés par Oni Bot toutes les 10 minutes)
   fetch('/api/club').then((r) => (r.ok ? r.json() : null)).then((d) => {
     const n = d?.discord; if (!n?.membres) return;
@@ -140,6 +182,23 @@ import { album } from '../lib/album.js';
 </script>
 
 <style>
+  .home-live { padding-block: clamp(2rem, 5vw, 3.5rem); }
+  .home-live h2 { display: flex; align-items: center; gap: .7rem; }
+  .home-live__dot { width: .7em; height: .7em; border-radius: 50%; background: #9146ff; box-shadow: 0 0 0 0 #9146ff88; animation: live-pulse 1.6s infinite; flex: none; }
+  .home-live--club .home-live__dot { background: var(--lacquer); box-shadow: 0 0 0 0 color-mix(in srgb, var(--lacquer) 55%, transparent); }
+  @keyframes live-pulse { 70% { box-shadow: 0 0 0 .6em transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  @media (prefers-reduced-motion: reduce) { .home-live__dot { animation: none; } }
+  .home-live__grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+  .home-live__grid:has(.home-live__others:empty), .home-live__grid:not(:has(.home-live__others)) { grid-template-columns: minmax(0, 1fr); }
+  .home-live__player { display: grid; gap: .75rem; }
+  .home-live__player :global(iframe) { width: 100%; aspect-ratio: 16 / 9; border: 0; background: #000; display: block; }
+  .home-live--club .home-live__player :global(iframe) { outline: 3px solid var(--lacquer); outline-offset: 4px; }
+  .home-live__player :global(.home-live__cap) { display: grid; gap: .2rem; color: var(--ink); }
+  .home-live__player :global(.home-live__cap span) { color: var(--muted); font-size: var(--step--1); }
+  .home-live__others { display: grid; gap: 1rem; }
+  .home-live__others :global(a) { display: grid; gap: .4rem; color: var(--ink); font-weight: 700; }
+  .home-live__others :global(img) { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+  @media (max-width: 860px) { .home-live__grid { grid-template-columns: minmax(0, 1fr); } }
   .home-ih__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: center; }
   .home-ih__img { width: 100%; height: auto; display: block; }
   .home-ih h2 { font-size: var(--step-3); }
