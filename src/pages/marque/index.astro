@@ -1,0 +1,319 @@
+---
+// Kit de marque : comment utiliser le logo (versions, construction, zone de protection, couleurs, typos, interdits)
+// et le style des illustrations. Fichiers dans public/marque/ (SVG + pack zip).
+import Base from '../../layouts/Base.astro';
+
+// Construction mesurée sur oni-symbole-sans-cornes (viewBox 256) : blason de 19 × 20 modules
+import { readFileSync } from 'node:fs';
+// Tracé du blason inséré tel quel (même repère que la grille)
+const BLASON = [...readFileSync('public/marque/oni-symbole-sans-cornes-noir.svg', 'utf8').matchAll(/<path[^>]*\/>/g)].map((m) => m[0]).join('');
+const M = 216.2 / 19;
+const X0 = 19.8, Y0 = 14;
+const cols = Array.from({ length: 20 }, (_, i) => X0 + i * M);
+const rows = Array.from({ length: 21 }, (_, i) => Y0 + i * M);
+
+const versions = [
+  { file: 'oni-symbole-rouge', bg: '#0a0a0a', label: 'Principale', note: 'Vermillon sur noir' },
+  { file: 'oni-symbole-blanc', bg: '#E5251F', label: 'Avatar, icône', note: 'Blanc sur vermillon' },
+  { file: 'oni-symbole-noir', bg: '#f3f1ec', label: 'Fond clair', note: 'Noir sur washi' },
+  { file: 'oni-symbole-blanc', bg: '#0a0a0a', label: 'Une couleur', note: 'Blanc sur noir ou photo sombre' },
+];
+const lockups = [
+  { file: 'oni-korp-horizontal-noir', label: 'Horizontal', note: 'En-têtes, bannières, documents', w: 1044, h: 256 },
+  { file: 'oni-korp-pile-noir', label: 'Empilé', note: 'Affiches, dos de maillot, formats carrés', w: 256, h: 329 },
+  { file: 'oni-korp-logotype-noir', label: 'Logotype', note: 'Le nom seul', w: 0, h: 0 },
+  { file: 'oni-symbole-sans-cornes-noir', label: 'Sans cornes', note: 'Sous 48 px, broderie, favicon', w: 256, h: 256 },
+];
+const colors = [
+  { name: 'Vermillon', hex: '#E5251F', rgb: '229, 37, 31', use: 'Couleur de marque, le logo' },
+  { name: 'Encre', hex: '#0A0A0A', rgb: '10, 10, 10', use: 'Fonds sombres, texte' },
+  { name: 'Washi', hex: '#F3F1EC', rgb: '243, 241, 236', use: 'Fonds clairs, papier des illustrations' },
+  { name: 'Blanc', hex: '#FFFFFF', rgb: '255, 255, 255', use: 'Logo sur vermillon ou sur fond sombre' },
+];
+const poles = [
+  { name: 'Rocket League · Gamma', hex: '#1450D6' },
+  { name: 'Rocket League · Epsilon', hex: '#FF7A18' },
+  { name: 'League of Legends', hex: '#0F8A9B' },
+  { name: 'Valorant', hex: '#FF4655' },
+  { name: 'osu!', hex: '#FF66AA' },
+];
+const donts = [
+  ['dont-stretch', 'Déformer'],
+  ['dont-rotate', 'Incliner'],
+  ['dont-gradient', 'Dégradé'],
+  ['dont-shadow', 'Ombre ou contour'],
+  ['dont-color', 'Couleur hors palette'],
+  ['dont-red', 'Vermillon sur vermillon'],
+  ['dont-busy', 'Fond chargé'],
+  ['dont-crop', 'Couper ou recadrer'],
+];
+const styleRules = [
+  ['Quatre encres', 'Papier washi, noir, vermillon et une seule couleur d’accent (celle du pôle). Rien d’autre.'],
+  ['Affiche sérigraphiée', 'Traits d’encre épais, trame de points dans les ombres, grain du papier, petites éclaboussures. Jamais de vectoriel lisse ni de 3D.'],
+  ['Visage masqué', 'Chaque personne porte son propre masque oni : on la reconnaît au masque, jamais au visage.'],
+  ['Un symbole géant', 'Derrière le personnage, un objet qui le raconte (métronome, cristal, guitare…), coupé par le cadre.'],
+  ['Du vide', 'Au moins un tiers de papier libre. Le vermillon reste en petits détails, la couleur du pôle domine.'],
+];
+---
+<Base title="Kit de marque" description="Logo Oni Korp : versions, construction, zone de protection, couleurs, typographies, interdits et style d'illustration. Fichiers SVG à télécharger.">
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Kit de marque</h1>
+      <p>Le logo, ses règles et nos couleurs. Pour un visuel, un article, une affiche ou un maillot.</p>
+      <div class="mk-actions">
+        <a class="btn" href="/marque/oni-korp-logos.zip" download>Télécharger les logos (SVG et PNG)</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section" aria-labelledby="mk-logo">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="mk-logo">Le logo.</h2>
+        <p>Le blason est le mot ONI : le N dessine le blason d’un seul trait, le O se loge à gauche, le I à droite, et deux cornes coiffent l’ensemble. Il s’utilise toujours en une seule couleur pleine.</p>
+      </div>
+      <ul class="mk-versions">
+        {versions.map((v) => (
+          <li>
+            <div class="mk-tile" style={`background:${v.bg}`}><img src={`/marque/${v.file}.svg`} alt="" width="120" height="120" loading="lazy" /></div>
+            <p><strong>{v.label}</strong>{v.note}</p>
+          </li>
+        ))}
+      </ul>
+      <ul class="mk-lockups">
+        {lockups.map((l) => (
+          <li>
+            <div class="mk-tile mk-tile--light"><img src={`/marque/${l.file}.svg`} alt="" loading="lazy" /></div>
+            <p><strong>{l.label}</strong>{l.note}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="mk-build">
+    <div class="wrap mk-split">
+      <div>
+        <div class="section__head">
+          <h2 id="mk-build">Construction.</h2>
+          <p>Tout est calé sur un module <strong>M</strong>. Le blason mesure 19 × 20 modules.</p>
+        </div>
+        <table class="mk-table">
+          <tbody>
+            <tr><th scope="row">Espaces entre les traits</th><td>1 M</td></tr>
+            <tr><th scope="row">Traits horizontaux</th><td>2 M</td></tr>
+            <tr><th scope="row">Jambages, O et I</th><td>3 M</td></tr>
+            <tr><th scope="row">Largeur × hauteur</th><td>19 × 20 M</td></tr>
+            <tr><th scope="row">Flèche de l’arc du haut</th><td>1 M</td></tr>
+            <tr><th scope="row">Arrondi des épaules</th><td>2 M</td></tr>
+            <tr><th scope="row">Pans du bas</th><td>30°, pointe dans l’axe</td></tr>
+            <tr><th scope="row">Cornes</th><td>symétrie exacte</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure class="mk-grid">
+        <svg viewBox="0 0 256 256" role="img" aria-label="Le blason posé sur sa grille de 19 par 20 modules">
+          <g class="mk-grid__logo" set:html={BLASON} />
+          <g class="mk-grid__lines">
+            {cols.map((x) => <line x1={x} y1={Y0} x2={x} y2={Y0 + 20 * M} />)}
+            {rows.map((y) => <line x1={X0} y1={y} x2={X0 + 19 * M} y2={y} />)}
+          </g>
+          <rect class="mk-grid__m" x={X0} y={Y0} width={M} height={M} />
+        </svg>
+        <figcaption><span class="mk-m" aria-hidden="true"></span> 1 module</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="mk-space">
+    <div class="wrap mk-split">
+      <figure class="mk-clear">
+        <div class="mk-clear__zone"><img src="/marque/oni-symbole-rouge.svg" alt="" width="200" height="200" loading="lazy" /></div>
+        <figcaption>Zone libre : 2 M tout autour (environ un dixième de la largeur du blason)</figcaption>
+      </figure>
+      <div>
+        <div class="section__head">
+          <h2 id="mk-space">Espace et tailles.</h2>
+          <p>Le logo a besoin d’air : rien ne doit entrer dans sa zone de protection, ni texte, ni bord, ni autre logo.</p>
+        </div>
+        <ul class="mk-sizes">
+          <li><b>24 px</b> de haut minimum à l’écran. En dessous, version <strong>sans cornes</strong>.</li>
+          <li><b>12 mm</b> minimum en impression.</li>
+          <li><b>15 mm</b> minimum en broderie, toujours sans cornes.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="mk-colors">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="mk-colors">Couleurs.</h2>
+        <p>Le logo vit en vermillon, noir ou blanc. Les couleurs de pôle servent aux illustrations et aux visuels de jeu, jamais au logo.</p>
+      </div>
+      <ul class="mk-colors">
+        {colors.map((c) => (
+          <li>
+            <span class="mk-chip" style={`background:${c.hex}`}></span>
+            <p><strong>{c.name}</strong><code>{c.hex}</code><small>RVB {c.rgb}</small><span>{c.use}</span></p>
+          </li>
+        ))}
+      </ul>
+      <h3 class="mk-sub">Couleurs de pôle</h3>
+      <ul class="mk-poles">
+        {poles.map((p) => <li><span class="mk-chip mk-chip--sm" style={`background:${p.hex}`}></span><span>{p.name}</span><code>{p.hex}</code></li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="mk-type">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="mk-type">Typographies.</h2>
+        <p>Deux polices libres (licence SIL Open Font), utilisables partout, logo compris.</p>
+      </div>
+      <div class="mk-type">
+        <div>
+          <p class="mk-type__sample mk-type__sample--display">ONI KORP</p>
+          <p><strong>Dela Gothic One</strong> · titres, le nom du club, les chiffres forts.</p>
+        </div>
+        <div>
+          <p class="mk-type__sample">Oni’s never on knees. Le club joue, caste et grandit.</p>
+          <p><strong>Zen Kaku Gothic New</strong> · tous les textes, en 400 et 700.</p>
+        </div>
+      </div>
+      <p class="mk-name">On écrit <strong translate="no">Oni Korp</strong>, en deux mots, avec deux majuscules. Jamais « OniKorp » ni « Oni Corp ».</p>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="mk-donts">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="mk-donts">À ne pas faire.</h2>
+        <p>Le logo ne se modifie pas. Si un fond ne marche pas, on change de version, pas de logo.</p>
+      </div>
+      <ul class="mk-donts">
+        {donts.map(([k, l]) => (
+          <li>
+            <div class={`mk-tile mk-tile--dont ${k}`} aria-hidden="true"><span class="mk-logo-wrap"><span class="mk-logo"></span></span></div>
+            <p>{l}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="mk-art">
+    <div class="wrap mk-split">
+      <div>
+        <div class="section__head">
+          <h2 id="mk-art">Style d’illustration.</h2>
+          <p>Les vignettes de l’album fixent le style de tous nos visuels illustrés.</p>
+        </div>
+        <ol class="mk-rules">
+          {styleRules.map(([t, d]) => <li><strong>{t}</strong>{d}</li>)}
+        </ol>
+      </div>
+      <ul class="mk-cards">
+        {['rl-gamma-2', 'lol-jungle', 'staff-fondateur-4'].map((c) => (
+          <li><picture><source type="image/avif" srcset={`/img/cartes/${c}-sm.avif`} /><img src={`/img/cartes/${c}-sm.webp`} alt="" width="300" height="450" loading="lazy" /></picture></li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section--bone" aria-labelledby="mk-files">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 id="mk-files">Fichiers.</h2>
+        <p>Chaque version existe en vermillon, noir et blanc. Le pack contient aussi les icônes PNG.</p>
+      </div>
+      <ul class="mk-files">
+        {['oni-symbole', 'oni-symbole-sans-cornes', 'oni-korp-horizontal', 'oni-korp-pile', 'oni-korp-logotype'].map((f) => (
+          <li><strong>{f.replace(/-/g, ' ')}</strong>{['rouge', 'noir', 'blanc'].map((c) => <a href={`/marque/${f}-${c}.svg`} download>{c === 'rouge' ? 'vermillon' : c}</a>)}</li>
+        ))}
+      </ul>
+      <a class="btn" href="/marque/oni-korp-logos.zip" download>Tout télécharger (zip)</a>
+      <p class="mk-note">Une question, un usage particulier (maillot, partenariat) ? <a href="/contact/">Écris-nous</a>.</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .mk-actions { margin-top: 1.5rem; }
+  .mk-tile { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 4px; padding: 1.5rem; }
+  .mk-tile img { width: auto; height: auto; max-width: 70%; max-height: 70%; }
+  .mk-tile--light { background: #f3f1ec; border: 1px solid var(--line); }
+  .mk-versions, .mk-lockups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1.25rem; }
+  .mk-lockups { margin-top: 1.25rem; }
+  .mk-lockups .mk-tile img { max-width: 80%; max-height: 55%; }
+  .mk-versions p, .mk-lockups p, .mk-donts p { display: grid; gap: .15rem; margin-top: .6rem; color: var(--muted); font-size: .95rem; }
+  .mk-versions strong, .mk-lockups strong { color: var(--ink); }
+
+  .mk-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+  .mk-table { width: 100%; border-collapse: collapse; }
+  .mk-table th, .mk-table td { padding: .6rem 0; border-bottom: 1px solid var(--line); text-align: left; }
+  .mk-table th { font-weight: 400; color: var(--muted); }
+  .mk-table td { font-weight: 700; text-align: right; }
+  .mk-grid { margin: 0; }
+  .mk-grid svg { width: 100%; max-width: 30rem; display: block; margin-inline: auto; background: #fff; border: 1px solid var(--line); }
+  .mk-grid__logo { fill: #0a0a0a; opacity: .9; }
+  .mk-grid__lines line { stroke: #e5251f; stroke-width: .35; opacity: .55; }
+  .mk-grid__m { fill: rgb(229 37 31 / .35); stroke: #e5251f; stroke-width: .6; }
+  .mk-grid figcaption { display: flex; align-items: center; gap: .5rem; justify-content: center; margin-top: .75rem; color: var(--muted); font-size: .95rem; }
+  .mk-m { width: 1rem; height: 1rem; background: rgb(229 37 31 / .35); border: 1px solid #e5251f; }
+
+  .mk-clear { margin: 0; }
+  .mk-clear__zone { display: grid; place-items: center; background: #0a0a0a; padding: 3rem; max-width: 26rem; margin-inline: auto; }
+  .mk-clear__zone img { width: 100%; max-width: 15rem; height: auto; outline: 2px dashed rgb(255 255 255 / .55); outline-offset: 1.6rem; }
+  .mk-clear figcaption { text-align: center; color: var(--muted); font-size: .95rem; margin-top: .75rem; }
+  .mk-sizes { display: grid; gap: .9rem; padding: 0; list-style: none; }
+  .mk-sizes b { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; margin-right: .35rem; }
+
+  .mk-colors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1.25rem; }
+  .mk-colors p { display: grid; gap: .1rem; margin-top: .6rem; }
+  .mk-colors code, .mk-poles code { font-size: .9rem; }
+  .mk-colors small, .mk-colors span:not(.mk-chip) { color: var(--muted); font-size: .9rem; }
+  .mk-chip { display: block; aspect-ratio: 16 / 9; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line); }
+  .mk-chip--sm { width: 2.5rem; aspect-ratio: 1; flex: none; }
+  .mk-sub { font-size: var(--step-1); margin: 3rem 0 1rem; }
+  .mk-poles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .75rem 1.5rem; }
+  .mk-poles li { display: flex; align-items: center; gap: .75rem; }
+  .mk-poles code { margin-left: auto; color: var(--muted); }
+
+  .mk-type { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 2rem; }
+  .mk-type > div { padding: 1.5rem; border: 1px solid var(--line); border-radius: 4px; }
+  .mk-type__sample { font-size: 1.6rem; line-height: 1.25; margin-bottom: 1rem; }
+  .mk-type__sample--display { font-family: var(--font-display); font-size: clamp(2.5rem, 7vw, 4rem); line-height: 1; }
+  .mk-type p:last-child { color: var(--muted); }
+  .mk-name { margin-top: 1.5rem; color: var(--muted); }
+
+  .mk-donts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); gap: 1.25rem; }
+  .mk-tile--dont { position: relative; overflow: hidden; background: #f3f1ec; border: 1px solid var(--line); }
+  .mk-tile--dont::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top right, transparent calc(50% - 2px), #e5251f calc(50% - 2px), #e5251f calc(50% + 2px), transparent calc(50% + 2px)); }
+  .mk-logo { display: block; width: 45%; aspect-ratio: 1; background: #e5251f; -webkit-mask: url('/marque/oni-symbole-noir.svg') center / contain no-repeat; mask: url('/marque/oni-symbole-noir.svg') center / contain no-repeat; }
+  .dont-stretch .mk-logo { transform: scaleX(1.5); }
+  .dont-rotate .mk-logo { transform: rotate(-18deg); }
+  .dont-gradient .mk-logo { background: linear-gradient(135deg, #ffb703, #e5251f 45%, #6a0dad); }
+  .mk-logo-wrap { display: grid; place-items: center; width: 100%; }
+  .dont-shadow .mk-logo-wrap { filter: drop-shadow(5px 5px 0 #0a0a0a) drop-shadow(0 0 1.5px #1450d6) drop-shadow(0 0 1.5px #1450d6); }
+  .dont-color .mk-logo { background: #2fa877; }
+  .dont-red { background: #e5251f; }
+  .dont-red .mk-logo { background: #f0302a; }
+  .dont-busy { background: url('/img/cartes/sp-terrains-4-sm.webp') center / cover; }
+  .dont-crop .mk-logo { width: 90%; transform: translate(30%, 30%); }
+
+  .mk-rules { display: grid; gap: 1rem; padding-left: 1.25rem; }
+  .mk-rules li { color: var(--muted); }
+  .mk-rules strong { display: block; color: var(--ink); }
+  .mk-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+  .mk-cards img { width: 100%; height: auto; display: block; border-radius: 4px; box-shadow: 0 8px 24px var(--shadow); }
+  .mk-cards li:nth-child(2) { translate: 0 1.5rem; }
+
+  .mk-files { display: grid; gap: .5rem; margin-bottom: 2rem; }
+  .mk-files li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .mk-files strong { min-width: 14rem; text-transform: capitalize; }
+  .mk-files a { color: var(--ink); }
+  .mk-note { margin-top: 1.5rem; color: var(--muted); }
+  .mk-note a { color: var(--ink); }
+</style>
