@@ -92,7 +92,7 @@ const debriefs = (await rows<{ data: string; opponent: string; at: number }>(`SE
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 ---
-<Qg title={`${m?.name ?? 'Profil'} · Inside`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => (postes.get(Number(r.id)) ? `${postes.get(Number(r.id))} · ${r.name}` : r.name)).join('  /  ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title={`${m?.name ?? 'Profil'} · Inside`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => (postes.get(Number(r.id)) ? `${postes.get(Number(r.id))} · ${r.name}` : r.name)).join('  /  ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {m?.avatar && <img class="pf-avatar" slot="actions" src={m.avatar} alt="" width="72" height="72" crossorigin="anonymous" referrerpolicy="no-referrer" />}
     <div class="pf">
       <ul class="pf-kpis">

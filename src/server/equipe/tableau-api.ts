@@ -4,7 +4,7 @@
 import type { APIRoute } from 'astro';
 import { sameOrigin } from '../session';
 import { exec, rows } from '../db';
-import { teamUser } from './outils';
+import { canSee, teamUser } from './outils';
 
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 
@@ -18,7 +18,7 @@ async function board(id: number, cookies: Parameters<APIRoute>[0]['cookies']) {
   await ensureBoards();
   const [b] = await rows<{ id: number; roster_id: number; state: string; updated_at: number; updated_by: string; name: string | null }>(
     `SELECT b.id, b.roster_id, b.state, b.updated_at, b.updated_by, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by WHERE b.id = ?`, id);
-  if (!b || !(t.me.staff || t.me.rosterIds.includes(Number(b.roster_id)))) return null;
+  if (!b || !canSee(t.me, b.roster_id)) return null;
   return { t, b };
 }
 

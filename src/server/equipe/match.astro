@@ -3,7 +3,7 @@
 // Infos et horaires (check-in, inscription), compo, fiche de l'adversaire, tableaux blancs, checklist,
 // puis après le match : débrief, stats, replays et VOD.
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { md } from './ui';
 
@@ -12,6 +12,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
+// Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
+const manage = sc.list.some((r) => canLead(me, r.id));
 const q = sc.active ? `r=${sc.active}` : '';
 const ids = sc.list.map((r) => r.id);
 type M = { id: number; roster_id: number; game: string; opponent: string; format: string; at: number; link: string | null; kind: string | null; score_us: number | null; score_them: number | null; lineup: string | null; checkin: number | null; signup_by: number | null; caster: string | null };
@@ -23,7 +25,7 @@ const recent = all.filter((x) => Number(x.at) <= Date.now() - 3 * 3600_000).reve
 const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 const hour = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 const roster = m ? me.rosters.find((r) => Number(r.id) === Number(m.roster_id)) : null;
-const members = roster ? await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${roster.role_id}"%`) : [];
+const members = roster ? await rosterMembers(roster.role_id) : [];
 const lineup = m?.lineup ? JSON.parse(m.lineup) as { titulaires: { id: string; nom: string }[]; remplacant: { id: string; nom: string } | null; coach: { id: string; nom: string } | null } : null;
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '');
 const fiche = m ? (await rows<{ id: number; name: string; plan: string; forces: string; faiblesses: string }>('SELECT id, name, plan, forces, faiblesses FROM opponents WHERE roster_id = ?', m.roster_id).catch(() => [])).find((o) => norm(o.name) === norm(m.opponent)) : null;
@@ -42,7 +44,7 @@ const CHECK: Record<string, string[]> = {
 };
 const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
 ---
-<Qg title="Avant-match · Inside" heading="Avant-match" lead="Compo, adversaire, strats et checklist : tout le match au même endroit." current="match" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Avant-match · Inside" heading="Avant-match" lead="Compo, adversaire, strats et checklist : tout le match au même endroit." current="match" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {!m ? (
       <div class="am-list">
         <section>
@@ -91,7 +93,7 @@ const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
                 {lineup.coach && <li class="is-sub">{lineup.coach.nom} <small>coach</small></li>}
               </ul>
             ) : <p class="eq-note">Pas encore annoncée.</p>}
-            {me.staff && !past && (
+            {canLead(me, m.roster_id) && !past && (
               <details class="am-edit">
                 <summary>{lineup ? 'Modifier la compo' : 'Annoncer la compo'}</summary>
                 <form method="post" action="/api/equipe/outils">

@@ -1,7 +1,7 @@
 ---
 // Joueurs : chacun relie ses comptes de jeu ; le roster voit les profils (op.gg, tracker.gg, osu!) et les rangs quand une clé d'API est configurée.
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { REGIONS, TIERS_FR, links, lolRank, osuStats } from './stats';
 
@@ -18,7 +18,7 @@ const POSTE_ICON: Record<string, string> = { Top: 'lol-top', Jungle: 'lol-jungle
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const sc = scope(me.rosters, Astro.url);
 const rosters = await Promise.all(sc.list.map(async (r) => {
-  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const members = await rosterMembers(r.role_id);
   const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
   const accs = members.length ? await rows<Acc>(`SELECT * FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [];
   const people = await Promise.all(members.map(async (m) => {
@@ -41,7 +41,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
 const jeuParam = Astro.url.searchParams.get('jeu');
 const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 'rl' || jeuParam === 'osu' ? jeuParam : null;
 ---
-<Qg title="Joueurs · Inside" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Joueurs · Inside" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {true && (
     <details class="qg-drawer" slot="actions" open={!!focus}>
       <summary class="btn btn--ghost">Relier mes comptes</summary>

@@ -1,0 +1,100 @@
+---
+// Espace Contenu d'Inside : pour le pôle contenu (casteurs, graphistes, monteurs, CM, créateurs, marketing) et l'encadrement.
+// Ce qui arrive dans le club et ce qu'il faut produire : les matchs à venir de tous les rosters, publics ou non, avec l'état du cast.
+// Pas d'accès aux stratégies ni aux notes des rosters.
+import Qg from './Qg.astro';
+import { teamUser } from './outils';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/planning/');
+const { me, user } = t;
+if (!(me.staff || me.content.length)) return Astro.redirect('/equipe/');
+
+const now = Date.now(), DAY = 86400_000;
+const GAMES: Record<string, { label: string; color: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
+  valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#ff66aa' },
+};
+const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+type M = { id: number; opponent: string; at: number; kind: string | null; format: string | null; caster: string | null; caster_name: string | null; roster: string | null; game: string | null };
+const upcoming = await rows<M>(
+  `SELECT m.id, m.opponent, m.at, m.kind, m.format, m.caster, c.name AS caster_name, r.name AS roster, r.game
+   FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id LEFT JOIN guild_members c ON c.id = m.caster
+   WHERE m.cancelled = 0 AND m.score_us IS NULL AND m.at > ? AND m.at < ? ORDER BY m.at`, now - 3 * 3600_000, now + 30 * DAY).catch(() => [] as M[]);
+const recent = await rows<{ opponent: string; at: number; score_us: number; score_them: number; roster: string | null; game: string | null }>(
+  `SELECT m.opponent, m.at, m.score_us, m.score_them, r.name AS roster, r.game FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id
+   WHERE m.cancelled = 0 AND m.score_us IS NOT NULL AND m.at > ? ORDER BY m.at DESC LIMIT 8`, now - 14 * DAY).catch(() => []);
+const isPublic = (m: { kind: string | null }) => (m.kind ?? 'officiel') !== 'scrim';
+const ROLE_HINT: Record<string, string> = {
+  Casteur: 'Les matchs publics sans casteur sont en tête : prends-en un depuis Discord avec le bouton « Je caste ».',
+  Graphiste: 'Chaque match public demande un visuel d\'annonce et un visuel de résultat.',
+  'Monteur vidéo': 'Les matchs castés donnent la matière des clips et des formats courts.',
+  'Community manager': 'Annonce, rappel le jour J, résultat : trois publications par match public.',
+  'Créateur de contenu': 'Les matchs et les inhouses sont autant de moments à streamer sous les couleurs du club.',
+  'Responsable marketing': 'Les matchs publics sont les moments à proposer aux partenaires (mention, logo sur le visuel).',
+};
+const hints = me.content.map((r) => ROLE_HINT[r]).filter(Boolean);
+---
+<Qg title="Contenu · Inside" heading="Contenu" lead="Ce qui arrive dans le club, et ce qu'il faut produire autour." current="contenu" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  <section class="ct">
+    {me.content.length > 0 && <p class="ct-roles">Ton rôle : {me.content.join(', ')}. {hints.join(' ')}</p>}
+
+    <h2>Matchs à venir <small>30 jours, tous les rosters</small></h2>
+    {upcoming.length ? (
+      <ul class="ct-list">
+        {upcoming.map((m) => {
+          const g = GAMES[m.game ?? ''];
+          return (
+            <li style={`--g:${g?.color ?? 'var(--line)'}`} class:list={{ 'is-open': isPublic(m) && !m.caster }}>
+              <span class="ct-game">{g?.label ?? 'Club'}{m.roster ? ` · ${m.roster}` : ''}</span>
+              <strong>vs {m.opponent}</strong>
+              <span class="ct-when">{fmt.format(new Date(Number(m.at)))}{m.format ? ` · ${m.format}` : ''}</span>
+              <span class="ct-tags">
+                <em>{isPublic(m) ? 'Public' : 'Scrim (pas d\'annonce)'}</em>
+                {isPublic(m) && <em class:list={{ 'is-warn': !m.caster }}>{m.caster ? `Casté par ${m.caster_name ?? 'un casteur'}` : 'Cherche casteur'}</em>}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    ) : <p class="eq-note">Aucun match prévu dans les 30 prochains jours. L'encadrement les ajoute sur Discord avec <code>/match ajouter</code>.</p>}
+
+    <h2>Résultats récents <small>14 jours</small></h2>
+    {recent.length ? (
+      <ul class="ct-list">
+        {recent.map((m) => (
+          <li style={`--g:${GAMES[m.game ?? '']?.color ?? 'var(--line)'}`}>
+            <span class="ct-game">{GAMES[m.game ?? '']?.label ?? 'Club'}{m.roster ? ` · ${m.roster}` : ''}</span>
+            <strong>vs {m.opponent} · {m.score_us}-{m.score_them}</strong>
+            <span class="ct-when">{fmt.format(new Date(Number(m.at)))}</span>
+            <span class="ct-tags"><em class:list={{ 'is-ok': m.score_us > m.score_them }}>{m.score_us > m.score_them ? 'Victoire' : m.score_us < m.score_them ? 'Défaite' : 'Égalité'}</em></span>
+          </li>
+        ))}
+      </ul>
+    ) : <p class="eq-note">Pas de résultat ces 14 derniers jours.</p>}
+
+    <p class="eq-note ct-foot">La charte éditoriale et le kit de marque sont sur <a href="/marque/">la page Marque</a>. Les briefs de match, le calendrier éditorial et les demandes de visuels arrivent ici.</p>
+  </section>
+</Qg>
+
+<style>
+  .ct { display: grid; gap: .75rem; max-width: 60rem; }
+  .ct h2 { margin: 1rem 0 .25rem; font-size: 1.05rem; }
+  .ct h2 small { margin-left: .4rem; font-weight: 400; font-size: .8rem; color: var(--muted); }
+  .ct-roles { margin: 0; padding: .75rem 1rem; border-left: 3px solid var(--lacquer); background: color-mix(in srgb, var(--ink) 4%, transparent); font-size: .9rem; }
+  .ct-list { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+  .ct-list li { display: grid; grid-template-columns: 11rem 1fr auto; grid-template-areas: 'game what tags' 'game when tags'; gap: .1rem 1rem; align-items: center; padding: .6rem .9rem; border-left: 3px solid var(--g); background: color-mix(in srgb, var(--ink) 4%, transparent); transition: background .15s; }
+  .ct-list li:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .ct-list li.is-open { box-shadow: inset 0 0 0 1px #f0a04b; }
+  .ct-game { grid-area: game; color: var(--muted); font-size: .8rem; }
+  .ct-list strong { grid-area: what; }
+  .ct-when { grid-area: when; color: var(--muted); font-size: .8rem; }
+  .ct-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; }
+  .ct-tags em { padding: .1rem .45rem; border: 1px solid var(--line); font-style: normal; font-size: .75rem; }
+  .ct-tags em.is-warn { border-color: #f0a04b; color: #f0a04b; }
+  .ct-tags em.is-ok { border-color: #2fbf71; color: #2fbf71; }
+  .ct-foot { margin-top: 1rem; }
+  @media (max-width: 640px) { .ct-list li { grid-template-columns: 1fr; grid-template-areas: 'game' 'what' 'when' 'tags'; } .ct-tags { justify-content: flex-start; } }
+</style>

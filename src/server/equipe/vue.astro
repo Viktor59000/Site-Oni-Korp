@@ -2,14 +2,16 @@
 // Vue d'ensemble (encadrement) : état du club en un écran. Santé de chaque roster, alertes à traiter,
 // candidatures et messages en attente, état d'Oni Bot. Chaque carte mène à l'environnement du roster.
 import Qg from './Qg.astro';
-import { teamUser } from './outils';
+import { rosterMembers, teamUser } from './outils';
 import { rows } from '../db';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
-if (!me.staff) return Astro.redirect('/equipe/');
+if (!(me.staff || me.games.length)) return Astro.redirect('/equipe/');
+// Responsable d'un jeu : seulement son jeu (rosters, candidatures, recrues, matchs) ; le reste du club est pour l'encadrement
+const mineGame = (g: string | null | undefined) => me.staff || (!!g && me.games.includes(g));
 
 const now = Date.now(), DAY = 86400_000;
 const ago = (ms: number) => { const m = Math.round((now - ms) / 60_000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`; };
@@ -25,28 +27,28 @@ const beat = Number(meta['bot:heartbeat'] ?? 0);
 const botOnline = now - beat < 3 * 60_000;
 const stats = meta['club:stats'] ? JSON.parse(meta['club:stats']) : null;
 const guildId = process.env.DISCORD_GUILD_ID ?? '';
-const tickets = await rows<{ thread_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
-  `SELECT t.thread_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind IN ('joueur', 'staff') ORDER BY t.opened_at`);
+const tickets = (await rows<{ thread_id: string; kind: string; game: string; opened_at: number; name: string | null }>(
+  `SELECT t.thread_id, t.kind, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind IN ('joueur', 'staff') ORDER BY t.opened_at`)).filter((x) => mineGame(x.game));
 // Recrues en parcours d'arrivée (Oni Bot) : comptes, guide, dispos, setup, premier message
-const recruits = await rows<{ user_id: string; game: string | null; started_at: number; name: string | null; acc: number; guide: number; dispo: number; setup: number; msg: number }>(
+const recruits = (await rows<{ user_id: string; game: string | null; started_at: number; name: string | null; acc: number; guide: number; dispo: number; setup: number; msg: number }>(
   `SELECT r.user_id, r.game, r.started_at, g.name,
      EXISTS(SELECT 1 FROM accounts a WHERE a.user_id = r.user_id) AS acc,
      EXISTS(SELECT 1 FROM meta m WHERE m.key = 'guide:' || r.user_id) AS guide,
      EXISTS(SELECT 1 FROM availability v WHERE v.user_id = r.user_id) AS dispo,
      EXISTS(SELECT 1 FROM setups s WHERE s.user_id = r.user_id) AS setup,
      COALESCE((SELECT messages FROM levels l WHERE l.user_id = r.user_id), 0) > 0 AS msg
-   FROM recruits r LEFT JOIN guild_members g ON g.id = r.user_id WHERE r.done_at IS NULL ORDER BY r.started_at`).catch(() => []);
-const support = await rows<{ thread_id: string; game: string; opened_at: number; name: string | null }>(
+   FROM recruits r LEFT JOIN guild_members g ON g.id = r.user_id WHERE r.done_at IS NULL ORDER BY r.started_at`).catch(() => [])).filter((x) => mineGame(x.game));
+const support = !me.staff ? [] : await rows<{ thread_id: string; game: string; opened_at: number; name: string | null }>(
   `SELECT t.thread_id, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind = 'support' ORDER BY t.opened_at`);
 const MOTIF: Record<string, string> = { question: 'Question', probleme: 'Problème avec un membre', partenariat: 'Partenariat', bot: 'Bot ou site', autre: 'Autre' };
-const [contacts] = await rows<{ n: number }>(`SELECT COUNT(*) AS n FROM contacts WHERE status = 'nouveau'`);
-const upcoming = await rows<{ id: number; opponent: string; at: number; kind: string | null; caster: string | null; signup_by: number | null; roster: string | null }>(
-  `SELECT m.id, m.opponent, m.at, m.kind, m.caster, m.signup_by, r.name AS roster FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id
-   WHERE m.cancelled = 0 AND m.score_us IS NULL AND m.at > ? AND m.at < ? ORDER BY m.at`, now, now + 21 * DAY);
+const [contacts] = me.staff ? await rows<{ n: number }>(`SELECT COUNT(*) AS n FROM contacts WHERE status = 'nouveau'`) : [{ n: 0 }];
+const upcoming = (await rows<{ id: number; opponent: string; at: number; kind: string | null; caster: string | null; signup_by: number | null; roster: string | null; game: string | null }>(
+  `SELECT m.id, m.opponent, m.at, m.kind, m.caster, m.signup_by, r.name AS roster, r.game FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id
+   WHERE m.cancelled = 0 AND m.score_us IS NULL AND m.at > ? AND m.at < ? ORDER BY m.at`, now, now + 21 * DAY)).filter((x) => mineGame(x.game));
 
 // Rosters
 const cards = await Promise.all(me.rosters.map(async (r) => {
-  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const members = await rosterMembers(r.role_id);
   const [next] = await rows<{ id: number; at: number; kind: string }>('SELECT id, at, kind FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 1', r.id, now);
   const nextAnswers = next ? (await rows<{ n: number }>('SELECT COUNT(*) AS n FROM attendance WHERE training_id = ?', next.id))[0] : null;
   const [week] = await rows<{ n: number }>('SELECT COUNT(*) AS n FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at BETWEEN ? AND ?', r.id, now, now + 7 * DAY);
@@ -73,7 +75,7 @@ const cards = await Promise.all(me.rosters.map(async (r) => {
 // Alertes club
 // Deux niveaux : « urgent » (bloque le club ou une échéance proche), « à faire » (action sans urgence)
 const clubAlerts: [string, 'urgent' | 'action'][] = [];
-if (!botOnline) clubAlerts.push([beat ? `Oni Bot hors ligne depuis ${ago(beat)} : rappels et annonces en pause` : 'Oni Bot pas encore relié à la base', 'urgent']);
+if (!botOnline && me.staff) clubAlerts.push([beat ? `Oni Bot hors ligne depuis ${ago(beat)} : rappels et annonces en pause` : 'Oni Bot pas encore relié à la base', 'urgent']);
 for (const m of upcoming) {
   if ((m.kind ?? 'officiel') !== 'scrim' && !m.caster) clubAlerts.push([`Pas de casteur pour vs ${m.opponent} (${fmt.format(new Date(Number(m.at)))})`, 'action']);
   if (m.signup_by && Number(m.signup_by) > now && Number(m.signup_by) - now < 3 * DAY) clubAlerts.push([`Inscription à boucler pour vs ${m.opponent} avant ${fmt.format(new Date(Number(m.signup_by)))}`, 'urgent']);
@@ -82,7 +84,7 @@ const oldTickets = tickets.filter((x) => now - Number(x.opened_at) > 3 * DAY);
 if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouverte(s) depuis plus de 3 jours`, 'action']);
 if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, 'action']);
 ---
-<Qg title="Vue d'ensemble · Inside" heading="Vue d'ensemble" lead="Tout le club en un écran : ce qui va, ce qui demande une action." current="vue" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Vue d'ensemble · Inside" heading="Vue d'ensemble" lead="Tout le club en un écran : ce qui va, ce qui demande une action." current="vue" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ov">
       <ul class="ov-kpis">
         <li class:list={{ 'is-ok': botOnline, 'is-ko': !botOnline }}><b>{botOnline ? 'En ligne' : 'Arrêté'}</b><span>Oni Bot {meta['bot:version'] ? `v${meta['bot:version']}` : ''}</span></li>

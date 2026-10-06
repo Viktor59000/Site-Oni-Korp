@@ -5,7 +5,7 @@
 import type { APIRoute } from 'astro';
 import { currentSession, sameOrigin } from '../session';
 import { exec, rows } from '../db';
-import { access } from './access';
+import { access, canSee, canLead } from './access';
 
 /** Ancien format (après-midi / soir), gardé pour la compatibilité. */
 export const SLOTS = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].flatMap((d) => [`${d}-aprem`, `${d}-soir`]);
@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const roster = Number(f.get('roster'));
   const week = String(f.get('week'));
   const me = await access(user.id);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || !(me.staff || me.rosterIds.includes(roster))) return redirect('/equipe/');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || !canSee(me, roster)) return redirect('/equipe/');
   await tables();
   const action = String(f.get('action') ?? 'save');
   const back = `/equipe/planning/?r=${encodeURIComponent(String(f.get('slug') ?? ''))}&sem=${encodeURIComponent(String(f.get('sem') ?? ''))}#dispos-${roster}`;

@@ -37,7 +37,7 @@ const debriefOf = (id: number) => {
 const ROLE: Record<string, string> = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
 const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', imprecision: '⚠️', gaffe: '❌' };
 ---
-<Qg title="Notes de match · Inside" heading="Notes de match" lead="Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster." current="notes" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Notes de match · Inside" heading="Notes de match" lead="Le débrief à chaud : ce qui a marché, ce qu'on travaille. Visible par ton roster." current="notes" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="nt">
       {!matches.length && <p class="nt-empty">Pas encore de match joué ces quatre derniers mois. Dès qu'un match ou un scrim de ton roster est passé (<code>/match ajouter</code> sur Discord), il apparaît ici pour le débrief.</p>}
       {matches.map((m) => {

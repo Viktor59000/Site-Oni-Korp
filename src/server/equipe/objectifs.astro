@@ -2,7 +2,7 @@
 // Objectifs : l'encadrement fixe des objectifs (à un joueur ou à tout le roster), chacun fait avancer les siens.
 // Exemples : « passer Diamant avant décembre », « 3 VOD reviews par semaine », « communication en fin de round ».
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { exec, rows } from '../db';
 
 export const prerender = false;
@@ -11,29 +11,31 @@ if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
 const sc = scope(me.rosters, Astro.url);
+// Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
+const manage = sc.list.some((r) => canLead(me, r.id));
 const back = `/equipe/objectifs/${sc.active ? `?r=${sc.active}` : ''}`;
 type G = { id: number; roster_id: number; user_id: string | null; title: string; detail: string | null; due: number | null; status: string; progress: number; updated_at: number };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 const STATUS: Record<string, string> = { 'en-cours': 'En cours', atteint: 'Atteint', abandonne: 'Abandonné' };
 
 const blocks = await Promise.all(sc.list.map(async (r) => {
-  const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const members = await rosterMembers(r.role_id);
   const goals = await rows<G>(`SELECT * FROM goals WHERE roster_id = ? AND (status = 'en-cours' OR updated_at > ?) ORDER BY status = 'en-cours' DESC, due IS NULL, due`, r.id, Date.now() - 30 * 86400_000);
   const groups = [
     { key: 'roster', label: 'Tout le roster', avatar: null as string | null, list: goals.filter((g) => !g.user_id) },
     ...members.map((m) => ({ key: m.id, label: m.name, avatar: m.avatar, list: goals.filter((g) => g.user_id === m.id) })),
-  ].filter((g) => g.list.length || me.staff);
+  ].filter((g) => g.list.length || canLead(me, r.id));
   return { r, members, groups };
 }));
-const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id)));
+const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id)));
 ---
-<Qg title="Objectifs · Inside" heading="Objectifs" lead="Ce qu'on vise, joueur par joueur, et où on en est." current="objectifs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Objectifs · Inside" heading="Objectifs" lead="Ce qu'on vise, joueur par joueur, et où on en est." current="objectifs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ob">
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map(({ r, members, groups }) => (
         <section class="ob-roster">
           <h2 class="ob-h">{r.name}</h2>
-          {me.staff && (
+          {manage && (
             <details class="ob-new">
               <summary>Fixer un objectif</summary>
               <form method="post" action="/api/equipe/outils">
@@ -46,7 +48,7 @@ const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me
               </form>
             </details>
           )}
-          {groups.every((g) => !g.list.length) ? <p class="eq-note">Aucun objectif en cours. {me.staff ? 'Fixe le premier ci-dessus.' : 'Ton coach les fixera avec toi.'}</p> : (
+          {groups.every((g) => !g.list.length) ? <p class="eq-note">Aucun objectif en cours. {manage ? 'Fixe le premier ci-dessus.' : 'Ton coach ou ton capitaine les fixera avec toi.'}</p> : (
             <div class="ob-groups">
               {groups.filter((g) => g.list.length).map((g) => (
                 <div class="ob-group">
@@ -66,7 +68,7 @@ const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me
                             <label><span>Avancement <b><output>{o.progress}</output> %</b></span><input type="range" name="progress" min="0" max="100" step="10" value={o.progress} oninput="this.parentElement.querySelector('output').value = this.value" /></label>
                             <button class="ob-btn" name="status" value="en-cours">Enregistrer</button>
                             <button class="ob-btn is-ok" name="status" value="atteint">Atteint</button>
-                            {me.staff && <button class="ob-btn" name="status" value="abandonne">Abandonner</button>}
+                            {canLead(me, o.roster_id) && <button class="ob-btn" name="status" value="abandonne">Abandonner</button>}
                           </form>
                         )}
                       </li>

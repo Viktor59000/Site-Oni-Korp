@@ -4,7 +4,7 @@
 // suggestions tirées des parties classées de nos joueurs,
 // op.gg multi de notre équipe et de l'adversaire. Champions et icônes : Data Dragon (Riot), à jour automatiquement.
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { links } from './stats';
 
@@ -25,7 +25,7 @@ type PoolPlayer = { name: string; poste: string | null; champs: Record<string, {
 const faced: Record<string, [number, number]> = {};
 const pool: PoolPlayer[] = [];
 for (const r of lolRosters) {
-  const members = await rows<{ id: string; name: string }>(`SELECT id, name FROM guild_members WHERE roles LIKE ?`, `%"${r.role_id}"%`);
+  const members = await rosterMembers(r.role_id);
   const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
   for (const m of members) {
     if (pool.some((p) => p.name === m.name)) continue;
@@ -43,7 +43,7 @@ for (const r of lolRosters) {
   }
 }
 ---
-<Qg title="Drafter LoL · Inside" heading="Drafter LoL" lead="Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless." current="lol" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Drafter LoL · Inside" heading="Drafter LoL" lead="Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless." current="lol" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))} data-pool={JSON.stringify(pool)} data-faced={JSON.stringify(faced)}>
     <div>
       <div class="dr-top">

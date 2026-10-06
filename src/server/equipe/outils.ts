@@ -3,7 +3,8 @@
 import type { APIRoute, AstroCookies } from 'astro';
 import { bumpKey, clearSession, currentSession, sameOrigin } from '../session';
 import { db, exec, rows } from '../db';
-import { access } from './access';
+import { access, canSee, canLead } from './access';
+export { canSee, canLead, rosterMembers } from './access';
 
 let ready = false;
 /** Tables des outils (créées au premier usage ; Oni Bot les crée aussi). */
@@ -38,7 +39,7 @@ export async function teamUser(cookies: AstroCookies) {
   const user = await currentSession(cookies);
   if (!user) return null;
   const me = await access(user.id);
-  if (!me.member || !(me.staff || me.rosters.length)) return null;
+  if (!me.member || !(me.staff || me.rosters.length || me.content.length)) return null;
   await ensureTables();
   return { user, me };
 }
@@ -61,7 +62,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const f = await request.formData();
   const action = clip(f.get('action'), 30);
   const back = clip(f.get('back'), 100).startsWith('/equipe') ? clip(f.get('back'), 100) : '/equipe/';
-  const canRoster = (id: number) => me.staff || me.rosterIds.includes(id);
+  const canRoster = (id: number) => canSee(me, id);
 
   // Sécurité du compte : nouveau lien d'agenda perso ; déconnexion de tous les appareils
   if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
@@ -90,6 +91,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (action === 'draft') {
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
+    const pinned = canLead(me, roster) ? wantPin : 0;
     const data = clip(f.get('data'), 4000);
     try { const d = JSON.parse(data); if (!d || typeof d !== 'object' || Array.isArray(d)) return redirect(back); } catch { return redirect(back); }
     await exec('INSERT INTO drafts (roster_id, title, data, author, at) VALUES (?,?,?,?,?)', roster, clip(f.get('title'), 80) || 'Draft', data, user.id, Date.now());
@@ -114,7 +116,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const id = Number(f.get('match'));
     const [m] = await rows<{ roster_id: number }>('SELECT roster_id FROM matches WHERE id = ?', id);
     if (!m || !canRoster(Number(m.roster_id))) return redirect(back);
-    const target = me.staff && clip(f.get('user'), 25) ? clip(f.get('user'), 25) : user.id;
+    const target = canLead(me, m.roster_id) && clip(f.get('user'), 25) ? clip(f.get('user'), 25) : user.id;
     const data: Record<string, number | string> = {};
     for (const k of ['acs', 'k', 'd', 'a', 'adr', 'hs', 'fb', 'kast', 'score', 'buts', 'passes', 'arrets', 'tirs', 'demos']) {
       const v = Number(String(f.get(k) ?? '').replace(',', '.'));
@@ -158,13 +160,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (action === 'doc') {
     const id = Number(f.get('id'));
     const title = clip(f.get('title'), 100), body = String(f.get('body') ?? '').slice(0, 20000);
-    const pinned = me.staff && f.get('pinned') === '1' ? 1 : 0;
+    const wantPin = f.get('pinned') === '1' ? 1 : 0;
     const qs = back.includes('?') ? `&${back.split('?')[1]}` : '';
     if (!title) return redirect(back);
     if (id) {
       const [d] = await rows<{ roster_id: number; pinned: number }>('SELECT roster_id, pinned FROM docs WHERE id = ?', id);
       if (!d || !canRoster(Number(d.roster_id))) return redirect(back);
-      await exec('UPDATE docs SET title = ?, body = ?, pinned = ?, author = ?, updated_at = ? WHERE id = ?', title, body, me.staff ? pinned : Number(d.pinned), user.id, Date.now(), id);
+      await exec('UPDATE docs SET title = ?, body = ?, pinned = ?, author = ?, updated_at = ? WHERE id = ?', title, body, canLead(me, d.roster_id) ? wantPin : Number(d.pinned), user.id, Date.now(), id);
       return redirect(`/equipe/docs/?d=${id}${qs}`);
     }
     const roster = Number(f.get('roster'));
@@ -203,10 +205,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(n ? `/equipe/scouting/?o=${n.id}${qs}` : back);
   }
 
-  if (action === 'compo' && me.staff) {
+  if (action === 'compo') {
     const id = Number(f.get('match'));
     const [m] = await rows<{ roster_id: number }>('SELECT roster_id FROM matches WHERE id = ?', id);
-    if (!m) return redirect(back);
+    if (!m || !canLead(me, m.roster_id)) return redirect(back);
     const name = async (uid: string) => (await rows<{ name: string }>('SELECT name FROM guild_members WHERE id = ?', uid))[0]?.name ?? 'Joueur';
     const tit = f.getAll('titulaires').map(String).slice(0, 7);
     const sub = clip(f.get('remplacant'), 25);
@@ -222,14 +224,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const raw = clip(f.get('map'), 200);
     const bid = Number(raw.match(/#osu\/(\d+)/)?.[1] ?? raw.match(/\/b(?:eatmaps)?\/(\d+)/)?.[1] ?? raw.match(/^(\d+)$/)?.[1]);
     if (!bid) return redirect(`${back}${back.includes('?') ? '&' : '?'}erreur=map`);
-    const challenge = f.get('challenge') === '1' && me.staff ? 1 : 0;
+    const challenge = f.get('challenge') === '1' && canLead(me, roster) ? 1 : 0;
     const days = Math.min(30, Math.max(1, Number(f.get('days')) || 7));
     await exec('INSERT INTO osu_maps (roster_id, beatmap_id, note, challenge, ends, added_by, at) VALUES (?,?,?,?,?,?,?)',
       roster, bid, clip(f.get('note'), 300) || null, challenge, challenge ? Date.now() + days * 86400_000 : null, user.id, Date.now());
     return redirect(back);
   }
 
-  if (action === 'objectif' && me.staff) {
+  if (action === 'objectif' && canLead(me, Number(f.get('roster')))) {
     const roster = Number(f.get('roster'));
     const due = clip(f.get('due'), 10);
     await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
@@ -242,9 +244,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (action === 'objectif-maj') {
     const id = Number(f.get('id'));
     const [g] = await rows<{ roster_id: number; user_id: string | null }>('SELECT roster_id, user_id FROM goals WHERE id = ?', id);
-    const may = g && (me.staff || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id))));
+    const may = g && (canLead(me, g.roster_id) || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id))));
     let status = clip(f.get('status'), 12);
-    if (!['en-cours', 'atteint', 'abandonne'].includes(status) || (status === 'abandonne' && !me.staff)) status = 'en-cours';
+    if (!['en-cours', 'atteint', 'abandonne'].includes(status) || (status === 'abandonne' && !canLead(me, g?.roster_id))) status = 'en-cours';
     const progress = status === 'atteint' ? 100 : Math.min(100, Math.max(0, Number(f.get('progress')) || 0));
     if (may) await exec('UPDATE goals SET progress = ?, status = ?, updated_at = ? WHERE id = ?', progress, status, Date.now(), id);
     return redirect(back);
@@ -278,12 +280,12 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       // Contenus du roster : l'auteur ou l'encadrement
       const col = tname === 'docs' ? 'author' : 'added_by';
       const [row] = await rows<{ who: string; roster_id: number }>(`SELECT ${col} AS who, roster_id FROM ${tname} WHERE id = ?`, id);
-      if (row && (row.who === user.id || me.staff)) { await exec(`DELETE FROM ${tname} WHERE id = ?`, id); if (tname === 'vods') await exec('DELETE FROM vod_marks WHERE vod_id = ?', id); }
+      if (row && (row.who === user.id || canLead(me, row.roster_id))) { await exec(`DELETE FROM ${tname} WHERE id = ?`, id); if (tname === 'vods') await exec('DELETE FROM vod_marks WHERE vod_id = ?', id); }
       return redirect(back);
     }
     const table = tname === 'lineups' ? 'lineups' : 'drafts';
-    const [row] = await rows<{ author: string }>(`SELECT author FROM ${table} WHERE id = ?`, id);
-    if (row && (row.author === user.id || me.staff)) await exec(`DELETE FROM ${table} WHERE id = ?`, id);
+    const [row] = await rows<{ author: string; roster_id: number }>(`SELECT author, roster_id FROM ${table} WHERE id = ?`, id);
+    if (row && (row.author === user.id || canLead(me, row.roster_id))) await exec(`DELETE FROM ${table} WHERE id = ?`, id);
     return redirect(back);
   }
   return redirect(back);
@@ -381,11 +383,11 @@ export const GET: APIRoute = async ({ cookies, url }) => {
     return new Response(JSON.stringify(v), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=600' } });
   }
   const roster = Number(url.searchParams.get('roster'));
-  if (!(t.me.staff || t.me.rosterIds.includes(roster))) return new Response('[]', { status: 403 });
+  if (!canSee(t.me, roster)) return new Response('[]', { status: 403 });
   const type = url.searchParams.get('type');
   const names = `LEFT JOIN guild_members g ON g.id = x.author`;
   const data = type === 'lineups'
     ? await rows(`SELECT x.*, g.name AS author_name FROM lineups x ${names} WHERE x.roster_id = ? ORDER BY x.at DESC`, roster)
     : await rows(`SELECT x.id, x.title, x.data, x.at, x.author, g.name AS author_name FROM drafts x ${names} WHERE x.roster_id = ? ORDER BY x.at DESC LIMIT 50`, roster);
-  return new Response(JSON.stringify({ me: t.user.id, staff: t.me.staff, items: data }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
+  return new Response(JSON.stringify({ me: t.user.id, staff: canLead(t.me, roster), items: data }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
 };

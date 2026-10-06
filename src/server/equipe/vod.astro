@@ -27,7 +27,7 @@ const clock = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:
 const KINDS: Record<string, [string, string]> = { bien: ['Bien joué', '#1f8f55'], erreur: ['Erreur', '#e5251f'], revoir: ['À revoir', '#e2a33b'], info: ['Note', '#6b7280'] };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 ---
-<Qg title="VOD · Inside" heading="VOD" lead="Les vidéos du roster, commentées au bon moment." current="vod" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="VOD · Inside" heading="VOD" lead="Les vidéos du roster, commentées au bon moment." current="vod" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {!current && ids.length > 0 && (
     <details class="qg-drawer" slot="actions">
       <summary class="btn">+ Ajouter une VOD</summary>

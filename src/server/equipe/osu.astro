@@ -2,7 +2,7 @@
 // osu! : le coin du roster. Défi de la semaine (classement interne relevé par Oni Bot), maps d'entraînement partagées,
 // et les outils de Yuzuctus : Osurea (zone de tablette) et Yuzu Skins.
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { canLead, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { r1 } from './ui';
 
@@ -11,6 +11,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
+// Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
+const manage = sc.list.some((r) => canLead(me, r.id));
 const osuRosters = sc.list.filter((r) => r.game === 'osu' || (me.staff && !sc.active));
 const back = `/equipe/osu/${sc.active ? `?r=${sc.active}` : ''}`;
 const erreur = Astro.url.searchParams.get('erreur');
@@ -62,7 +64,7 @@ const KIT: [string, [string, string, string, string?][]][] = [
 const len = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000); return h <= 0 ? 'terminé' : h < 48 ? `encore ${h} h` : `encore ${Math.round(h / 24)} jours`; };
 ---
-<Qg title="osu! · Inside" heading="osu!" lead="Défi de la semaine, maps d'entraînement et outils du roster." current="osu" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="osu! · Inside" heading="osu!" lead="Défi de la semaine, maps d'entraînement et outils du roster." current="osu" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {osuRosters.length > 0 && (
     <details class="qg-drawer" slot="actions">
       <summary class="btn">+ Ajouter une map</summary>
@@ -74,7 +76,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
               <label class="ou-wide">Lien de la map<input name="map" required placeholder="https://osu.ppy.sh/beatmapsets/…#osu/…" /></label>
               <label>Roster<select name="roster">{osuRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
               <label class="ou-wide">Pourquoi cette map<input name="note" maxlength="300" placeholder="Ex. : streams 200 BPM, lecture AR10, endurance" /></label>
-              {me.staff && <label class="ou-check"><input type="checkbox" name="challenge" value="1" /> Défi de la semaine, pendant <input name="days" type="number" min="1" max="30" value="7" /> jours</label>}
+              {manage && <label class="ou-check"><input type="checkbox" name="challenge" value="1" /> Défi de la semaine, pendant <input name="days" type="number" min="1" max="30" value="7" /> jours</label>}
               <button class="btn">Ajouter</button>
             </form>
       </div>
@@ -107,7 +109,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
                   ) : <p class="eq-note">Pas encore de score. Joue la map : le classement se met à jour toutes les 30 minutes (comptes osu! reliés dans <a href="/equipe/joueurs/">Joueurs</a>).</p>}
                 </div>
               </article>
-            )) : <p class="eq-note">{me.staff ? 'Aucun défi en cours. Lance-en un avec « + Ajouter une map » (case « défi de la semaine »).' : 'Aucun défi en cours.'}</p>}
+            )) : <p class="eq-note">{manage ? 'Aucun défi en cours. Lance-en un avec « + Ajouter une map » (case « défi de la semaine »).' : 'Aucun défi en cours.'}</p>}
           </section>
 
           <section class="ou-week">
@@ -152,7 +154,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
                       {m.note && <p>{m.note}</p>}
                       <p class="ou-by">Ajoutée par {names.get(m.added_by)?.name ?? 'un membre'}</p>
                     </div>
-                    {(m.added_by === user.id || me.staff) && (
+                    {(m.added_by === user.id || canLead(me, m.roster_id)) && (
                       <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="osu_maps" /><input type="hidden" name="id" value={m.id} /><input type="hidden" name="back" value={back} /><button class="ou-x" aria-label="Retirer">×</button></form>
                     )}
                   </li>

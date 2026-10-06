@@ -9,10 +9,12 @@ import '../../styles/qg.css';
 
 interface Props {
   title: string; heading?: string; lead?: string; current?: string;
-  rosters?: RosterRow[]; staff?: boolean; active?: string | null;
+  rosters?: RosterRow[]; staff?: boolean; contenu?: boolean; active?: string | null;
   user?: { name: string; avatar: string | null } | null; bare?: boolean;
 }
-const { title, heading = title, lead, current = '', rosters = [], staff = false, active = null, user = null, bare = false } = Astro.props;
+const { title, heading = title, lead, current = '', rosters = [], staff = false, contenu = false, active = null, user = null, bare = false } = Astro.props;
+// Pôle contenu sans roster : seulement l'espace Contenu
+const onlyContent = contenu && !rosters.length;
 const GAMES: Record<string, { label: string; color: string }> = {
   rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
   valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#ff66aa' },
@@ -23,7 +25,7 @@ const game = activeRoster?.game ?? null;
 const PATH: Record<string, string> = {
   accueil: '/equipe/', planning: '/equipe/planning/', calendrier: '/equipe/calendrier/', match: '/equipe/match/', stats: '/equipe/stats/', objectifs: '/equipe/objectifs/',
   notes: '/equipe/notes/', vod: '/equipe/vod/', tactique: '/equipe/tactique/', scouting: '/equipe/scouting/', lol: '/equipe/lol/',
-  valo: '/equipe/valo/', osu: '/equipe/osu/', joueurs: '/equipe/joueurs/', setup: '/equipe/setup/', docs: '/equipe/docs/',
+  valo: '/equipe/valo/', osu: '/equipe/osu/', joueurs: '/equipe/joueurs/', setup: '/equipe/setup/', docs: '/equipe/docs/', contenu: '/equipe/contenu/',
 };
 const GAME_TOOL: Record<string, [string, string]> = { lol: ['lol', 'Drafter'], valo: ['valo', 'Lineups'], osu: ['osu', 'Défis et maps'] };
 const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
@@ -31,7 +33,7 @@ const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
 const gameTools = game && GAME_TOOL[game] ? [GAME_TOOL[game]] : [];
 // Six rubriques au plus dans le menu ; les pages d'une rubrique deviennent des onglets en haut de l'écran.
 // Profil et guide sont dans le menu du compte, la vue d'ensemble (staff) dans le sélecteur de roster.
-const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = [
+const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = onlyContent ? [{ key: 'contenu', label: 'Contenu', pages: [['contenu', 'Contenu']] }] : [
   { key: 'accueil', label: 'Accueil', pages: [['accueil', 'Accueil']] },
   { key: 'semaine', label: 'Semaine', pages: [['planning', 'Planning'], ['calendrier', 'Calendrier']] },
   { key: 'match', label: 'Match', pages: [['match', 'Avant-match'], ['notes', 'Notes de match'], ['vod', 'VOD'], ['scouting', 'Scouting']] },
@@ -55,11 +57,12 @@ const currentLabel = section?.label ?? heading;
     <header class="qg-top">
       {!bare && <button class="qg-icon qg-fold" type="button" data-qg-fold aria-label="Replier le menu" title="Replier / déplier le menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>}
       <a class="qg-brand" href={`/equipe/${q}`} aria-label="Inside, accueil de l'espace équipe"><img src="/img/oni-logo.svg" alt="" width="28" height="28" /><span><b translate="no">Oni Korp</b> Inside</span></a>
-      {!bare && rosters.length > 0 && (
+      {!bare && (rosters.length > 0 || contenu) && (
         <details class="qg-switch">
-          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : 'Tous les rosters'}<span class="qg-caret" aria-hidden="true"></span></summary>
+          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : current === 'contenu' ? 'Contenu' : 'Tous les rosters'}<span class="qg-caret" aria-hidden="true"></span></summary>
           <div class="qg-menu">
             {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
+            {contenu && <a href="/equipe/contenu/" aria-current={current === 'contenu' ? 'page' : undefined}>Contenu</a>}
             {rosters.length > 1 && <a href={PATH[current] && !GAME_TOOL[current] ? PATH[current] : '/equipe/'} aria-current={!activeRoster && current !== 'vue' ? 'page' : undefined}>Tous les rosters</a>}
             {byGame.map((g) => (
               <>
@@ -98,7 +101,7 @@ const currentLabel = section?.label ?? heading;
         </details>
       )}
       {!bare && <script is:inline>if (matchMedia('(max-width: 900px)').matches) document.querySelector('[data-qg-nav]')?.removeAttribute('open');</script>}
-      {!bare && (
+      {!bare && !onlyContent && (
         <nav class="qg-tabs" aria-label="Accès rapide">
           {([['accueil', 'Accueil', 'M4 11l8-7 8 7v9H4z'], ['planning', 'Semaine', 'M4 6h16M4 12h16M4 18h10'], ['match', 'Match', 'M4 19l5-5 4 4 7-9M4 5h16'], ['stats', 'Progrès', 'M5 20V11M12 20V5M19 20v-7']] as [string, string, string][]).map(([k, l, d]) => (
             <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>{l}</a>

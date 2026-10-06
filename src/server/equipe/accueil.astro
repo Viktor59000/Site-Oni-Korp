@@ -3,7 +3,7 @@
 // la forme de la semaine, les objectifs en cours et ce qui a bougé. Sans roster choisi : choix du roster.
 // Sans accès (non connecté, pas membre d'un roster) : la page Planning gère la connexion et les messages.
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { rosterMembers, scope, teamUser } from './outils';
 import { rows, weekKey } from '../db';
 
 export const prerender = false;
@@ -11,6 +11,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/planning/');
 const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
+// Pôle contenu sans roster : son espace, c'est Contenu
+if (!me.rosters.length && me.content.length) return Astro.redirect('/equipe/contenu/');
 // Un seul roster (staff compris) : on l'ouvre directement ; la vue d'ensemble reste dans le sélecteur du haut
 if (!sc.active && me.rosters.length === 1) return Astro.redirect(`/equipe/?r=${me.rosters[0].slug}`);
 // Un joueur d'un seul roster arrive directement dessus ; sinon on choisit
@@ -42,7 +44,7 @@ let data: null | {
 if (roster) {
   const rid = roster.id;
   const [members, trainings, matches, lastMatch, goals, boards, docs, vods, dispo] = await Promise.all([
-    rows<Mb>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${roster.role_id}"%`),
+    rosterMembers(roster.role_id) as Promise<Mb[]>,
     rows<{ id: number; at: number; kind: string; duration: number }>('SELECT id, at, kind, duration FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 6', rid, now - 2 * 3600_000),
     rows<{ id: number; at: number; opponent: string; format: string; kind: string | null }>('SELECT id, at, opponent, format, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 3', rid, now - 3 * 3600_000),
     rows<{ opponent: string; score_us: number; score_them: number; at: number }>('SELECT opponent, score_us, score_them, at FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NOT NULL ORDER BY at DESC LIMIT 1', rid),
@@ -106,7 +108,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
 ---
 <Qg title={roster ? `${roster.name} · Inside` : 'Inside'} heading={roster ? roster.name : 'Choisis ton roster'}
   lead={roster ? undefined : me.staff ? 'Ouvre un roster pour voir son accueil, ou passe par la vue d’ensemble de l’encadrement.' : 'Tu fais partie de plusieurs rosters : choisis celui sur lequel tu travailles.'}
-  current="accueil" rosters={me.rosters} staff={me.staff} active={roster?.slug ?? null} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  current="accueil" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={roster?.slug ?? null} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
 
   {!roster && (
     <ul class="ac-pick">

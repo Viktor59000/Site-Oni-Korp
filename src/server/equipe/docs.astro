@@ -1,7 +1,7 @@
 ---
 // Docs du roster : routines d'entraînement, règles internes, guides, liens utiles. Mise en forme simple (# titre, - liste, **gras**, liens).
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { canLead, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { md } from './ui';
 
@@ -10,6 +10,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
+// Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
+const manage = sc.list.some((r) => canLead(me, r.id));
 const q = sc.active ? `r=${sc.active}` : '';
 const listUrl = `/equipe/docs/${q ? `?${q}` : ''}`;
 const ids = sc.list.map((r) => r.id);
@@ -27,7 +29,7 @@ const STARTERS = [
   ['Appels et vocabulaire', '# Appels\n- **Nom** : ce que ça veut dire\n'],
 ];
 ---
-<Qg title="Docs · Inside" heading="Docs" lead="Routines, règles, appels, guides : ce que tout le roster doit savoir." current="docs" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Docs · Inside" heading="Docs" lead="Routines, règles, appels, guides : ce que tout le roster doit savoir." current="docs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {editing && edit ? (
       <form method="post" action="/api/equipe/outils" class="dc-form">
         <input type="hidden" name="action" value="doc" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} />
@@ -35,7 +37,7 @@ const STARTERS = [
         <div class="dc-row">
           <label>Titre<input name="title" required maxlength="100" value={editing.title} data-title /></label>
           {!editing.id && <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>}
-          {me.staff && <label class="dc-check"><input type="checkbox" name="pinned" value="1" checked={!!Number(editing.pinned)} /> Épinglé</label>}
+          {manage && <label class="dc-check"><input type="checkbox" name="pinned" value="1" checked={!!Number(editing.pinned)} /> Épinglé</label>}
         </div>
         {!editing.id && <p class="dc-starters">Partir d'un modèle : {STARTERS.map(([l, b]) => <button type="button" data-starter={b} data-label={l}>{l}</button>)}</p>}
         <label>Contenu <small># titre · - liste · **gras** · *italique* · liens collés tels quels</small><textarea name="body" rows="16" maxlength="20000" data-body>{editing.body}</textarea></label>
@@ -49,7 +51,7 @@ const STARTERS = [
         <div class="dc-body" set:html={md(editing.body)} />
         <p class="dc-actions">
           <a class="btn btn--ghost" href={`/equipe/docs/?d=${editing.id}&modifier${q ? `&${q}` : ''}`}>Modifier</a>
-          {(editing.author === user.id || me.staff) && (
+          {(editing.author === user.id || manage) && (
             <form method="post" action="/api/equipe/outils" onsubmit="return confirm('Supprimer ce doc ?')"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="docs" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} /><button class="dc-link">Supprimer</button></form>
           )}
         </p>

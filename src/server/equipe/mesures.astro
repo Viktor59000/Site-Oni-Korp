@@ -3,7 +3,7 @@
 // - LoL et osu! : relevées automatiquement par Oni Bot (API Riot et osu!).
 // - Valorant et Rocket League : saisies après chaque match ou scrim (leurs API publiques ne donnent pas les parties).
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { TIERS_FR, valoTierFr } from './stats';
 import { avg, ddragon, pct, r1, spark, SHARED_CSS } from './ui';
@@ -13,6 +13,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
+// Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
+const manage = sc.list.some((r) => canLead(me, r.id));
 const back = `/equipe/stats/${sc.active ? `?r=${sc.active}` : ''}`;
 const DAY = 86400_000;
 const v = await ddragon();
@@ -32,7 +34,7 @@ const MANUAL: Record<string, { key: string; label: string; short: string; unit?:
 
 type M = { id: string; name: string; avatar: string };
 const blocks = await Promise.all(sc.list.map(async (r) => {
-  const members = await rows<M>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const members = await rosterMembers(r.role_id);
   const ids = members.map((m) => m.id);
   const inIds = ids.map(() => '?').join(',') || 'NULL';
   const accounts = ids.length ? await rows<{ user_id: string; game: string; ident: string; region: string | null }>(`SELECT * FROM accounts WHERE user_id IN (${inIds})`, ...ids) : [];
@@ -108,7 +110,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
 }));
 const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${c}.png`;
 ---
-<Qg title="Stats · Inside" heading="Stats" lead="Les mesures en jeu de chaque joueur, et dans quel sens elles vont." current="stats" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Stats · Inside" heading="Stats" lead="Les mesures en jeu de chaque joueur, et dans quel sens elles vont." current="stats" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="st">
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map((b) => (
@@ -308,7 +310,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                   <form method="post" action="/api/equipe/outils">
                     <input type="hidden" name="action" value="stats" /><input type="hidden" name="back" value={back} />
                     <label>Match<select name="match">{b.matches.map((x) => <option value={x.id}>vs {x.opponent} · {fmtD.format(new Date(Number(x.at)))}{(x.kind ?? '') === 'scrim' ? ' (scrim)' : ''}</option>)}</select></label>
-                    {me.staff && <label>Joueur<select name="user">{b.players.map((p) => <option value={p.m.id} selected={p.m.id === user.id}>{p.m.name}</option>)}</select></label>}
+                    {manage && <label>Joueur<select name="user">{b.players.map((p) => <option value={p.m.id} selected={p.m.id === user.id}>{p.m.name}</option>)}</select></label>}
                     {b.r.game === 'valo' && <label>Agent<input name="agent" maxlength="20" /></label>}
                     {b.fields.map((f) => <label>{f.label}<input name={f.key} type="number" step="any" min="0" inputmode="decimal" /></label>)}
                     <button class="btn">Enregistrer</button>
