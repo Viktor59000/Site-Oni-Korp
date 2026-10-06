@@ -26,7 +26,7 @@ const rosterGame = new Map(me.rosters.map((r) => [Number(r.id), r.game]));
 const q = sc.active ? `&r=${sc.active}` : '';
 const listUrl = `/equipe/tactique/${sc.active ? `?r=${sc.active}` : ''}`;
 const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60_000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 2880 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
-const BG_LABEL = (m: string) => m === 'Faille' ? 'Faille de l\'invocateur' : m === 'Terrain' ? 'Terrain Rocket League' : m === 'blanc' ? 'Tableau blanc' : m === 'grille' ? 'Quadrillage' : m.startsWith('http') ? 'Image' : m;
+const BG_LABEL = (m: string) => m === 'Faille' || m.startsWith('Faille:') ? 'Faille de l\'invocateur' : m === 'Terrain' ? 'Terrain Rocket League' : m === 'blanc' ? 'Tableau blanc' : m === 'grille' ? 'Quadrillage' : m.startsWith('http') ? 'Image' : m;
 const COLORS = ['#ff4655', '#2f6bff', '#ffd23f', '#2fbf71', '#ffffff', '#111111'];
 const TOOLS: [string, string, string][] = [
   ['select', 'Sélection', 'M4 3l14 8-6 2-2 6z'], ['pen', 'Crayon', 'M4 20l4-1 11-11-3-3L5 16z'], ['arrow', 'Flèche', 'M4 20L19 5M19 5h-7M19 5v7'],
@@ -143,6 +143,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             </details>
             <details><summary>Fond</summary>
               <select data-bg-select aria-label="Fond"></select>
+              <label class="wb-baron" data-baron-wrap hidden>Fosse du Nashor<select data-baron><option value="1">Forme 1</option><option value="2">Forme 2</option><option value="3">Forme 3</option></select></label>
               <p class="eq-note">Change le fond pour tout le monde. « Image » : colle le lien d'une capture ou d'un schéma.</p>
             </details>
             <p class="eq-note wb-help">Sélection : glisser pour déplacer, double-clic sur un post-it ou un texte pour le modifier, Suppr pour retirer. Ctrl+Z / Ctrl+Y.</p>
@@ -158,14 +159,20 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 </Qg>
 
 <script>
-  const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
+  // Minicartes officielles de la Faille (fichiers du jeu via CommunityDragon) : une par âme de drake, trois formes de fosse du Nashor
+  const LOL_TERRAINS: [string, string][] = [['base', 'classique'], ['ocean', 'âme Océan'], ['cloud', 'âme Nuage'], ['infernal', 'âme Infernale'], ['mountain', 'âme Montagne'], ['hextech', 'âme Hextech']];
+  const isRift = (bg: string) => bg === 'Faille' || bg.startsWith('Faille:');
+  const riftParts = (bg: string) => { const [, t = 'base', n = '1'] = bg.split(':'); return { t: LOL_TERRAINS.some(([k]) => k === t) ? t : 'base', n: ['1', '2', '3'].includes(n) ? n : '1' }; };
+  // L'âme Infernale n'existe qu'en une forme de fosse
+  const riftUrl = (bg: string) => { const { t, n } = riftParts(bg); return `/img/lol/map-${t}-${t === 'infernal' ? '1' : n}.webp`; };
+  const LOL_MAP = riftUrl('Faille');
   // Portée de vision des balises sur la Faille : 900 unités sur une carte de 14 870 (en fraction de la largeur, rayon)
   const WARD_RANGE: Record<string, number> = { ward: 900 / 14870, controle: 900 / 14870 };
   const WARD_COLOR: Record<string, string> = { ward: '#ffd23f', controle: '#ff4fa3' };
   const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   let valoMaps: { name: string; icon: string }[] = [];
   // Garde le fond actuel dans la liste même s'il vient d'un autre jeu (ancien tableau)
-  const opts_keep = (bg: string): string[][] => (['blanc', 'grille', 'url'].includes(bg) || /^https?:/.test(bg) ? [] : [[bg, bg === 'Terrain' ? 'Terrain Rocket League' : bg === 'Faille' ? "Faille de l'invocateur" : `Valorant · ${bg}`]]);
+  const opts_keep = (bg: string): string[][] => (['blanc', 'grille', 'url'].includes(bg) || /^https?:/.test(bg) || isRift(bg) ? [] : [[bg, bg === 'Terrain' ? 'Terrain Rocket League' : bg === 'Faille' ? "Faille de l'invocateur" : `Valorant · ${bg}`]]);
   const loadValo = () => fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
     valoMaps = d.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ name: m.displayName, icon: m.displayIcon })).sort((a: any, b: any) => a.name.localeCompare(b.name, 'fr'));
   }).catch(() => {});
@@ -244,7 +251,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       if (bg === 'blanc') el.classList.add('is-blank');
       else if (bg === 'grille') el.classList.add('is-grid');
       else if (bg === 'Terrain') el.style.backgroundImage = `url("${RL_PITCH}")`;
-      else if (bg === 'Faille') el.style.backgroundImage = `url("${LOL_MAP}")`;
+      else if (isRift(bg)) el.style.backgroundImage = `url("${riftUrl(bg)}")`;
       else if (/^https?:\/\//.test(bg)) el.style.backgroundImage = `url("${bg.replace(/["()\\]/g, '')}")`;
       else { const m = valoMaps.find((x) => x.name === bg); if (m) el.style.backgroundImage = `url("${m.icon}")`; }
       const s = $<HTMLSelectElement>('[data-bg-select]');
@@ -252,11 +259,14 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       const bg_game = stage.dataset.game ?? '';
       const opts: string[][] = [['blanc', 'Tableau blanc'], ['grille', 'Quadrillage'],
         ...(!bg_game || bg_game === 'rl' ? [['Terrain', 'Terrain Rocket League']] : []),
-        ...(!bg_game || bg_game === 'lol' ? [['Faille', "Faille de l'invocateur"]] : []),
+        ...(!bg_game || bg_game === 'lol' ? LOL_TERRAINS.map(([k, l]) => [k === 'base' ? 'Faille' : `Faille:${k}`, `Faille · ${l}`]) : []),
         ...(!bg_game || bg_game === 'valo' ? valoMaps.map((m) => [m.name, `Valorant · ${m.name}`]) : []),
         ...(opts_keep(bg)), ['url', 'Image (lien)…']];
       if (/^https?:\/\//.test(bg)) opts.unshift([bg, 'Image actuelle']);
-      if (document.activeElement !== s) s.innerHTML = opts.filter(([v], i) => opts.findIndex(([w]) => w === v) === i).map(([v, l]) => `<option value="${esc(v)}" ${v === bg ? 'selected' : ''}>${esc(l)}</option>`).join('');
+      const baseVal = isRift(bg) ? (riftParts(bg).t === 'base' ? 'Faille' : `Faille:${riftParts(bg).t}`) : bg;
+      $('[data-baron-wrap]').hidden = !isRift(bg) || riftParts(bg).t === 'infernal';
+      $<HTMLSelectElement>('[data-baron]').value = isRift(bg) ? riftParts(bg).n : '1';
+      if (document.activeElement !== s) s.innerHTML = opts.filter(([v], i) => opts.findIndex(([w]) => w === v) === i).map(([v, l]) => `<option value="${esc(v)}" ${v === baseVal ? 'selected' : ''}>${esc(l)}</option>`).join('');
     }
 
     // ---------- Rendu ----------
@@ -283,7 +293,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
         if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${esc(it.id)}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
         if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${esc(it.id)}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
-        if (it.type === 'ping') return (WARD_RANGE[it.ref ?? ''] && state.bg === 'Faille' ? `<div class="wb-range is-${esc(it.ref)}" style="${s};width:${WARD_RANGE[it.ref ?? ''] * 200}%" aria-hidden="true"></div>` : '') + `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s}">${esc(it.label)}</div>`;
+        if (it.type === 'ping') return (WARD_RANGE[it.ref ?? ''] && isRift(state.bg) ? `<div class="wb-range is-${esc(it.ref)}" style="${s};width:${WARD_RANGE[it.ref ?? ''] * 200}%" aria-hidden="true"></div>` : '') + `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s}">${esc(it.label)}</div>`;
         return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${esc(it.id)}" style="${s}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
       }).join('');
       const n = $<HTMLTextAreaElement>('[data-notes]');
@@ -393,7 +403,14 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     $('[data-bg-select]').addEventListener('change', (e) => {
       let v = (e.target as HTMLSelectElement).value;
       if (v === 'url') { const u = prompt("Lien de l'image (https://…)"); if (!u || !/^https?:\/\//.test(u)) { background(); return; } v = u; }
+      // Une âme garde la forme de fosse choisie
+      if (isRift(v)) { const n = $<HTMLSelectElement>('[data-baron]').value; const t = riftParts(v).t; v = t === 'base' && n === '1' ? 'Faille' : `Faille:${t}:${n}`; }
       snapshot(); state.bg = v; (e.target as HTMLSelectElement).blur(); changed();
+    });
+    $('[data-baron]').addEventListener('change', (e) => {
+      if (!isRift(state.bg)) return;
+      const n = (e.target as HTMLSelectElement).value, t = riftParts(state.bg).t;
+      snapshot(); state.bg = t === 'base' && n === '1' ? 'Faille' : `Faille:${t}:${n}`; changed();
     });
 
     // Portraits selon le jeu du roster
@@ -454,7 +471,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         if (state.bg === 'grille') { c.strokeStyle = '#e3e0d8'; c.lineWidth = 1; for (let i = 1; i < 20; i++) { c.beginPath(); c.moveTo(i * W / 20, 0); c.lineTo(i * W / 20, H); c.moveTo(0, i * H / 20); c.lineTo(W, i * H / 20); c.stroke(); } }
       } else {
         c.fillStyle = '#0f1923'; c.fillRect(0, 0, W, H);
-        const src = state.bg === 'Terrain' ? RL_PITCH : state.bg === 'Faille' ? LOL_MAP : /^https?:/.test(state.bg) ? state.bg : valoMaps.find((x) => x.name === state.bg)?.icon;
+        const src = state.bg === 'Terrain' ? RL_PITCH : isRift(state.bg) ? riftUrl(state.bg) : /^https?:/.test(state.bg) ? state.bg : valoMaps.find((x) => x.name === state.bg)?.icon;
         const img = src ? await loadImg(src) : null;
         if (img) { const s = Math.min(W / img.width, H / img.height); c.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s); }
       }
@@ -482,7 +499,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         if (it.type === 'tok' || it.type === 'ping') {
           const r = it.type === 'ping' ? R * .82 : R;
           c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
-          if (it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && state.bg === 'Faille') { const rr = X(WARD_RANGE[it.ref ?? '']); c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.globalAlpha = .18; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 2 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.setLineDash([6 * k, 5 * k]); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
+          if (it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && isRift(state.bg)) { const rr = X(WARD_RANGE[it.ref ?? '']); c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.globalAlpha = .18; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 2 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.setLineDash([6 * k, 5 * k]); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
           c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
           c.fillStyle = it.type === 'ping' ? ({ danger: '#ff4655', vision: '#ffffff', balle: '#eeeeee', ward: '#ffd23f', controle: '#ff4fa3' } as Record<string, string>)[it.ref ?? ''] ?? '#ffd23f' : it.kind === 'ally' ? '#2f6bff' : it.kind === 'enemy' ? '#e5251f' : '#0f1923';
           c.fill();
