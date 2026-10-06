@@ -2,7 +2,7 @@
 // Profil d'un joueur : rosters, rangs, mesures en jeu par jeu, tendances, objectifs, présence, débriefs et setups.
 // Visible par le joueur, ses coéquipiers et l'encadrement. Par défaut : mon profil.
 import Qg from './Qg.astro';
-import { teamUser } from './outils';
+import { canLead, teamUser } from './outils';
 import { access } from './access';
 import { rows } from '../db';
 import { links, TIERS_FR, valoIcons, valoTierFr } from './stats';
@@ -24,6 +24,11 @@ const DAY = 86400_000;
 // Page Staff du site : la case n'apparaît que sur son propre profil, pour qui a une fonction (encadrement, contenu, communauté)
 const hasFunction = uid === user.id && (me.staff || me.games.length > 0 || me.captain || me.analyst || me.content.length > 0);
 const [pub] = hasFunction ? await rows<{ visible: number; bio: string | null }>('SELECT visible, bio FROM staff_public WHERE user_id = ?', uid).catch(() => []) : [];
+// Essais en cours ou terminés (décision du 06/10) : le retour écrit est visible par la recrue, et par qui gère le roster
+type Essai = { roster_id: number; name: string; statut: string; essai_fin: number | null; retour: string | null; at: number };
+const essais = (await rows<Essai>(`SELECT s.roster_id, r.name, s.statut, s.essai_fin, s.retour, s.at FROM roster_status s JOIN rosters r ON r.id = s.roster_id
+  WHERE s.user_id = ? AND (s.statut = 'essai' OR s.retour IS NOT NULL)`, uid).catch(() => [] as Essai[])).filter((e) => uid === user.id || canLead(me, e.roster_id));
+const fDate = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 const accounts = await rows<{ game: string; ident: string; region: string | null }>('SELECT game, ident, region FROM accounts WHERE user_id = ?', uid);
 const acc = (g: string) => accounts.find((a) => a.game === g);
 const cache = async (k: string) => JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', k))[0]?.value ?? 'null');
@@ -115,6 +120,20 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
           {!accounts.length && <span>{uid === user.id ? <a href="/equipe/joueurs/">Relier mes comptes de jeu</a> : 'Aucun compte relié'}</span>}
         </div>
       </div>
+
+      {essais.length > 0 && (
+        <section class="pf-essai">
+          <h2 class="pf-h">{uid === user.id ? 'Ton essai' : 'Essai'}</h2>
+          {essais.map((e) => (
+            <article>
+              <p><b>{e.name}</b> · {e.statut === 'essai' ? (e.essai_fin ? `en essai jusqu’au ${fDate.format(new Date(Number(e.essai_fin)))}` : 'en essai') : e.statut === 'titulaire' ? 'titulaire' : 'remplaçant'}</p>
+              {e.retour
+                ? <blockquote>{e.retour}</blockquote>
+                : <p class="pf-muted">{uid === user.id ? 'Le retour de l’encadrement s’affichera ici à la fin de l’essai. Tu recevras aussi un message privé d’Oni Bot.' : 'Retour pas encore écrit (Inside > Joueurs).'}</p>}
+            </article>
+          ))}
+        </section>
+      )}
 
       {cards.length ? (
         <div class="pf-games">
@@ -210,6 +229,10 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
   .g-rl { --g: #2f6bff; } .g-lol { --g: #0f8a9b; } .g-valo { --g: #ff4655; } .g-osu { --g: #ff66aa; }
   .pf-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; }
   .pf-deb { margin-bottom: 2rem; }
+  .pf-essai { display: grid; gap: .75rem; }
+  .pf-essai article { padding: .9rem 1rem; border: 1px solid var(--line); border-left: 4px solid var(--lacquer); display: grid; gap: .5rem; }
+  .pf-essai blockquote { margin: 0; white-space: pre-line; line-height: 1.5; }
+  .pf-essai .pf-muted { color: var(--muted); font-size: .9rem; }
   .pf-pub form { display: grid; gap: .6rem; max-width: 36rem; }
   .pf-pub label { display: grid; gap: .25rem; font-weight: 700; font-size: .9rem; }
   .pf-pub label.pf-chk { display: flex; align-items: flex-start; gap: .5rem; font-weight: 400; }

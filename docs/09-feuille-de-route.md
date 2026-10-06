@@ -21,9 +21,8 @@
 
 ## Décisions en attente (Viktor)
 
-1. Accès du rôle Modérateur dans Inside.
-2. Le retour écrit de fin d'essai est-il visible par la recrue ?
-3. Soirée inhouse fixe : jour et heure (le bot l'annoncera).
+Aucune pour l'instant (les dernières sont dans [07 · Décisions](07-decisions.md)).
+
 
 ## Prochains chantiers possibles
 

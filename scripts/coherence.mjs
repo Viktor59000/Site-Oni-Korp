@@ -34,7 +34,8 @@ const included = (label, a, b) => {
 // Rôles d'encadrement
 const botRoles = Object.fromEntries([...between(config, 'export const ROLES', '};').matchAll(/(\w+):\s*'([^']+)'/g)].map((m) => [m[1], m[2]]));
 const botStaff = [...between(config, 'export const STAFF_ROLES = [', ']').matchAll(/ROLES\.(\w+)/g)].map((m) => botRoles[m[1]]);
-same('Rôles d’encadrement (access.ts ↔ config.ts)', strings(between(access, 'export const STAFF_ROLES = [', ']')), botStaff);
+// Côté site, le Modérateur est à part (vue d'ensemble seulement) ; côté bot, il fait partie de l'encadrement (modération)
+same('Rôles d’encadrement (access.ts + Modérateur ↔ config.ts)', [...strings(between(access, 'export const STAFF_ROLES = [', ']')), between(access, "MOD_ROLE = '", "'")], botStaff);
 // Responsables de jeu
 same('Rôles « Responsable » de jeu (access.ts ↔ util.ts)', [...between(access, 'export const GAME_LEAD_ROLES', '};').matchAll(/'(Responsable [^']+)'/g)].map((m) => m[1]),
   [...between(util, 'const GAME_LEAD', '};').matchAll(/'(Responsable [^']+)'/g)].map((m) => m[1]));

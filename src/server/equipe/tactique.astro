@@ -13,7 +13,9 @@ if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 await ensureBoards();
 const sc = scope(me.rosters, Astro.url);
-const usable = sc.list;
+// Pas de tableau blanc pour osu! : un roster osu! est renvoyé vers son outil
+if (sc.active && sc.list[0]?.game === 'osu') return Astro.redirect(`/equipe/osu/?r=${sc.active}`);
+const usable = sc.list.filter((r) => r.game !== 'osu');
 const boardId = Number(Astro.url.searchParams.get('b')) || null;
 type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null };
 const list = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.map, b.title, b.updated_at, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by
@@ -220,7 +222,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-stage[data-tool="note"], .wb-stage[data-tool="text"] { cursor: text; }
   .wb-stage[data-tool="erase"] { cursor: not-allowed; }
   /* Glisser-déposer depuis la palette */
-  .wb :global([data-add]) { cursor: grab; }
+  .wb :global([data-add]) { cursor: grab; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+  .wb :global([data-add] img) { -webkit-user-drag: none; pointer-events: none; }
   .wb-stage:global(.is-drop) { outline: 3px solid var(--qg-focus, #156b85); outline-offset: -3px; }
   :global(.wb-ghost) { position: fixed; left: 0; top: 0; z-index: 100; margin: -20px 0 0 -20px; pointer-events: none; opacity: .85; cursor: grabbing; }
   :global(.wb-ghost img) { display: block; width: 40px; height: 40px; border-radius: 50%; }

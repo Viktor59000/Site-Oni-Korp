@@ -13,6 +13,8 @@ const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
 // Pôle contenu sans roster : son espace, c'est Contenu
 if (!me.rosters.length && me.content.length) return Astro.redirect('/equipe/contenu/');
+// Modérateur sans roster : son espace, c'est la vue d'ensemble
+if (!me.rosters.length && me.mod) return Astro.redirect('/equipe/vue/');
 // Un seul roster (staff compris) : on l'ouvre directement ; la vue d'ensemble reste dans le sélecteur du haut
 if (!sc.active && me.rosters.length === 1) return Astro.redirect(`/equipe/?r=${me.rosters[0].slug}`);
 // Un joueur d'un seul roster arrive directement dessus ; sinon on choisit

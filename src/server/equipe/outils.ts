@@ -54,7 +54,7 @@ export async function teamUser(cookies: AstroCookies) {
   const user = await currentSession(cookies);
   if (!user) return null;
   const me = await access(user.id);
-  if (!me.member || !(me.staff || me.rosters.length || me.content.length)) return null;
+  if (!me.member || !(me.staff || me.rosters.length || me.content.length || me.mod)) return null;
   await ensureTables();
   return { user, me };
 }

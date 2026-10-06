@@ -10,7 +10,8 @@ Tout est calculé dans `src/server/equipe/access.ts` à partir des rôles Discor
 
 | Profil | Rôle Discord | Voit | Peut gérer |
 |---|---|---|---|
-| Encadrement | Admin, Fondateur, Manager, Coach, Modérateur, ou tout rôle avec la permission Administrateur | tous les rosters, la vue d'ensemble | tous les rosters |
+| Encadrement | Admin, Fondateur, Manager, Coach, ou tout rôle avec la permission Administrateur | tous les rosters, la vue d'ensemble | tous les rosters |
+| Modérateur | Modérateur (sans autre rôle d'encadrement) | la vue d'ensemble seulement : pas les stratégies, notes ni objectifs des rosters | rien dans Inside (il modère sur Discord) |
 | Responsable d'un jeu | « Responsable Rocket League », « … League of Legends », « … Valorant », « … osu! » | tous les rosters de ce jeu | ces rosters |
 | Capitaine | Capitaine + rôle du roster | ses rosters | ses rosters (planning, compo, objectifs) |
 | Joueur | rôle du roster | ses rosters | ses propres données (réponses, comptes, setups, notes) |

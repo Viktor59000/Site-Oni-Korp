@@ -31,6 +31,8 @@ const GAME_TOOL: Record<string, [string, string]> = { lol: ['lol', 'Drafter'], v
 const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
 // Outil propre au jeu : seulement celui du roster choisi (un roster osu! ne voit pas le drafter LoL)
 const gameTools = game && GAME_TOOL[game] ? [GAME_TOOL[game]] : [];
+// Tableau blanc : pas pour osu! (retour des joueurs, 06/10) ; affiché si le roster choisi, ou l'un des rosters, joue à un autre jeu
+const withBoard = game ? game !== 'osu' : staff || rosters.some((r) => r.game !== 'osu');
 // Six rubriques au plus dans le menu ; les pages d'une rubrique deviennent des onglets en haut de l'écran.
 // Profil et guide sont dans le menu du compte, la vue d'ensemble (staff) dans le sélecteur de roster.
 const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = onlyContent ? [{ key: 'contenu', label: 'Contenu', pages: [['contenu', 'Contenu']] }] : [
@@ -38,7 +40,7 @@ const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = on
   { key: 'semaine', label: 'Semaine', pages: [['planning', 'Planning'], ['calendrier', 'Calendrier']] },
   { key: 'match', label: 'Match', pages: [['match', 'Avant-match'], ['tournois', 'Tournois'], ['notes', 'Notes de match'], ['vod', 'VOD'], ['scouting', 'Scouting']] },
   { key: 'progres', label: 'Progrès', pages: [['stats', 'Stats'], ['objectifs', 'Objectifs']] },
-  { key: 'outils', label: 'Outils', pages: [['tactique', 'Tableau blanc'], ...gameTools as [string, string][]] },
+  { key: 'outils', label: 'Outils', pages: [...(withBoard ? [['tactique', 'Tableau blanc']] : []), ...gameTools] as [string, string][] },
   { key: 'equipe', label: 'Équipe', pages: [['joueurs', 'Joueurs'], ['setup', 'Setups'], ['docs', 'Docs']] },
 ];
 const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current)) ?? (GAME_TOOL[current] ? SECTIONS.find((x) => x.key === 'outils') : undefined);

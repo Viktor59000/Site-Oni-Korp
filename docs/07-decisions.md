@@ -22,6 +22,11 @@ Le journal des choix qui structurent le projet. Avant de défaire l'un d'eux, li
 
 ## Inside
 
+- **Modérateur hors de l'encadrement d'Inside** (6 oct. 2026) : il garde la modération Discord, les tickets et la vue d'ensemble, sans voir les stratégies, notes et objectifs des rosters. Un modérateur veille à un serveur sain, pas au jeu des rosters.
+- **Retour de fin d'essai visible par la recrue** (6 oct. 2026) : sur son profil Inside, et en message privé d'Oni Bot dès qu'il est écrit. C'est la transparence promise dans la fiche de poste.
+- **Soirée inhouse fixe : le jeudi à 21 h** (6 oct. 2026) : un soir de semaine, loin des matchs et tournois du week-end, assez tard pour qui travaille ou étudie. Annonce à 17 h (rôle « Notif inhouses »), ouverture des files à 20 h 55.
+- **Pas de tableau blanc pour osu!** (6 oct. 2026) : les joueurs osu! n'en ont pas l'usage ; leur outil reste « Défis et maps ».
+
 - **Nom « Inside »** (l'ancien « QG » était froid et confus). Noms d'outils sobres.
 - **Rangement par usage** (Accueil, Semaine, Match, Progrès, Outils, Équipe) et **outils filtrés selon le jeu** du roster.
 - **Accès par fonction** (6 oct. 2026) : capitaine, analyste, responsable de jeu et pôle contenu ont un accès adapté, pas seulement l'encadrement. Le diagnostic de l'audit : « l'outillage existe, il manque les gens ». Ceux qui aident devaient pouvoir utiliser les outils.

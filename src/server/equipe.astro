@@ -83,6 +83,7 @@ const spaces = me ? await Promise.all(sc.list.map(async (r) => {
 })) : [];
 const date = (ms: number) => new Date(Number(ms));
 // Pas d'accès (non connecté, ou membre sans roster, sans staff ni contenu) : présentation d'Inside
+if (me?.mod && !me.rosters.length && !me.content.length) return Astro.redirect('/equipe/vue/');
 const noAccess = !user || !!(me?.member && !me.staff && !me.rosters.length && !me.content.length) || (import.meta.env.DEV && Astro.url.searchParams.has('intro')); // ?intro : aperçu en local
 
 ---

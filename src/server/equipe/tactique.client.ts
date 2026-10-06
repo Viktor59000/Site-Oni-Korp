@@ -281,32 +281,73 @@ if (root) {
   // Palette : repères, pings, portraits du jeu. Glisser-déposer sur la carte, ou cliquer puis cliquer sur la carte.
   const itemOf = (b: HTMLElement): Partial<Item> => b.dataset.add === 'ping' ? { type: 'ping', ref: b.dataset.ref, label: b.dataset.label } : { type: 'tok', kind: b.dataset.add, ref: b.dataset.ref, label: b.dataset.label };
   let carry: { b: HTMLElement; x: number; y: number; ghost: HTMLElement | null } | null = null, justDropped = false;
+  const lift = (b: HTMLElement) => {
+    const g = b.cloneNode(true) as HTMLElement;
+    g.removeAttribute('data-add'); g.className = 'wb-ghost'; g.setAttribute('aria-hidden', 'true');
+    document.body.append(g); hint('Lâche sur la carte pour poser l’élément');
+    return g;
+  };
+  const hover = (x: number, y: number) => {
+    const r = stage.getBoundingClientRect();
+    stage.classList.toggle('is-drop', x >= r.left && x <= r.right && y >= r.top && y <= r.bottom);
+  };
+  // Souris et stylet : on glisse directement
   root.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
     const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b || e.button !== 0) return;
     carry = { b, x: e.clientX, y: e.clientY, ghost: null };
   });
   document.addEventListener('pointermove', (e) => {
-    if (!carry) return;
+    if (!carry || e.pointerType === 'touch') return;
     if (!carry.ghost) {
       if (Math.hypot(e.clientX - carry.x, e.clientY - carry.y) < 6) return;
-      const g = carry.b.cloneNode(true) as HTMLElement;
-      g.removeAttribute('data-add'); g.className = 'wb-ghost'; g.setAttribute('aria-hidden', 'true');
-      document.body.append(g); carry.ghost = g; hint('Lâche sur la carte pour poser l’élément');
+      carry.ghost = lift(carry.b);
     }
     carry.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-    const r = stage.getBoundingClientRect();
-    stage.classList.toggle('is-drop', e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom);
+    hover(e.clientX, e.clientY);
   });
-  const drop = (e: PointerEvent) => {
+  const drop = (e: { type: string; clientX: number; clientY: number }) => {
     if (!carry) return;
     const c = carry; carry = null;
     if (!c.ghost) return; // simple clic : géré plus bas
     c.ghost.remove(); stage.classList.remove('is-drop'); hint(null); justDropped = true; setTimeout(() => (justDropped = false), 0);
     const r = stage.getBoundingClientRect();
     if (e.type === 'pointercancel' || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
-    const [x, y] = pos(e); snapshot(); frame().items.push({ id: uid(), x, y, ...itemOf(c.b) } as Item); pending = null; changed();
+    const [x, y] = pos(e as PointerEvent); snapshot(); frame().items.push({ id: uid(), x, y, ...itemOf(c.b) } as Item); pending = null; changed();
   };
-  document.addEventListener('pointerup', drop); document.addEventListener('pointercancel', drop);
+  document.addEventListener('pointerup', (e) => { if (e.pointerType !== 'touch') drop(e); });
+  document.addEventListener('pointercancel', (e) => { if (e.pointerType !== 'touch') drop(e); });
+  // Doigt : appui long (un quart de seconde) pour soulever l'élément, puis on le fait glisser sur la carte.
+  // Un glissement rapide garde le défilement normal de la palette.
+  let hold = 0, touchStart: { x: number; y: number } | null = null, last = { x: 0, y: 0 };
+  root.addEventListener('touchstart', (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b || e.touches.length !== 1) return;
+    const t0 = e.touches[0]; touchStart = { x: t0.clientX, y: t0.clientY }; last = { ...touchStart };
+    clearTimeout(hold);
+    hold = window.setTimeout(() => {
+      carry = { b, x: last.x, y: last.y, ghost: lift(b) };
+      carry.ghost!.style.transform = `translate(${last.x}px, ${last.y}px)`;
+      navigator.vibrate?.(12);
+    }, 250);
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    const t0 = e.touches[0]; if (!t0) return;
+    last = { x: t0.clientX, y: t0.clientY };
+    if (carry?.ghost) {
+      e.preventDefault(); // l'élément est soulevé : pas de défilement
+      carry.ghost.style.transform = `translate(${last.x}px, ${last.y}px)`;
+      hover(last.x, last.y);
+    } else if (touchStart && Math.hypot(last.x - touchStart.x, last.y - touchStart.y) > 8) { clearTimeout(hold); touchStart = null; }
+  }, { passive: false });
+  const touchEnd = (cancel: boolean) => {
+    clearTimeout(hold); touchStart = null;
+    if (carry?.ghost) {
+      drop({ type: cancel ? 'pointercancel' : 'pointerup', clientX: last.x, clientY: last.y });
+      justDropped = true; setTimeout(() => (justDropped = false), 400); // le « clic » qui suit le doigt levé ne compte pas
+    }
+  };
+  document.addEventListener('touchend', () => touchEnd(false));
+  document.addEventListener('touchcancel', () => touchEnd(true));
   root.addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b || justDropped) return;
     pending = itemOf(b);

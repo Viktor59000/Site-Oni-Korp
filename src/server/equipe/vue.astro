@@ -10,9 +10,9 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
-if (!(me.staff || me.games.length)) return Astro.redirect('/equipe/');
+if (!(me.staff || me.games.length || me.mod)) return Astro.redirect('/equipe/');
 // Responsable d'un jeu : seulement son jeu (rosters, candidatures, recrues, matchs) ; le reste du club est pour l'encadrement
-const mineGame = (g: string | null | undefined) => me.staff || (!!g && me.games.includes(g));
+const mineGame = (g: string | null | undefined) => me.staff || me.mod || (!!g && me.games.includes(g));
 
 const now = Date.now(), DAY = 86400_000;
 const ago = (ms: number) => { const m = Math.round((now - ms) / 60_000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`; };

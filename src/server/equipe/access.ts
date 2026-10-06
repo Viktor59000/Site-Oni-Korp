@@ -1,12 +1,15 @@
 // Qui a accès à quoi, d'après les rôles Discord du membre.
-// - Encadrement (Admin, Fondateur, Manager, Coach, Modérateur, ou tout rôle Administrateur) : tous les rosters, tout gérer.
+// - Encadrement (Admin, Fondateur, Manager, Coach, ou tout rôle Administrateur) : tous les rosters, tout gérer.
+// - Modérateur (décision du 06/10) : la vue d'ensemble seulement ; il ne voit ni stratégies, ni notes, ni objectifs des rosters
+//   (il garde la modération Discord et les tickets, côté bot).
 // - Responsable d'un jeu (« Responsable League of Legends »…) : tous les rosters de ce jeu, les gérer, et la vue d'ensemble de ce jeu.
 // - Capitaine : gère ses propres rosters (planning, compo, objectifs, épingles), sans être encadrement.
 // - Analyste : suit les rosters dont il a le rôle, sans compter comme joueur.
 // - Pôle contenu (casteur, graphiste, monteur, CM, créateur, marketing) : l'espace Contenu, sans les rosters.
 import { rows } from '../db';
 
-export const STAFF_ROLES = ['Admin', 'Fondateur', 'Manager', 'Coach', 'Modérateur'];
+export const STAFF_ROLES = ['Admin', 'Fondateur', 'Manager', 'Coach'];
+export const MOD_ROLE = 'Modérateur';
 export const GAME_LEAD_ROLES: Record<string, string> = {
   'Responsable Rocket League': 'rl', 'Responsable League of Legends': 'lol', 'Responsable Valorant': 'valo', 'Responsable osu!': 'osu',
 };
@@ -44,6 +47,7 @@ export async function access(userId: string) {
     member: m ?? null, staff, rosters: visible,
     rosterIds: mine.map((r) => Number(r.id)), // rosters dont il a le rôle (joueur, analyste)
     lead, games, captain, analyst, content,
+    mod: !staff && has(MOD_ROLE), // Modérateur sans autre rôle d'encadrement
   };
 }
 export type Access = Awaited<ReturnType<typeof access>>;
