@@ -79,8 +79,24 @@ const indicators = Object.entries(METRICS).map(([key, m]) => {
   const last = serie.at(-1), base = [...serie].reverse().find((r) => r.day <= ago30) ?? serie[0];
   return { key, ...m, last, delta: last && base && base !== last ? Number(last.value) - Number(base.value) : null, sp: spark(serie.map((r) => Number(r.value)), { w: 100, h: 26 }) };
 });
-const todayIso = new Date(now).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
 const dshort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
+const todayIso = new Date(now).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+
+// Chiffres du club, prêts à copier pour un partenaire ou le kit presse : seulement des valeurs relevées (jamais d'estimation)
+const seasonStart = (() => { const d = new Date(now); const y = d.getUTCMonth() >= 8 ? d.getUTCFullYear() : d.getUTCFullYear() - 1; return Date.UTC(y, 8, 1); })();
+const [season] = await rows<{ v: number; d: number; n: number }>(
+  `SELECT SUM(score_us > score_them) AS v, SUM(score_us < score_them) AS d, COUNT(*) AS n FROM matches
+   WHERE cancelled = 0 AND score_us IS NOT NULL AND COALESCE(kind, 'officiel') != 'scrim' AND at >= ?`, seasonStart).catch(() => [{ v: 0, d: 0, n: 0 }]);
+const lastOf = (k: string) => indicators.find((x) => x.key === k)?.last;
+const fmtN = (v: number) => Number(v).toLocaleString('fr-FR');
+const facts = [
+  'Club esport français fondé le 12 juillet 2021, sur Rocket League, League of Legends, Valorant et osu!.',
+  lastOf('discord_membres') && `${fmtN(lastOf('discord_membres')!.value)} membres sur Discord (relevé du ${dshort.format(new Date(lastOf('discord_membres')!.day))}).`,
+  lastOf('twitch_followers') && `${fmtN(lastOf('twitch_followers')!.value)} followers sur Twitch.`,
+  ...['x_abonnes', 'instagram_abonnes', 'tiktok_abonnes', 'youtube_abonnes'].map((k) => lastOf(k) && `${fmtN(lastOf(k)!.value)} ${METRICS[k].label.toLowerCase()}.`),
+  lastOf('inhouses_7j') && Number(lastOf('inhouses_7j')!.value) > 0 && `${fmtN(lastOf('inhouses_7j')!.value)} inhouses joués sur les 7 derniers jours.`,
+  Number(season?.n ?? 0) > 0 && `Saison en cours : ${season.n} match${Number(season.n) > 1 ? 's' : ''} public${Number(season.n) > 1 ? 's' : ''}, ${season.v ?? 0} victoire${Number(season.v) > 1 ? 's' : ''}.`,
+].filter(Boolean) as string[];
 
 // Contexte du rendu des tâches (personne connectée)
 const ctx = { user: user.id, staff: me.staff, roles: myRoles, back, now };
@@ -162,6 +178,12 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
         </li>
       ))}
     </ul>
+    <div class="ct-facts">
+      <h3>Chiffres du club <small>à copier pour un partenaire ou le kit presse</small></h3>
+      <ul data-facts>{facts.map((f) => <li>{f}</li>)}</ul>
+      <button type="button" class="btn btn--ghost" data-copy-facts>Copier</button>
+      <p class="eq-note">Seulement des chiffres relevés : un chiffre manquant n'apparaît pas (saisis les abonnés de chaque réseau ci-dessous).</p>
+    </div>
     <details class="ct-add">
       <summary>Saisir un chiffre (X, Instagram, TikTok, YouTube)</summary>
       <form method="post" action="/api/equipe/outils">
@@ -179,6 +201,8 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
 </Qg>
 
 <script is:inline>
+  // Copier les chiffres du club en texte simple, une phrase par ligne
+  document.addEventListener('click', async (e) => { const b = e.target.closest('[data-copy-facts]'); if (!b) return; const t = [...document.querySelectorAll('[data-facts] li')].map((li) => li.textContent).join(String.fromCharCode(10)); try { await navigator.clipboard.writeText(t); b.textContent = 'Copié'; setTimeout(() => (b.textContent = 'Copier'), 1500); } catch {} });
   // Le champ du lien du livrable n'apparaît qu'au clic sur « Livrer »
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-livrer]'); if (!b) return; const f = b.closest('form'); const u = f.querySelector('input[name=url]'); if (u.hidden) { e.preventDefault(); u.hidden = false; u.focus(); } });
 </script>
@@ -231,6 +255,10 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
   .ct-err { color: #ff6a5c; margin: .5rem 0 0; }
   .ct-foot { margin-top: 1rem; }
   .ct-kpi { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+  .ct-facts { margin-top: 1rem; padding: .9rem 1rem; border-left: 3px solid var(--lacquer); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .ct-facts h3 { margin: 0 0 .5rem; font-size: .95rem; text-transform: none; letter-spacing: 0; }
+  .ct-facts h3 small { font-weight: 400; color: var(--muted); }
+  .ct-facts ul { margin: 0 0 .75rem; padding-left: 1.1rem; font-size: .9rem; }
   .ct-kpi li { display: grid; gap: .15rem; padding: .7rem .9rem; background: color-mix(in srgb, var(--ink) 4%, transparent); }
   .ct-kpi span { color: var(--muted); font-size: .8rem; } .ct-kpi em { font-style: normal; font-size: .7rem; }
   .ct-kpi b { font: 700 1.5rem var(--font-display); font-variant-numeric: tabular-nums; }
