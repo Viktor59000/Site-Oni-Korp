@@ -21,6 +21,22 @@ const challenges = await Promise.all(maps.filter((m) => Number(m.challenge) && (
   c, meta: c.meta ? JSON.parse(c.meta) : null,
   board: JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `osu-chal:${c.id}`))[0]?.value ?? '[]') as any[],
 })));
+// Maps de la semaine (relevées par Oni Bot sur l'API osu! : classées depuis 7 jours, triées par parties).
+// Niveau visé : d'après les pp des joueurs du roster (environ 2★ + 1★ par tranche de 1 000 pp), une étoile de marge de chaque côté.
+type WeekMap = { set: number; beatmap: number; title: string; artist: string; mapper: string; version: string; stars: number; bpm: number; length: number; cover: string | null; plays: number; favs: number };
+const week = JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', 'osu:semaine'))[0]?.value ?? 'null') as { at: number; maps: WeekMap[] } | null;
+const memberIds = osuRosters.length ? (await rows<{ id: string }>(`SELECT id FROM guild_members WHERE ${osuRosters.map(() => 'roles LIKE ?').join(' OR ')}`, ...osuRosters.map((r) => `%"${r.role_id}"%`))).map((m) => m.id) : [];
+const osuAcc = memberIds.length ? await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE game = 'osu' AND user_id IN (${memberIds.map(() => '?').join(',')})`, ...memberIds) : [];
+const pps = (await Promise.all(osuAcc.map(async (a) => JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `osu:${a.ident.toLowerCase()}`))[0]?.value ?? 'null')?.pp as number | undefined))).filter((x): x is number => !!x);
+const target = pps.length ? Math.round((2 + pps.reduce((a, b) => a + b, 0) / pps.length / 1000) * 10) / 10 : null;
+const levelParam = Astro.url.searchParams.get('niveau');
+const level = levelParam === 'tout' ? null : target;
+const weekMaps = (week?.maps ?? [])
+  .filter((m) => level === null || Math.abs(m.stars - level) <= 1)
+  // une difficulté par map : la plus proche du niveau visé
+  .sort((a, b) => (level === null ? b.stars - a.stars : Math.abs(a.stars - level) - Math.abs(b.stars - level)))
+  .filter((m, i, all) => all.findIndex((x) => x.set === m.set) === i)
+  .sort((a, b) => b.plays - a.plays).slice(0, 8);
 const training = maps.filter((m) => !Number(m.challenge)).map((m) => ({ m, meta: m.meta ? JSON.parse(m.meta) : null }));
 // Outils recommandés par Yuzuctus pour l'environnement osu!
 const KIT: [string, [string, string, string, string?][]][] = [
@@ -92,6 +108,34 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
                 </div>
               </article>
             )) : <p class="eq-note">{me.staff ? 'Aucun défi en cours. Lance-en un avec « + Ajouter une map » (case « défi de la semaine »).' : 'Aucun défi en cours.'}</p>}
+          </section>
+
+          <section class="ou-week">
+            <h2 class="ou-h">Maps de la semaine <small>classées ces 7 derniers jours, les plus jouées{level !== null ? ` · autour de ${level}★ (niveau du roster)` : ''}</small></h2>
+            {target !== null && <p class="ou-week__lvl"><a href={`${back}${back.includes('?') ? '&' : '?'}niveau=${level === null ? 'roster' : 'tout'}`}>{level === null ? 'Revenir au niveau du roster' : 'Voir toutes les difficultés'}</a></p>}
+            {weekMaps.length ? (
+              <ul class="ou-week__grid">
+                {weekMaps.map((m) => (
+                  <li>
+                    <a class="ou-week__card" href={`https://osu.ppy.sh/beatmapsets/${m.set}#osu/${m.beatmap}`} rel="noopener" target="_blank">
+                      {m.cover && <img src={m.cover} alt="" loading="lazy" width="400" height="140" />}
+                      <span class="ou-week__stars">{m.stars.toFixed(2)}★</span>
+                      <strong>{m.title}</strong>
+                      <span>{m.artist} · [{m.version}]</span>
+                      <small>{Math.round(m.bpm)} BPM · {len(m.length)} · par {m.mapper} · {m.plays.toLocaleString('fr-FR')} parties</small>
+                    </a>
+                    {osuRosters.length > 0 && (
+                      <form method="post" action="/api/equipe/outils">
+                        <input type="hidden" name="action" value="osu-map" /><input type="hidden" name="back" value={back} />
+                        <input type="hidden" name="map" value={`https://osu.ppy.sh/beatmapsets/${m.set}#osu/${m.beatmap}`} /><input type="hidden" name="roster" value={osuRosters[0].id} />
+                        <input type="hidden" name="note" value="Map de la semaine" />
+                        <button class="ou-week__add">Ajouter à l'entraînement</button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : <p class="eq-note">{week ? 'Aucune map classée cette semaine à ce niveau.' : 'Oni Bot relève les maps de la semaine toutes les 6 heures : elles arrivent bientôt.'}</p>}
           </section>
 
           <section>
@@ -167,6 +211,20 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
   .ou-check input[type="number"] { width: 4rem !important; }
   .ou-add .btn { justify-self: start; }
   .ou-err { grid-column: 1 / -1; color: var(--red-text); font-weight: 700; margin: 0; }
+  .ou-week { margin-bottom: 2rem; }
+  .ou-week__lvl { margin: -.5rem 0 1rem; font-size: .85rem; }
+  .ou-week__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  .ou-week__grid li { display: grid; border: 1px solid var(--line); border-top: 3px solid #ff66aa; transition: translate .2s, box-shadow .2s; }
+  .ou-week__grid li:hover { translate: 0 -3px; box-shadow: 0 10px 22px var(--shadow, rgb(0 0 0 / .3)); }
+  .ou-week__card { position: relative; display: grid; gap: .2rem; padding-bottom: .7rem; color: inherit; text-decoration: none; }
+  .ou-week__card img { width: 100%; aspect-ratio: 20 / 7; object-fit: cover; display: block; margin-bottom: .5rem; }
+  .ou-week__card strong, .ou-week__card span, .ou-week__card small { padding-inline: .75rem; }
+  .ou-week__card strong { line-height: 1.25; }
+  .ou-week__card span { color: var(--muted); font-size: .85rem; }
+  .ou-week__card small { color: var(--muted); font-size: .78rem; }
+  .ou-week__stars { position: absolute; top: .5rem; right: .5rem; padding: .15rem .45rem !important; background: #ff66aa; color: #1a0b13 !important; font-weight: 700; font-size: .8rem !important; }
+  .ou-week__add { margin: 0 .75rem .75rem; padding: .35rem .6rem; border: 1px solid var(--line); background: none; color: var(--ink); font: 600 .8rem var(--font-body); cursor: pointer; }
+  .ou-week__add:hover { border-color: #ff66aa; color: #ff66aa; }
   .ou-maps { display: grid; gap: .6rem; }
   .ou-maps li { display: grid; grid-template-columns: 8rem 1fr auto; gap: 1rem; align-items: center; border: 1px solid var(--line); padding-right: .75rem; }
   .ou-maps img { width: 100%; height: 100%; object-fit: cover; min-height: 4.5rem; }
