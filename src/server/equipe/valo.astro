@@ -179,12 +179,13 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
     type Com = { id: number; title: string; agent: string; abilities: string[]; thumb: string | null; from: string; to: string };
     type ComFull = { id: number; map: string; title: string; from: string; to: string; abilities: string[]; steps: string[]; images: string[]; author: string; likes: number; views: number; url: string };
     const lvAgent = (a: string) => a.replace(/\W/g, '');
-    let comToken = 0;
+    let comToken = 0, comList: Com[] = [];
     async function loadCom() {
       const tok = ++comToken, box = $('[data-com]');
       box.innerHTML = '<li class="eq-note">Chargement…</li>'; $('[data-com-detail]').hidden = true;
       const list: Com[] | null = await fetch(`/api/equipe/outils?type=lv&map=${encodeURIComponent(map)}&agent=${encodeURIComponent(lvAgent(agent))}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       if (tok !== comToken) return;
+      comList = list ?? [];
       box.innerHTML = list?.length ? list.slice(0, 24).map((c) => `<li><button type="button" data-com-id="${c.id}">
         ${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" />` : ''}
         <span><strong>${esc(c.title)}</strong><small>${esc(c.agent)}${c.abilities.length ? ` · ${esc(c.abilities.join(', '))}` : ''}</small><small>${esc(c.from)} → ${esc(c.to)}</small></span></button></li>`).join('')
@@ -208,7 +209,8 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
         (f.elements.namedItem('note') as HTMLTextAreaElement).value = d.steps.join(NL).slice(0, 500);
         (f.elements.namedItem('url') as HTMLInputElement).value = d.url;
         d.images.slice(0, 3).forEach((u, k) => { (f.elements.namedItem(`img${k + 1}`) as HTMLInputElement).value = u; });
-        const ag = agents.find((a) => lvAgent(a.name).toLowerCase() === lvAgent(agent || '').toLowerCase());
+        const from = comList.find((c) => c.id === d.id)?.agent || agent || '';
+        const ag = agents.find((a) => lvAgent(a.name).toLowerCase() === lvAgent(from).toLowerCase());
         if (ag) { $<HTMLSelectElement>('[data-f-agent]').value = ag.name; fillAbilities(); }
         draft = null; sel = null; setMode('from'); draw();
         $('[data-mapbox]').scrollIntoView({ behavior: 'smooth', block: 'center' });
