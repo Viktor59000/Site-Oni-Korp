@@ -80,7 +80,7 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
                         <div class:list={{ 'su-wide': f.wide }}>
                           <dt>{f.label}</dt>
                           <dd>
-                            {f.key === 'viseur' ? <><code>{d[f.key]}</code><button type="button" class="su-copy" data-copy={d[f.key]}>Copier</button></>
+                            {f.key === 'viseur' ? <><canvas class="su-xh" width="192" height="108" data-xh={d[f.key]} aria-label="Aperçu du viseur"></canvas><code>{d[f.key]}</code><button type="button" class="su-copy" data-copy={d[f.key]}>Copier</button></>
                               : /^https?:\/\//.test(d[f.key]) ? <a href={d[f.key]} rel="noopener" target="_blank">{f.key === 'osurea' ? 'Voir ma zone' : 'Ouvrir'}</a> : d[f.key]}
                           </dd>
                         </div>
@@ -97,6 +97,9 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
 </Qg>
 
 <script>
+  import { parseCrosshair, drawCrosshair } from '../../lib/crosshair';
+  // Aperçu de chaque viseur Valorant, sur un fond de carte
+  document.querySelectorAll<HTMLCanvasElement>('[data-xh]').forEach((cv) => { const x = parseCrosshair(cv.dataset.xh ?? ''); if (x) drawCrosshair(cv, x, 2.5); else cv.hidden = true; });
   document.addEventListener('click', async (e) => {
     const b = (e.target as Element).closest<HTMLButtonElement>('[data-copy]'); if (!b) return;
     try { await navigator.clipboard.writeText(b.dataset.copy!); b.textContent = 'Copié !'; setTimeout(() => (b.textContent = 'Copier'), 1500); } catch {}
@@ -104,6 +107,7 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
 </script>
 
 <style>
+  .su-xh { display: block; width: 100%; max-width: 16rem; aspect-ratio: 16 / 9; height: auto; margin-bottom: .4rem; background: #6d7a76 url('https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png') center / cover; border: 1px solid var(--line); }
   .eq-mini { padding-block: 2.5rem 1.5rem; }
   .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
   .eq-note { color: var(--muted); font-size: var(--step--1); }

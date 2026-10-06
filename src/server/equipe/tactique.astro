@@ -148,6 +148,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             </details>
             <details><summary>Fond</summary>
               <select data-bg-select aria-label="Fond"></select>
+              <label class="wb-check" data-look-wrap hidden><input type="checkbox" data-look /> Carte réaliste</label>
               <label class="wb-baron" data-baron-wrap hidden>Fosse du Nashor<select data-baron><option value="1">Forme 1</option><option value="2">Forme 2</option><option value="3">Forme 3</option></select></label>
               <p class="eq-note">Change le fond pour tout le monde. « Image » : colle le lien d'une capture ou d'un schéma.</p>
             </details>
@@ -171,6 +172,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   // L'âme Infernale n'existe qu'en une forme de fosse
   const riftUrl = (bg: string) => { const { t, n } = riftParts(bg); return `/img/lol/map-${t}-${t === 'infernal' ? '1' : n}.webp`; };
   const LOL_MAP = riftUrl('Faille');
+  // Rendu réaliste (vue du dessus du jeu) ; les murs pour la vision restent lus sur la minicarte vectorielle
+  const RIFT_IMG = '/img/lol/faille-image.webp';
   // Tours et inhibiteurs : positions relevées dans les données de partie de Riot (unités du jeu, carte de 14 870)
   const STRUCT: [string, number, number, number, 'tour' | 'inhib'][] = [
     ['b-top-1', 100, 981, 10441, 'tour'], ['b-top-2', 100, 1512, 6699, 'tour'], ['b-top-3', 100, 1169, 4287, 'tour'], ['b-top-i', 100, 1172, 3583, 'inhib'],
@@ -250,7 +253,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     type Item = { id: string; type: 'tok' | 'ping' | 'note' | 'text' | 'arrow' | 'line' | 'rect' | 'circle' | 'zone'; x: number; y: number; x2?: number; y2?: number; color?: string; w?: number; label?: string; ref?: string; kind?: string };
     type Stroke = { id: string; color: string; w: number; pts: [number, number][] };
     type Frame = { name: string; items: Item[]; strokes: Stroke[]; down?: string[] };
-    type State = { bg: string; notes: string; frames: Frame[]; towers?: boolean };
+    type State = { bg: string; notes: string; frames: Frame[]; towers?: boolean; look?: string };
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
     const id = Number(root.dataset.board), game = root.dataset.game ?? '';
     let state: State = { bg: root.dataset.map ?? 'blanc', notes: '', frames: [{ name: 'Étape 1', items: [], strokes: [] }] };
@@ -266,7 +269,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
     // Ancien format (tokens / strokes) → étapes
     const upgrade = (s: any): State => s?.frames
-      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', towers: s.towers !== false, frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
+      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', towers: s.towers !== false, look: s.look ?? 'vec', frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
       : { bg: s?.bg ?? state.bg, notes: '', frames: [{ name: 'Étape 1', items: (s?.tokens ?? []).map((t: any) => ({ id: t.id, type: 'tok', kind: t.kind, ref: t.ref, label: t.label, x: t.x, y: t.y })), strokes: (s?.strokes ?? []).map((k: any) => ({ ...k, w: 6 })) }] };
 
     try { const s0 = JSON.parse(root.dataset.state || '{}'); if (s0 && (s0.frames || s0.tokens)) state = upgrade(s0); at = Number(root.dataset.at) || 0; } catch {}
@@ -295,7 +298,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       if (bg === 'blanc') el.classList.add('is-blank');
       else if (bg === 'grille') el.classList.add('is-grid');
       else if (bg === 'Terrain') el.style.backgroundImage = `url("${RL_PITCH}")`;
-      else if (isRift(bg)) el.style.backgroundImage = `url("${riftUrl(bg)}")`;
+      else if (isRift(bg)) el.style.backgroundImage = `url("${state.look === 'img' ? RIFT_IMG : riftUrl(bg)}")`;
       else if (/^https?:\/\//.test(bg)) el.style.backgroundImage = `url("${bg.replace(/["()\\]/g, '')}")`;
       else { const m = valoMaps.find((x) => x.name === bg); if (m) el.style.backgroundImage = `url("${m.icon}")`; }
       const s = $<HTMLSelectElement>('[data-bg-select]');
@@ -308,7 +311,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         ...(opts_keep(bg)), ['url', 'Image (lien)…']];
       if (/^https?:\/\//.test(bg)) opts.unshift([bg, 'Image actuelle']);
       const baseVal = isRift(bg) ? (riftParts(bg).t === 'base' ? 'Faille' : `Faille:${riftParts(bg).t}`) : bg;
-      $('[data-baron-wrap]').hidden = !isRift(bg) || riftParts(bg).t === 'infernal';
+      $('[data-look-wrap]').hidden = !isRift(bg); $<HTMLInputElement>('[data-look]').checked = state.look === 'img';
+      $('[data-baron-wrap]').hidden = !isRift(bg) || riftParts(bg).t === 'infernal' || state.look === 'img';
       $<HTMLSelectElement>('[data-baron]').value = isRift(bg) ? riftParts(bg).n : '1';
       if (document.activeElement !== s) s.innerHTML = opts.filter(([v], i) => opts.findIndex(([w]) => w === v) === i).map(([v, l]) => `<option value="${esc(v)}" ${v === baseVal ? 'selected' : ''}>${esc(l)}</option>`).join('');
     }
@@ -460,6 +464,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       if (isRift(v)) { const n = $<HTMLSelectElement>('[data-baron]').value; const t = riftParts(v).t; v = t === 'base' && n === '1' ? 'Faille' : `Faille:${t}:${n}`; }
       snapshot(); state.bg = v; (e.target as HTMLSelectElement).blur(); changed();
     });
+    $('[data-look]').addEventListener('change', (e) => { snapshot(); state.look = (e.target as HTMLInputElement).checked ? 'img' : 'vec'; changed(); });
     $('[data-towers-show]').addEventListener('change', (e) => { snapshot(); state.towers = (e.target as HTMLInputElement).checked; changed(); });
     root.querySelectorAll<HTMLElement>('[data-towers]').forEach((b) => b.addEventListener('click', () => {
       snapshot(); const v = b.dataset.towers; frame().down = v === 'up' ? [] : STRUCT.filter(([, team]) => String(team) === v).map(([k]) => k); changed();
@@ -528,7 +533,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         if (state.bg === 'grille') { c.strokeStyle = '#e3e0d8'; c.lineWidth = 1; for (let i = 1; i < 20; i++) { c.beginPath(); c.moveTo(i * W / 20, 0); c.lineTo(i * W / 20, H); c.moveTo(0, i * H / 20); c.lineTo(W, i * H / 20); c.stroke(); } }
       } else {
         c.fillStyle = '#0f1923'; c.fillRect(0, 0, W, H);
-        const src = state.bg === 'Terrain' ? RL_PITCH : isRift(state.bg) ? riftUrl(state.bg) : /^https?:/.test(state.bg) ? state.bg : valoMaps.find((x) => x.name === state.bg)?.icon;
+        const src = state.bg === 'Terrain' ? RL_PITCH : isRift(state.bg) ? (state.look === 'img' ? RIFT_IMG : riftUrl(state.bg)) : /^https?:/.test(state.bg) ? state.bg : valoMaps.find((x) => x.name === state.bg)?.icon;
         const img = src ? await loadImg(src) : null;
         if (img) { const s = Math.min(W / img.width, H / img.height); c.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s); }
       }
