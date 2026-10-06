@@ -1,4 +1,5 @@
 ---
+import { srcset } from '../../lib/img.js';
 // Créateurs de contenu : streamers et vidéastes qui portent les couleurs du club. Liste en direct (Oni Bot, /api/createurs) :
 // profil Twitch (photo, bannière, bio), live en cours, dernier live, activité du mois.
 import Base from '../../layouts/Base.astro';
@@ -13,6 +14,7 @@ const gives = [
 ---
 <Base title="Créateurs de contenu" description="Les streamers et vidéastes d'Oni Korp, club esport français : lives en cours, chaînes Twitch et YouTube, et comment rejoindre les créateurs du club.">
   <header class="page-head">
+      <img class="page-head__bg" src="/img/entete-createurs.webp" srcset={srcset("/img/entete-createurs.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <div class="wrap">
       <h1>Créateurs</h1>
       <p>Ils streament, ils montent, ils portent les couleurs du club.</p>

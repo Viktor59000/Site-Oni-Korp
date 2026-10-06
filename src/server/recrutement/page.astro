@@ -1,4 +1,5 @@
 ---
+import { srcset } from '../../lib/img.js';
 // Postuler : connexion Discord, formulaire, puis Oni Bot ouvre le fil privé avec le staff du pôle.
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
@@ -26,6 +27,7 @@ const apartir = (x: string) => (/^[AEIOUÉÈÊ]/i.test(x) ? `à partir d’${x}`
 ---
 <Base title="Postuler" description="Candidature joueur ou staff chez Oni Korp : connexion Discord, un formulaire, et un fil privé avec le staff du pôle.">
   <header class="page-head">
+      <img class="page-head__bg" src="/img/entete-postuler.webp" srcset={srcset("/img/entete-postuler.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <div class="wrap">
       <h1>Postuler</h1>
       <p>Un formulaire, puis un fil privé sur Discord avec le manager et le coach du pôle.</p>

@@ -8,14 +8,16 @@ import fs from 'node:fs';
 const PAGES = [
   ['club', 'Le club', 'Né sur Rocket League en 2021, quatre jeux aujourd’hui', 'public/img/entete-club.webp'],
   ['effectif', 'Légendes du club', 'L’album des joueurs et du staff', 'public/img/album-couverture.webp'],
-  ['agenda', 'Agenda', 'Matchs, tournois et lives du club', 'public/img/match-showmatch.webp'],
+  ['agenda', 'Agenda', 'Matchs, tournois et lives du club', 'public/img/entete-agenda.webp'],
   ['recrutement', 'Recrutement', 'Joueurs et staff : rejoins la Oni', 'public/img/entete-recrutement.webp'],
   ['boosters', 'Boosters', 'Un booster par jour, 60 vignettes à collectionner', 'public/img/cartes/sp-moments-1.webp'],
   ['inhouses', 'Inhouses', 'Parties entre membres et classement Elo', 'public/img/inhouses.webp'],
   ['vestiaire', 'Vestiaire', 'Sweat du club et decals Rocket League', 'public/img/entete-vestiaire.webp'],
-  ['partenaires', 'Partenaires', 'Avance avec un club qui joue, caste et grandit', 'public/img/cartes/sp-partenaires-1.webp'],
+  ['partenaires', 'Partenaires', 'Avance avec un club qui joue, caste et grandit', 'public/img/entete-partenaires.webp'],
   ['marque', 'Kit de marque', 'Logo, couleurs et règles d’utilisation', 'public/img/cartes/sp-legendaires-1.webp'],
-  ['contact', 'Contact', 'Une question, un partenariat ? Écris-nous', 'public/img/hero-fond.webp'],
+  ['contact', 'Contact', 'Une question, un partenariat ? Écris-nous', 'public/img/entete-contact.webp'],
+  ['createurs', 'Créateurs', 'Les streamers et vidéastes du club', 'public/img/entete-createurs.webp'],
+  ['postuler', 'Postuler', 'Joueurs et staff : candidature en deux minutes', 'public/img/entete-postuler.webp'],
 ];
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 // Polices du club en TTF (les mêmes que les cartes d'Oni Bot)

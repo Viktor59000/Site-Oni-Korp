@@ -1,4 +1,5 @@
 ---
+import { srcset } from '../../lib/img.js';
 // Contact : partenaires, équipes (match amical, scrim), presse. Les messages arrivent au staff sur Discord via Oni Bot.
 import Base from '../../layouts/Base.astro';
 import site from '../../data/site.json';
@@ -11,6 +12,7 @@ const TYPES = [
 ---
 <Base title="Contact" description="Contacter Oni Korp, club esport français : partenariat, match amical, scrim, presse ou question. Le staff répond sous quelques jours, sur Discord ou par e-mail.">
   <header class="page-head">
+      <img class="page-head__bg" src="/img/entete-contact.webp" srcset={srcset("/img/entete-contact.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <div class="wrap">
       <h1>Contact</h1>
       <p>Partenaires, équipes, presse : un message, et le staff te répond.</p>

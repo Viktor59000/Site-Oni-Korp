@@ -363,8 +363,8 @@ a.game:hover h3 { color: var(--red-text); }
 .section--brush { position: relative; isolation: isolate; overflow: hidden; }
 .section--brush::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: url(/img/hero-fond.webp) right center / cover no-repeat;
-  mix-blend-mode: multiply; opacity: .55;
+  background: url(/img/bandeau-pinceau.webp) center / cover no-repeat; /* visuel propre aux bandeaux, pas celui de l'accueil */
+  mix-blend-mode: multiply; opacity: .5;
 }
 
 
@@ -983,7 +983,7 @@ main { counter-reset: page; }
 .sticker[data-rarete="holo"] .sticker__frame::after, .sticker[data-rarete="legendaire"] .sticker__frame::after { background-position: 55% 0; }
 .collection__item.is-missing .sticker__frame::after { display: none; }
 /* Recrutement / accueil : fond pinceau léger sur mobile */
-@media (max-width: 860px) { .section--brush::before { background-image: url(/img/hero-fond-800.webp); } }
+@media (max-width: 860px) { .section--brush::before { background-image: url(/img/bandeau-pinceau-800.webp); } }
 
 /* ---------- Agenda en direct (Oni Bot → /api/agenda) ---------- */
 .agenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; margin-bottom: 2.5rem; }
