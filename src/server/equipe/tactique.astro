@@ -34,7 +34,9 @@ const TOOLS: [string, string, string][] = [
   ['zone', 'Zone (fumée, contrôle…)', 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12h8'], ['note', 'Post-it', 'M5 4h14v11l-5 5H5z'], ['text', 'Texte', 'M5 5h14M12 5v14'],
   ['erase', 'Gomme', 'M16 4l4 4-10 10H6l-2-2z'],
 ];
-const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ['vision', '◉', 'Vision / ward'], ['balle', '●', 'Balle / spike']];
+// Sur la Faille, deux vraies balises avec leur portée (900 unités, à l'échelle de la carte) ; ailleurs un repère de vision générique
+const VISION: [string, string, string][] = current?.game === 'lol' ? [['ward', '◉', 'Balise (portée)'], ['controle', '◉', 'Balise de contrôle (portée)']] : [['vision', '◉', 'Vision']];
+const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ...VISION, ...(current?.game === 'lol' ? [] : [['balle', '●', current?.game === 'valo' ? 'Spike' : 'Balle'] as [string, string, string]])];
 ---
 <Qg title="Tableau blanc · Inside" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {!current && usable.length > 0 && (
@@ -124,9 +126,10 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
           <aside class="wb-side">
             <details open><summary>Éléments</summary>
-              <div class="wb-markers">
-                {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" aria-label={`Allié ${n}`}>{n}</button>)}
-                {[1, 2, 3, 4, 5].map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" aria-label={`Adversaire ${n}`}>{n}</button>)}
+              <div class="wb-markers" style={`--n:${({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5}`}>
+                {/* Autant de pions que de joueurs : 3 en Rocket League, 2 en osu! (tag), 5 en LoL et Valorant */}
+                {Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => k + 1).map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" aria-label={`Allié ${n}`}>{n}</button>)}
+                {Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => k + 1).map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" aria-label={`Adversaire ${n}`}>{n}</button>)}
               </div>
               <div class="wb-pings">
                 {PINGS.map(([k, s, l]) => <button type="button" data-add="ping" data-ref={k} data-label={s}><span class={`is-${k}`}>{s}</span>{l}</button>)}
@@ -156,6 +159,9 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
 <script>
   const LOL_MAP = 'https://ddragon.leagueoflegends.com/cdn/16.19.1/img/map/map11.png';
+  // Portée de vision des balises sur la Faille : 900 unités sur une carte de 14 870 (en fraction de la largeur, rayon)
+  const WARD_RANGE: Record<string, number> = { ward: 900 / 14870, controle: 900 / 14870 };
+  const WARD_COLOR: Record<string, string> = { ward: '#ffd23f', controle: '#ff4fa3' };
   const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   let valoMaps: { name: string; icon: string }[] = [];
   // Garde le fond actuel dans la liste même s'il vient d'un autre jeu (ancien tableau)
@@ -233,6 +239,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     function background() {
       const bg = state.bg, el = $('[data-bg]');
       stage.style.aspectRatio = bg === 'Terrain' ? '3 / 5' : '1 / 1';
+      stage.style.setProperty('--ratio', bg === 'Terrain' ? '.6' : '1');
       el.className = 'wb-bg'; el.style.backgroundImage = '';
       if (bg === 'blanc') el.classList.add('is-blank');
       else if (bg === 'grille') el.classList.add('is-grid');
@@ -276,7 +283,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
         if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${esc(it.id)}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
         if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${esc(it.id)}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
-        if (it.type === 'ping') return `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s}">${esc(it.label)}</div>`;
+        if (it.type === 'ping') return (WARD_RANGE[it.ref ?? ''] && state.bg === 'Faille' ? `<div class="wb-range is-${esc(it.ref)}" style="${s};width:${WARD_RANGE[it.ref ?? ''] * 200}%" aria-hidden="true"></div>` : '') + `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s}">${esc(it.label)}</div>`;
         return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${esc(it.id)}" style="${s}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
       }).join('');
       const n = $<HTMLTextAreaElement>('[data-notes]');
@@ -475,7 +482,9 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         if (it.type === 'tok' || it.type === 'ping') {
           const r = it.type === 'ping' ? R * .82 : R;
           c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
-          c.fillStyle = it.type === 'ping' ? ({ danger: '#ff4655', vision: '#ffffff', balle: '#eeeeee' } as Record<string, string>)[it.ref ?? ''] ?? '#ffd23f' : it.kind === 'ally' ? '#2f6bff' : it.kind === 'enemy' ? '#e5251f' : '#0f1923';
+          if (it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && state.bg === 'Faille') { const rr = X(WARD_RANGE[it.ref ?? '']); c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.globalAlpha = .18; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 2 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.setLineDash([6 * k, 5 * k]); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
+          c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+          c.fillStyle = it.type === 'ping' ? ({ danger: '#ff4655', vision: '#ffffff', balle: '#eeeeee', ward: '#ffd23f', controle: '#ff4fa3' } as Record<string, string>)[it.ref ?? ''] ?? '#ffd23f' : it.kind === 'ally' ? '#2f6bff' : it.kind === 'enemy' ? '#e5251f' : '#0f1923';
           c.fill();
           if (it.kind === 'pic') { const img = await loadImg(icons.get(it.ref ?? '') ?? ''); if (img) { c.save(); c.beginPath(); c.arc(x, y, r - 1, 0, Math.PI * 2); c.clip(); c.drawImage(img, x - r, y - r, r * 2, r * 2); c.restore(); } }
           c.lineWidth = 2.5 * k; c.strokeStyle = it.type === 'ping' ? '#111' : '#fff'; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke();
@@ -562,7 +571,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-colors button[aria-pressed="true"] { background: var(--c); outline: 3px solid var(--ink); outline-offset: 1px; }
   .wb-group [data-width] span { display: block; width: 18px; background: currentColor; border-radius: 0; }
   .wb-main { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1rem; align-items: start; }
-  .wb-stage { position: relative; aspect-ratio: 1; max-width: 52rem; margin-inline: auto; width: 100%; border: 1px solid var(--line); touch-action: none; user-select: none; overflow: hidden; background: #0f1923; }
+  /* La carte tient entière dans l'écran : sa taille suit la hauteur disponible, pas seulement la largeur */
+  .wb-stage { position: relative; aspect-ratio: 1; max-width: 100%; margin-inline: auto; width: min(100%, calc((100vh - 15rem) * var(--ratio, 1))); min-width: min(100%, 18rem); border: 1px solid var(--line); touch-action: none; user-select: none; overflow: hidden; background: #0f1923; }
   .wb-stage[data-tool="pen"], .wb-stage[data-tool="arrow"], .wb-stage[data-tool="line"], .wb-stage[data-tool="rect"], .wb-stage[data-tool="circle"], .wb-stage[data-tool="zone"] { cursor: crosshair; }
   .wb-stage[data-tool="note"], .wb-stage[data-tool="text"] { cursor: text; }
   .wb-stage[data-tool="erase"] { cursor: not-allowed; }
@@ -584,6 +594,12 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-items :global(.wb-ping) { cursor: grab; }
   .wb-items :global(.is-danger), .wb-pings .is-danger { background: #ff4655; color: #fff; }
   .wb-items :global(.is-vision), .wb-pings .is-vision { background: #fff; }
+  .wb-items :global(.is-ward), .wb-pings .is-ward { background: #ffd23f; }
+  .wb-items :global(.is-controle), .wb-pings .is-controle { background: #ff4fa3; color: #fff; }
+  /* Portée d'une balise : un disque translucide à l'échelle de la carte, qui ne gêne pas les clics */
+  .wb-items :global(.wb-range) { position: absolute; aspect-ratio: 1; border-radius: 50%; pointer-events: none; border: 2px dashed currentColor; background: color-mix(in srgb, currentColor 16%, transparent); }
+  .wb-items :global(.wb-range.is-ward) { color: #ffd23f; }
+  .wb-items :global(.wb-range.is-controle) { color: #ff4fa3; }
   .wb-items :global(.is-balle), .wb-pings .is-balle { background: #eee; color: #555; }
   .wb-items :global(.wb-note) { max-width: 12rem; padding: .5rem .65rem; background: var(--c); color: #111; font: 700 .8rem/1.3 var(--font-body); box-shadow: 0 3px 8px rgb(0 0 0 / .35); cursor: grab; white-space: pre-wrap; transform: translate(-50%, -50%) rotate(-1.5deg); }
   .wb-items :global(.wb-text) { font: 700 1rem var(--font-body); text-shadow: 0 1px 3px rgb(0 0 0 / .6); cursor: grab; white-space: pre-wrap; max-width: 16rem; }
@@ -593,7 +609,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-side details { border: 1px solid var(--line); padding: .6rem .7rem; }
   .wb-side summary { cursor: pointer; font-weight: 700; font-size: .85rem; }
   .wb-side details[open] summary { margin-bottom: .6rem; }
-  .wb-markers { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+  /* Une ligne d'alliés, une ligne d'adversaires */
+  .wb-markers { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 2.6rem)); gap: .3rem; }
   .wb-markers button { aspect-ratio: 1; border-radius: 50%; border: 2px solid #fff; color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
   .wb-markers .is-ally { background: #2f6bff; } .wb-markers .is-enemy { background: #e5251f; }
   .wb-pings { display: grid; gap: .25rem; margin-top: .6rem; }

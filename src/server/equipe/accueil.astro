@@ -11,6 +11,8 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/planning/');
 const { me, user } = t;
 const sc = scope(me.rosters, Astro.url);
+// Un seul roster (staff compris) : on l'ouvre directement ; la vue d'ensemble reste dans le sélecteur du haut
+if (!sc.active && me.rosters.length === 1) return Astro.redirect(`/equipe/?r=${me.rosters[0].slug}`);
 // Un joueur d'un seul roster arrive directement dessus ; sinon on choisit
 const roster = sc.active ? sc.list[0] : me.rosters.length === 1 && !me.staff ? me.rosters[0] : null;
 

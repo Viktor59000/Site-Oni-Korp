@@ -59,7 +59,7 @@ const currentLabel = section?.label ?? heading;
           <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : 'Tous les rosters'}<span class="qg-caret" aria-hidden="true"></span></summary>
           <div class="qg-menu">
             {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
-            {(staff || rosters.length > 1) && <a href={PATH[current] && !GAME_TOOL[current] ? PATH[current] : '/equipe/'} aria-current={!activeRoster && current !== 'vue' ? 'page' : undefined}>Tous les rosters</a>}
+            {rosters.length > 1 && <a href={PATH[current] && !GAME_TOOL[current] ? PATH[current] : '/equipe/'} aria-current={!activeRoster && current !== 'vue' ? 'page' : undefined}>Tous les rosters</a>}
             {byGame.map((g) => (
               <>
                 <p style={`--g:${g.color}`}><span aria-hidden="true"></span>{g.label}</p>

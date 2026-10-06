@@ -385,3 +385,5 @@ body.qg .jo-roster__head { justify-content: space-between !important; }
 body.qg .pf-avatar { width: 72px; height: 72px; border-radius: 50%; border: 3px solid var(--game); object-fit: cover; }
 /* États vides : des phrases, donc en police de texte */
 body.qg :is(.eq-empty, .nt-empty, .ag-empty) { font-family: inherit !important; font-size: var(--text-sm) !important; line-height: 1.5; }
+/* Tableau ouvert : l'en-tête d'écran laisse la place à la carte (le titre du tableau est juste au-dessus) */
+body.qg .qg-main:has(.wb) .qg-head { display: none; }
