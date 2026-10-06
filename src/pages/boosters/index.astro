@@ -16,7 +16,7 @@ const cards = pages.flatMap((p) => p.cartes);
 ---
 <Base title="Boosters" description={`Ouvre un booster par jour et complète l'album Oni Korp : ${cards.length} vignettes, des holos, l'édition staff en or et des légendaires.`}>
   <header class="page-head">
-    <img class="page-head__bg page-head__bg--album" src="/img/album-couverture.webp" srcset={srcset("/img/album-couverture.webp")} sizes="100vw" alt="" width="1400" height="933" fetchpriority="high" />
+    <img class="page-head__bg" src="/img/entete-boosters.webp" srcset={srcset("/img/entete-boosters.webp")} sizes="100vw" alt="" width="2000" height="667" fetchpriority="high" />
     <div class="wrap">
       <h1>Boosters</h1>
       <p>Un booster offert chaque jour, cinq vignettes à l'intérieur. Complète l'album du club.</p>
@@ -66,9 +66,12 @@ const cards = pages.flatMap((p) => p.cartes);
 
   <section class="section" aria-labelledby="coll-title">
     <div class="wrap">
-      <div class="section__head">
-        <h2 id="coll-title">Ma collection</h2>
-        <p>Les vignettes manquantes restent dans l'ombre. Les doubles sont comptés.</p>
+      <div class="coll-head">
+        <div class="section__head">
+          <h2 id="coll-title">Ma collection</h2>
+          <p>Les vignettes manquantes restent dans l'ombre. Les doubles sont comptés.</p>
+        </div>
+        <img class="coll-head__album" src="/img/album-couverture-560.webp" srcset={srcset("/img/album-couverture.webp")} sizes="(max-width: 700px) 40vw, 220px" alt="" width="560" height="700" loading="lazy" />
       </div>
       {pages.map((pg) => (
         <div class="collection__page">
@@ -89,7 +92,7 @@ const cards = pages.flatMap((p) => p.cartes);
 
   <!-- Dos de vignette, utilisé pendant l'ouverture -->
   <template id="card-back">
-    <div class="pc__back"><img src="/img/hanko-oni.webp" srcset={srcset("/img/hanko-oni.webp")} sizes="120px" alt="" width="320" height="308" /></div>
+    <div class="pc__back"><img src="/img/hanko-oni.webp" srcset={srcset("/img/hanko-oni.webp")} sizes="120px" alt="" width="320" height="318" /></div>
   </template>
 </Base>
 

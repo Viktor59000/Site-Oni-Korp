@@ -616,7 +616,7 @@ main { counter-reset: page; }
 /* Accueil : couverture de l'album */
 .album-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; margin-bottom: clamp(2.5rem, 5vw, 4rem); }
 .album-intro .section__head { margin-bottom: 0; }
-.album-intro__cover { position: relative; display: block; }
+.album-intro__cover { position: relative; display: block; justify-self: center; width: min(100%, 26rem); }
 .album-intro__cover > img:last-child { position: relative; rotate: 2deg; box-shadow: 0 18px 40px var(--shadow); transition: rotate .4s ease, translate .4s ease; }
 .album-intro__cover:hover > img:last-child { rotate: 0deg; translate: 0 -6px; }
 .eclat { position: absolute; width: 45%; height: auto; right: -6%; top: -12%; opacity: .12; filter: brightness(0); }
@@ -638,7 +638,7 @@ main { counter-reset: page; }
 
 /* Recrutement : la pochette de vignettes à côté du staff */
 .staff-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2rem; align-items: center; }
-.staff-intro__pack { width: clamp(8rem, 16vw, 13rem); height: auto; rotate: 6deg; filter: drop-shadow(0 16px 24px var(--shadow)); margin-bottom: 2rem; }
+.staff-intro__pack { width: clamp(9rem, 18vw, 15rem); height: auto; rotate: 3deg; box-shadow: 0 16px 32px var(--shadow); margin-bottom: 2rem; }
 @media (max-width: 720px) { .staff-intro { grid-template-columns: 1fr; } .staff-intro__pack { display: none; } }
 
 :root:not([data-theme="dark"]) .section--bone { background: none; }
@@ -883,7 +883,6 @@ main { counter-reset: page; }
   background: url(/img/hanko-oni.webp) center / contain no-repeat; rotate: -12deg; pointer-events: none;
   filter: drop-shadow(0 1px 1px rgb(0 0 0 / .4));
 }
-.page-head__bg--album { object-position: 85% 30%; opacity: .45; }
 [hidden] { display: none !important; }
 
 /* ---------- Séries spéciales ---------- */
@@ -1038,3 +1037,9 @@ main { counter-reset: page; }
 .next-rdv .agenda__all { display: none; }
 .next-rdv .agenda { margin-bottom: 0; }
 @media (max-width: 1180px) and (min-width: 861px) { .nav__brand span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+
+/* Boosters : la couverture de l'album à côté de « Ma collection » */
+.coll-head { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
+.coll-head .section__head { margin-bottom: 0; }
+.coll-head__album { width: clamp(7rem, 16vw, 13rem); height: auto; rotate: -3deg; box-shadow: 0 16px 32px var(--shadow); flex: none; }
+@media (max-width: 600px) { .coll-head__album { display: none; } }

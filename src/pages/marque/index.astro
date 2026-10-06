@@ -232,6 +232,8 @@ const styleRules = [
         {['oni-symbole', 'oni-symbole-sans-cornes', 'oni-korp-horizontal', 'oni-korp-pile', 'oni-korp-logotype'].map((f) => (
           <li><strong>{f.replace(/-/g, ' ')}</strong>{['rouge', 'noir', 'blanc'].map((c) => <a href={`/marque/${f}-${c}.svg`} download>{c === 'rouge' ? 'vermillon' : c}</a>)}</li>
         ))}
+        <li><strong>kanji 鬼 au pinceau</strong><a href="/marque/oni-kanji-rouge.png" download>vermillon</a><a href="/marque/oni-kanji-noir.png" download>noir</a></li>
+        <li><strong>sceau 鬼</strong><a href="/marque/oni-sceau.png" download>vermillon</a></li>
       </ul>
       <a class="btn" href="/marque/oni-korp-logos.zip" download>Tout télécharger (zip)</a>
       <p class="mk-note">Une question, un usage particulier (maillot, partenariat) ? <a href="/contact/">Écris-nous</a>.</p>
