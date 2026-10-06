@@ -273,8 +273,8 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
   .ov-alerts > li.is-action { border-left-color: #f0a04b; }
   .ov-alerts > li.ov-group { display: block; border-left-color: var(--g); background: transparent; }
   .ov-lvl { font: 600 var(--text-2xs, .75rem) / 1.3 var(--qg-mono, monospace); letter-spacing: .07em; text-transform: uppercase; }
-  .is-urgent .ov-lvl { color: var(--lacquer); }
-  .is-action .ov-lvl { color: #f0a04b; }
+  .is-urgent .ov-lvl { color: var(--qg-accent-text, #b3241e); }
+  .is-action .ov-lvl { color: var(--warn, #8a5a0a); }
   .ov-group ul { display: flex; flex-wrap: wrap; gap: .2rem .9rem; margin-top: .25rem; font-size: .9rem; }
   .ov-alerts .ov-group ul li { padding: 0; border: 0; background: none; }
   .ov-group ul li + li::before { content: '· '; color: var(--muted); }

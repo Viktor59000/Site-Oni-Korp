@@ -9,7 +9,8 @@
 - Inhouses : groupes « Jouer ensemble », places au classement sur les cartes, salles osu! lues automatiquement.
 - Tracker Rocket League + Oni Sync.
 - Page de présentation d'Inside pour les non-membres.
-- Audit de performance (6 oct.) : pages publiques 97 à 100 en performance et 100 en accessibilité, bonnes pratiques et référencement ; Inside 90 à 99. Corrigés : contrastes (Staff, accueil d'Inside), images Twitch réduites (Créateurs), décalages au chargement du drafter LoL. Reste possible : affichage de la carte du tableau blanc et des lineups (3,2 s sur mobile simulé).
+- Audit de performance (6 oct.) : pages publiques 97 à 100 en performance et 100 en accessibilité, bonnes pratiques et référencement. Inside ensuite optimisé (branche `inside-rendu-v2`, ancien design gardé sous l'étiquette `inside-design-v1`) : 100 en accessibilité et bonnes pratiques sur toutes les pages, 96 à 100 en performance (tableau blanc 90 → 96-99, Lineups Valorant 94 → 100, drafter LoL 94 → 97-99). Détail des règles dans [06 · Design et ton](06-design-et-ton.md).
+- Pas de tableau blanc pour osu! ; glisser-déposer des éléments au doigt sur le tableau blanc (appui long).
 - Bilan mensuel du staff (le 1er du mois dans #🔒・staff, `/bilan periode:`).
 - Page de confidentialité complétée (comptes de jeu, Oni Sync, inhouses, sondage, avis, page Staff, modération, sauvegardes) et purges alignées sur ses promesses.
 - Refactorisation sans changement de résultat (bot et site, dont les actions d'Inside rangées par domaine), tests de non-régression, vérification des types (`npm run check`, qui a trouvé deux actions cassées), base de démonstration, cette documentation.

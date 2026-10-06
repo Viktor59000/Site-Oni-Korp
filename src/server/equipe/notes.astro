@@ -113,7 +113,7 @@ const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', impre
   .nt-head p { color: var(--muted); font-size: var(--step--1); margin: .25rem 0 0; }
   .nt-head p::first-letter { text-transform: uppercase; }
   .nt-score { font-size: .8em; padding: .05em .4em; border: 2px solid var(--line); }
-  .nt-score.is-win { border-color: #1f8f55; color: #1f8f55; }
+  .nt-score.is-win { border-color: #1f8f55; color: var(--ok, #1d7a49); }
   .nt-avg { text-align: right; margin: 0; }
   .nt-avg b { font-family: var(--font-display); font-size: 2rem; color: var(--red-text); }
   .nt-avg span { display: block; color: var(--muted); font-size: var(--step--1); }
@@ -126,7 +126,7 @@ const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', impre
   .nt-tag { font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--lacquer); color: #fff; padding: .1rem .4rem; }
   .nt-rate { margin-left: auto; font-weight: 700; }
   .nt-k { display: inline-block; margin-right: .5rem; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-  .nt-k.is-good { color: #1f8f55; } .nt-k.is-work { color: var(--red-text); }
+  .nt-k.is-good { color: var(--ok, #1d7a49); } .nt-k.is-work { color: var(--red-text); }
   .nt-auto { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-left: 4px solid var(--game, #0f8a9b); display: grid; gap: .75rem; }
   .nt-auto h3 { margin: 0; font-family: var(--font-body); font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .nt-games { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; font-size: .95rem; }
@@ -136,7 +136,7 @@ const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', impre
   .nt-metrics { margin: 0; color: var(--muted); font-size: .85rem; }
   .nt-badges { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; font-size: .9rem; }
   .nt-badges .is-gaffe strong, .nt-badges .is-imprecision strong { color: var(--red-text); }
-  .nt-badges .is-brillant strong, .nt-badges .is-excellent strong { color: #1f8f55; }
+  .nt-badges .is-brillant strong, .nt-badges .is-excellent strong { color: var(--ok, #1d7a49); }
   .nt-form { margin-top: 1rem; }
   .nt-form summary { cursor: pointer; font-weight: 700; color: var(--red-text); }
   .nt-form form { display: grid; gap: .9rem; margin-top: .9rem; }

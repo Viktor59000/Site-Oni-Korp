@@ -1,6 +1,6 @@
 // Drafter LoL : draft dans l’ordre de tournoi, fearless, analyse lolalytics (côté navigateur).
 // Sorti de lol.astro (refacto du 06/10/2026) : chargé par <script src="./lol.client.ts">.
-type Champ = { id: string; key: string; name: string; tags: string[]; info: { attack: number; defense: number; magic: number; difficulty: number } };
+type Champ = { id: string; key: string; name: string; tags: string[]; info: { attack: number; defense: number; magic: number; difficulty: number }; sprite: [string, number, number] };
 type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number; vs: Record<string, [number, number]> }> };
 type Side = 'blue' | 'red';
 // Ordre de draft de tournoi : 3 bans chacun, 6 picks, 2 bans chacun, 4 picks
@@ -24,9 +24,6 @@ const pool: PoolPlayer[] = JSON.parse(root.dataset.pool || '[]');
 const faced: Record<string, [number, number]> = JSON.parse(root.dataset.faced || '{}');
 const pct = (w: number, g: number) => `${Math.round((w / g) * 100)} %`;
 const POSTE_ROLE: Record<string, string> = { Top: 'Top', Jungle: 'Jungle', Mid: 'Mid', ADC: 'ADC', Support: 'Support' };
-const lazyIcons = new IntersectionObserver((entries) => {
-  for (const e of entries) if (e.isIntersecting) { const img = e.target as HTMLImageElement; img.src = img.dataset.src!; img.removeAttribute('data-src'); lazyIcons.unobserve(img); }
-}, { root: document.querySelector('[data-grid]'), rootMargin: '150px' });
 const icon = (id: string) => `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${id}.png`;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -59,10 +56,8 @@ function render() {
     .filter((c) => (!tag || c.tags.includes(tag)) && (!q || c.name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').includes(q)))
     .map((c) => {
       const off = used.has(c.id) || locked.has(c.id);
-      return `<li><button type="button" data-champ="${c.id}" ${mode === 'draft' && (off || !cur) ? 'disabled' : ''} title="${esc(c.name)}"><img data-src="${icon(c.id)}" alt="" width="48" height="48" /><span>${esc(c.name)}</span></button></li>`;
+      return `<li><button type="button" data-champ="${c.id}" ${mode === 'draft' && (off || !cur) ? 'disabled' : ''} title="${esc(c.name)}"><i class="dr-spr dr-spr--${c.id}"></i><span>${esc(c.name)}</span></button></li>`;
     }).join('');
-  // Icônes chargées seulement quand elles apparaissent dans la grille (170 champions, sinon ~4 Mo d'un coup)
-  $('[data-grid]').querySelectorAll<HTMLImageElement>('img[data-src]').forEach((img) => lazyIcons.observe(img));
   const l = $('[data-locked]');
   l.hidden = !locked.size;
   l.textContent = locked.size ? `Fearless : ${locked.size} champions déjà joués dans la série sont bloqués.` : '';
@@ -366,7 +361,12 @@ root.querySelector('[data-roster-select]')?.addEventListener('change', loadSaved
 (async () => {
   version = (await fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()))[0];
   const data = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/fr_FR/champion.json`).then((r) => r.json());
-  champs = Object.values<any>(data.data).map((c) => ({ id: c.id, key: c.key, name: c.name, tags: c.tags, info: c.info })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  // Grille : planches d'icônes de Data Dragon (6 images de 48 px pour 170 champions) au lieu d'une image par champion
+  champs = Object.values<any>(data.data).map((c) => ({ id: c.id, key: c.key, name: c.name, tags: c.tags, info: c.info, sprite: [c.image.sprite, c.image.x, c.image.y] as [string, number, number] })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  // Une règle par champion, écrite une fois (la grille, redessinée à chaque choix, ne porte qu'une classe)
+  const css = document.createElement('style');
+  css.textContent = champs.map((c) => `.dr-spr--${c.id}{background-image:url(https://ddragon.leagueoflegends.com/cdn/${version}/img/sprite/${c.sprite[0]});background-position:-${c.sprite[1]}px -${c.sprite[2]}px}`).join('');
+  document.head.append(css);
   render(); loadSaved();
 })().catch(() => { $('[data-step]').textContent = 'Impossible de charger les champions (Data Dragon). Réessaie plus tard.'; });
 
