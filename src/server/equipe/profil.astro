@@ -36,7 +36,7 @@ const lolTier = lolRank && lolRank.tier !== 'UNRANKED' ? lolRank.tier : null;
 const cards = [
   lol.length || lolRank ? { key: 'lol', title: 'League of Legends',
     rank: lolTier ? `${TIERS_FR[lolTier] ?? lolTier} ${lolRank.rank ?? ''}`.trim() : lolRank ? 'Non classé' : null, sub: lolTier ? `${lolRank.lp} LP` : null,
-    emblem: lolTier ? `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${lolTier.toLowerCase()}.png` : null,
+    emblem: lolTier ? `/img/rangs/lol/${lolTier.toLowerCase()}.webp` : null,
     trend: spark(hist.filter((h) => h.game === 'lol').map((h) => JSON.parse(h.value).score), { w: 140, h: 36 }),
     groups: [
       ['Résultats', [['Parties', String(lol.length)], ['Victoires', pct(win(lol))]]],
@@ -118,7 +118,7 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
                 <h2>{c.title}</h2>
                 {c.rank ? (
                   <div class="pf-game__rank">
-                    {c.emblem && <img src={c.emblem} alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" />}
+                    {c.emblem && <img src={c.emblem} alt="" width="88" height="88" loading="lazy" referrerpolicy="no-referrer" />}
                     <div><strong>{c.rank}</strong>{c.sub && <span>{c.sub}</span>}</div>
                   </div>
                 ) : <p class="pf-game__norank">Rang pas encore relevé</p>}
