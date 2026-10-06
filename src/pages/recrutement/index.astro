@@ -45,8 +45,8 @@ const staffGroups = [
       </div>
       <ul class="open-rosters">
         {ouverts.map(([key, label, image, desc, repere]) => (
-          <li>
-            <img src={`/img/${image}-600.webp`} alt="" width="600" height="240" loading="lazy" />
+          <li style={`--g:${({ rl: '#2f6bff', lol: '#0f8a9b', valo: '#ff4655', osu: '#ff66aa' } as Record<string, string>)[key]}`}>
+            <div class="open-rosters__art"><img src={`/img/poste-${key}-480.webp`} srcset={`/img/poste-${key}-480.webp 480w, /img/poste-${key}.webp 800w`} sizes="(max-width: 600px) 100vw, 300px" alt="" width="480" height="320" loading="lazy" /></div>
             <div>
               <span class="open-rosters__tag">Roster ouvert</span>
               <h3>{label}</h3>
@@ -120,14 +120,19 @@ const staffGroups = [
 </Base>
 
 <style>
-  .open-rosters { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
-  .open-rosters li { display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--line); }
-  .open-rosters img { width: 100%; height: auto; aspect-ratio: 5 / 2; object-fit: cover; display: block; }
-  .open-rosters li > div { display: flex; flex-direction: column; gap: .5rem; padding: 1rem 1.1rem 1.25rem; flex: 1; }
-  .open-rosters h3 { margin: 0; font-family: var(--font-display); font-size: var(--step-1); font-weight: 400; }
+  .open-rosters { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+  .open-rosters li { position: relative; display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--g); transition: translate .25s cubic-bezier(.2, 0, 0, 1), box-shadow .25s; }
+  .open-rosters li:hover, .open-rosters li:focus-within { translate: 0 -4px; box-shadow: 0 14px 28px var(--shadow); }
+  .open-rosters__art { overflow: hidden; aspect-ratio: 3 / 2; }
+  .open-rosters__art img { width: 100%; height: 100%; object-fit: cover; display: block; transition: scale .5s cubic-bezier(.2, 0, 0, 1); }
+  .open-rosters li:hover .open-rosters__art img { scale: 1.05; }
+  .open-rosters li > div:last-child { display: flex; flex-direction: column; gap: .5rem; padding: 1.1rem 1.2rem 1.3rem; flex: 1; }
+  .open-rosters h3 { margin: 0; font-family: var(--font-display); font-size: var(--step-1); font-weight: 400; line-height: 1.1; }
   .open-rosters p { margin: 0; color: var(--muted); }
-  .open-rosters p:first-of-type { flex: 1; }
-  .open-rosters__lvl strong { color: var(--fg, inherit); }
-  .open-rosters .btn { align-self: flex-start; margin-top: .5rem; }
-  .open-rosters__tag { align-self: flex-start; font-size: var(--step--1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--lacquer-hi); }
+  /* Le repère et le bouton s'alignent en bas de toutes les cartes, quelle que soit la longueur du titre */
+  .open-rosters__lvl { margin-top: auto !important; padding-top: .9rem; border-top: 1px solid var(--line); }
+  .open-rosters__lvl strong { color: var(--ink); }
+  .open-rosters .btn { align-self: flex-start; margin-top: .6rem; }
+  .open-rosters__tag { align-self: flex-start; font-size: var(--step--1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--g); }
+  @media (prefers-reduced-motion: reduce) { .open-rosters li, .open-rosters__art img { transition: none; } }
 </style>

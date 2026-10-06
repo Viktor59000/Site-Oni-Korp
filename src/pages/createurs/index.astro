@@ -37,17 +37,22 @@ const gives = [
   <section class="section section--bone" id="rejoindre" aria-labelledby="deal-title">
     <div class="wrap">
       <div class="section__head"><h2 id="deal-title">Le deal.</h2><p>Pas besoin de jouer en compétition : il suffit de créer et d'afficher le club.</p></div>
-      <ul class="cr-gives">
-        {gives.map(([t, d]) => <li><strong>{t}</strong><p>{d}</p></li>)}
-      </ul>
-      <div class="cr-ask">
-        <h3>En retour</h3>
-        <ul>
-          <li>« Oni Korp » ou « [ONI] » dans le titre de tes lives, au moins quatre fois par mois</li>
-          <li>Le club et le lien du Discord dans ta bio Twitch</li>
-          <li>Être présent et actif sur le serveur</li>
-        </ul>
-        <a class="btn" href={site.discord} rel="noopener">Nous en parler sur le Discord</a>
+      <div class="cr-deal">
+        <div>
+          <p class="cr-deal__label">Le club te donne</p>
+          <ol class="cr-gives">
+            {gives.map(([t, d]) => <li><strong>{t}</strong><p>{d}</p></li>)}
+          </ol>
+        </div>
+        <div class="cr-ask">
+          <p class="cr-deal__label">Tu donnes au club</p>
+          <ul>
+            <li>« Oni Korp » ou « [ONI] » dans le titre de tes lives, au moins quatre fois par mois</li>
+            <li>Le club et le lien du Discord dans ta bio Twitch</li>
+            <li>Être présent et actif sur le serveur</li>
+          </ul>
+          <a class="btn btn--ink" href={site.discord} rel="noopener">Nous en parler sur le Discord</a>
+        </div>
       </div>
     </div>
   </section>
@@ -148,10 +153,21 @@ const gives = [
   .cr-list :global(.cr__btn) { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border: 1.5px solid var(--line); font-weight: 700; color: var(--ink); }
   .cr-list :global(.cr__btn--twitch) { background: #9146ff; border-color: #9146ff; color: #fff; }
 
-  .cr-gives { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1.5rem; }
-  .cr-gives li { display: grid; gap: .5rem; padding: 1.25rem; border: 1.5px solid var(--line); }
-  .cr-gives strong { font-family: var(--font-display); font-size: 1.2rem; }
-  .cr-gives p { color: var(--muted); }
-  .cr-ask { margin-top: 2.5rem; display: grid; gap: 1rem; justify-items: start; }
-  .cr-ask ul { display: grid; gap: .4rem; padding-left: 1.2rem; list-style: square; }
+  /* Le deal : ce que le club donne (à gauche, numéroté) contre ce que le créateur donne (bloc sombre à droite) */
+  .cr-deal { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: stretch; }
+  .cr-deal__label { margin: 0 0 1rem; font-size: var(--step--1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--red-text); }
+  .cr-gives { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; counter-reset: g; margin: 0; padding: 0; list-style: none; }
+  .cr-gives li { counter-increment: g; display: grid; gap: .45rem; align-content: start; padding: 1.25rem; border: 1px solid var(--line); border-top: 3px solid var(--lacquer); background: var(--surface); transition: translate .25s cubic-bezier(.2, 0, 0, 1), box-shadow .25s; }
+  .cr-gives li::before { content: counter(g, decimal-leading-zero); font-family: var(--font-display); font-size: 1.6rem; line-height: 1; color: var(--lacquer); }
+  .cr-gives li:hover { translate: 0 -4px; box-shadow: 0 12px 24px var(--shadow); }
+  .cr-gives strong { font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
+  .cr-gives p { margin: 0; color: var(--muted); }
+  .cr-ask { display: flex; flex-direction: column; gap: 1rem; padding: clamp(1.25rem, 3vw, 2rem); background: var(--lacquer); color: #fff; --red-text: #fff; }
+  .cr-ask ul { display: grid; gap: .8rem; margin: 0; padding: 0; list-style: none; flex: 1; }
+  .cr-ask li { display: grid; grid-template-columns: 1.4rem 1fr; gap: .6rem; line-height: 1.4; }
+  .cr-ask li::before { content: ""; width: 1.1rem; height: 1.1rem; margin-top: .15rem; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e5251f' stroke-width='3.5'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / 80% no-repeat; }
+  .cr-ask .btn { align-self: flex-start; }
+  @media (max-width: 860px) { .cr-deal { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .cr-gives { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .cr-gives li { transition: none; } }
 </style>

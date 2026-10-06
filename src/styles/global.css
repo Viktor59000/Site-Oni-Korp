@@ -1047,3 +1047,28 @@ main { counter-reset: page; }
 
 /* Lien Inside du menu : petit cadenas, sans bordure ni pastille */
 .nav__lock { width: 13px; height: 13px; fill: currentColor; margin-right: .35rem; vertical-align: -1px; opacity: .7; }
+
+/* ---------- Micro-interactions (07/10) : un seul vocabulaire de survol pour tout le site ---------- */
+/* Filet vermillon qui se dessine de gauche à droite sous les liens de menu et de pied de page */
+.nav__links a:not(.nav__mobile-cta), .footer li a, .footer__bottom a {
+  background: linear-gradient(var(--lacquer), var(--lacquer)) left bottom / 0 2px no-repeat;
+  transition: color .2s ease, background-size .3s cubic-bezier(.2, 0, 0, 1);
+}
+.nav__links a:not(.nav__mobile-cta):is(:hover, :focus-visible), .footer li a:is(:hover, :focus-visible), .footer__bottom a:is(:hover, :focus-visible) { background-size: 100% 2px; color: var(--ink); }
+.nav__links a[aria-current="page"] { border-color: transparent; background-size: 100% 2px; }
+.footer li a { color: var(--muted); }
+/* Réseaux : la case se remplit de vermillon et l'icône monte d'un cran */
+.socials a { transition: background-color .2s, border-color .2s, color .2s, translate .2s cubic-bezier(.2, 0, 0, 1); }
+.socials a:is(:hover, :focus-visible) { translate: 0 -3px; }
+/* Boutons : léger décalage au survol, enfoncement au clic */
+.btn { transition: background-color .2s, color .2s, translate .2s cubic-bezier(.2, 0, 0, 1); }
+.btn:hover { translate: 0 -2px; }
+.btn:active { translate: 0 0; }
+/* Apparition douce des sections au défilement (seulement si le navigateur sait le faire sans JS) */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    main > .section > .wrap { animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
+    @keyframes rise-in { from { opacity: 0; translate: 0 24px; } to { opacity: 1; translate: 0 0; } }
+  }
+}
+@media (prefers-reduced-motion: reduce) { .btn, .socials a, .nav__links a, .footer a { transition: none; } .btn:hover { translate: none; } }

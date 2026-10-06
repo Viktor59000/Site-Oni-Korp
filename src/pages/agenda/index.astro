@@ -180,9 +180,9 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
       document.querySelector<HTMLElement>('[data-live]')!.hidden = false;
     }
     if (d.videos.length) {
-      document.querySelector<HTMLElement>('[data-videos]')!.innerHTML = d.videos.map((v) => `
-        <li><a href="${esc(v.lien)}" rel="noopener">${v.image ? `<img src="${esc(v.image)}" alt="" width="480" height="360" loading="lazy" />` : ''}
-          <span>${esc(v.titre)}</span><small>${esc(v.auteur)} · ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(v.date))}</small></a></li>`).join('');
+      document.querySelector<HTMLElement>('[data-videos]')!.innerHTML = d.videos.slice(0, 5).map((v, k) => `
+        <li${k === 0 && d.videos.length >= 5 ? ' class="is-main"' : ''}><a href="${esc(v.lien)}" rel="noopener"><span class="ag-vid__thumb">${v.image ? `<img src="${esc(v.image)}" alt="" width="480" height="360" loading="lazy" />` : ''}<span class="ag-vid__play" aria-hidden="true"></span></span>
+          <span class="ag-vid__title">${esc(v.titre)}</span><small>${esc(v.auteur)} · ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(v.date))}</small></a></li>`).join('');
       document.querySelector<HTMLElement>('[data-videos-empty]')!.hidden = true;
       document.querySelector<HTMLElement>('[data-videos-section]')!.hidden = false;
     }
@@ -260,10 +260,20 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   .ag-socials a { display: grid; place-items: center; width: 44px; height: 44px; border: 1.5px solid var(--line); color: var(--ink); }
   .ag-socials a:hover { border-color: var(--ink); }
   .ag-socials :global(svg) { width: 20px; height: 20px; fill: currentColor; }
-  .ag-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1.5rem; }
-  .ag-videos :global(a) { display: grid; gap: .5rem; color: inherit; text-decoration: none; }
-  .ag-videos :global(img) { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
-  .ag-videos :global(span) { font-weight: 700; line-height: 1.3; }
+  /* Vidéos : la dernière en grand, les quatre précédentes autour ; vignette qui zoome, bouton lecture au survol */
+  .ag-videos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; }
+  .ag-videos :global(li.is-main) { grid-column: span 2; grid-row: span 2; }
+  .ag-videos :global(a) { display: grid; gap: .6rem; align-content: start; color: inherit; text-decoration: none; }
+  .ag-videos :global(.ag-vid__thumb) { position: relative; display: block; overflow: hidden; aspect-ratio: 16 / 9; background: var(--line); }
+  .ag-videos :global(img) { width: 100%; height: 100%; object-fit: cover; display: block; transition: scale .5s cubic-bezier(.2, 0, 0, 1), filter .3s; }
+  .ag-videos :global(.ag-vid__play) { position: absolute; left: 50%; top: 50%; width: 3.25rem; height: 3.25rem; translate: -50% -50%; background: var(--lacquer); clip-path: polygon(0 0, 100% 50%, 0 100%); scale: .6; opacity: 0; transition: scale .3s cubic-bezier(.2, 0, 0, 1), opacity .2s; }
+  .ag-videos :global(a:is(:hover, :focus-visible) img) { scale: 1.06; filter: brightness(.7); }
+  .ag-videos :global(a:is(:hover, :focus-visible) .ag-vid__play) { scale: 1; opacity: 1; }
+  .ag-videos :global(.ag-vid__title) { font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: color .2s; }
+  .ag-videos :global(li.is-main .ag-vid__title) { font-family: var(--font-display); font-weight: 400; font-size: var(--step-1); line-height: 1.15; }
+  .ag-videos :global(a:is(:hover, :focus-visible) .ag-vid__title) { color: var(--red-text); }
   .ag-videos :global(small) { color: var(--muted); font-size: var(--step--1); }
-  .ag-videos :global(a:hover span) { text-decoration: underline; }
+  @media (max-width: 960px) { .ag-videos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .ag-videos { grid-template-columns: 1fr; } .ag-videos :global(li.is-main) { grid-column: auto; grid-row: auto; } }
+  @media (prefers-reduced-motion: reduce) { .ag-videos :global(img), .ag-videos :global(.ag-vid__play) { transition: none; } }
 </style>
