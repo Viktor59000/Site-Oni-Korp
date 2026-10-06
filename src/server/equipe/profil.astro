@@ -5,7 +5,7 @@ import Qg from './Qg.astro';
 import { teamUser } from './outils';
 import { access } from './access';
 import { rows } from '../db';
-import { links, TIERS_FR, valoTierFr } from './stats';
+import { links, TIERS_FR, valoIcons, valoTierFr } from './stats';
 import { avg, pct, r1, spark, SHARED_CSS } from './ui';
 
 export const prerender = false;
@@ -31,19 +31,42 @@ const valoRank = riot ? await cache(`valo:${riot.ident.toLowerCase()}`) : null;
 const osuSt = acc('osu') ? await cache(`osu:${acc('osu')!.ident.toLowerCase()}`) : null;
 const lol = games('lol'), valo = games('valo'), rl = games('rl'), osu = games('osu');
 const win = (g: any[]) => (g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null);
+const valoIcon = await valoIcons();
+const lolTier = lolRank && lolRank.tier !== 'UNRANKED' ? lolRank.tier : null;
 const cards = [
-  lol.length || lolRank ? { key: 'lol', title: 'League of Legends', rank: lolRank && lolRank.tier !== 'UNRANKED' ? `${TIERS_FR[lolRank.tier] ?? lolRank.tier} ${lolRank.rank ?? ''} · ${lolRank.lp} LP` : lolRank ? 'Non classé' : null,
-    trend: spark(hist.filter((h) => h.game === 'lol').map((h) => JSON.parse(h.value).score), { w: 160, h: 40 }),
-    kpis: [['Parties', String(lol.length)], ['Victoires', pct(win(lol))], ['KDA', r1(lol.length ? lol.reduce((s, x) => s + x.k + x.a, 0) / Math.max(1, lol.reduce((s, x) => s + x.d, 0)) : null, 2)], ['CS/min', r1(avg(lol.map((x) => x.csMin)))], ['Vision/min', r1(avg(lol.map((x) => x.visionMin)), 2)], ['KP', pct(avg(lol.map((x) => x.kp)))]] } : null,
-  valo.length || valoRank ? { key: 'valo', title: 'Valorant', rank: valoRank?.tier ? `${valoTierFr(valoRank.tier)}${valoRank.rr !== null ? ` · ${valoRank.rr} RR` : ''}` : null,
-    trend: spark(hist.filter((h) => h.game === 'valo').map((h) => JSON.parse(h.value).score), { w: 160, h: 40 }),
-    kpis: [['Parties', String(valo.length)], ['Victoires', pct(win(valo))], ['ACS', r1(avg(valo.map((x) => x.acs)), 0)], ['ADR', r1(avg(valo.map((x) => x.adr)), 0)], ['HS', pct(avg(valo.map((x) => x.hs).filter((v: number | null) => v !== null)))], ['First bloods', r1(avg(valo.map((x) => x.fb)))]] } : null,
-  rl.length ? { key: 'rl', title: 'Rocket League', rank: null, trend: spark(rl.slice().reverse().map((x) => x.score), { w: 160, h: 40 }),
-    kpis: [['Parties', String(rl.length)], ['Victoires', pct(win(rl))], ['Score', r1(avg(rl.map((x) => x.score)), 0)], ['Boost/min', r1(avg(rl.map((x) => x.bpm)), 0)], ['Supersonique', pct(avg(rl.map((x) => x.supersonique)))], ['Derrière la balle', pct(avg(rl.map((x) => x.derriere)))]] } : null,
-  osu.length || osuSt ? { key: 'osu', title: 'osu!', rank: osuSt ? `#${osuSt.rank?.toLocaleString('fr-FR') ?? '—'} · ${osuSt.pp?.toLocaleString('fr-FR')} pp` : null,
-    trend: spark(hist.filter((h) => h.game === 'osu').map((h) => JSON.parse(h.value).rank), { w: 160, h: 40, invert: true }),
-    kpis: [['Précision', osuSt ? `${String(osuSt.acc).replace('.', ',')} %` : '—'], ['Parties 60 j', String(osu.length)], ['Préc. récente', osu.length ? `${r1(avg(osu.map((x) => x.acc)), 2)} %` : '—'], ['Heures', osuSt?.hours ? String(osuSt.hours) : '—']] } : null,
-].filter(Boolean) as { key: string; title: string; rank: string | null; trend: string; kpis: [string, string][] }[];
+  lol.length || lolRank ? { key: 'lol', title: 'League of Legends',
+    rank: lolTier ? `${TIERS_FR[lolTier] ?? lolTier} ${lolRank.rank ?? ''}`.trim() : lolRank ? 'Non classé' : null, sub: lolTier ? `${lolRank.lp} LP` : null,
+    emblem: lolTier ? `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${lolTier.toLowerCase()}.png` : null,
+    trend: spark(hist.filter((h) => h.game === 'lol').map((h) => JSON.parse(h.value).score), { w: 140, h: 36 }),
+    groups: [
+      ['Résultats', [['Parties', String(lol.length)], ['Victoires', pct(win(lol))]]],
+      ['Combat', [['KDA', r1(lol.length ? lol.reduce((s, x) => s + x.k + x.a, 0) / Math.max(1, lol.reduce((s, x) => s + x.d, 0)) : null, 2)], ['Participation', pct(avg(lol.map((x) => x.kp)))]]],
+      ['Farm et vision', [['CS / min', r1(avg(lol.map((x) => x.csMin)))], ['Vision / min', r1(avg(lol.map((x) => x.visionMin)), 2)]]],
+    ] } : null,
+  valo.length || valoRank ? { key: 'valo', title: 'Valorant',
+    rank: valoRank?.tier ? valoTierFr(valoRank.tier) : null, sub: valoRank?.rr !== null && valoRank?.rr !== undefined ? `${valoRank.rr} RR` : null,
+    emblem: valoRank?.tier ? valoIcon[String(valoRank.tier).toUpperCase()] ?? null : null,
+    trend: spark(hist.filter((h) => h.game === 'valo').map((h) => JSON.parse(h.value).score), { w: 140, h: 36 }),
+    groups: [
+      ['Résultats', [['Parties', String(valo.length)], ['Victoires', pct(win(valo))]]],
+      ['Impact', [['ACS', r1(avg(valo.map((x) => x.acs)), 0)], ['ADR', r1(avg(valo.map((x) => x.adr)), 0)], ['First bloods', r1(avg(valo.map((x) => x.fb)))]]],
+      ['Visée', [['Headshots', pct(avg(valo.map((x) => x.hs).filter((v: number | null) => v !== null)))]]],
+    ] } : null,
+  rl.length ? { key: 'rl', title: 'Rocket League', rank: null, sub: null, emblem: null,
+    trend: spark(rl.slice().reverse().map((x) => x.score), { w: 140, h: 36 }),
+    groups: [
+      ['Résultats', [['Parties', String(rl.length)], ['Victoires', pct(win(rl))], ['Score moyen', r1(avg(rl.map((x) => x.score)), 0)]]],
+      ['Placement', [['Derrière la balle', pct(avg(rl.map((x) => x.derriere)))], ['Supersonique', pct(avg(rl.map((x) => x.supersonique)))]]],
+      ['Boost', [['Boost / min', r1(avg(rl.map((x) => x.bpm)), 0)]]],
+    ] } : null,
+  osu.length || osuSt ? { key: 'osu', title: 'osu!',
+    rank: osuSt?.rank ? `#${osuSt.rank.toLocaleString('fr-FR')}` : osuSt ? 'Pas encore classé' : null, sub: osuSt?.pp ? `${osuSt.pp.toLocaleString('fr-FR')} pp` : null, emblem: null,
+    trend: spark(hist.filter((h) => h.game === 'osu').map((h) => JSON.parse(h.value).rank), { w: 140, h: 36, invert: true }),
+    groups: [
+      ['Précision', [['Globale', osuSt ? `${String(osuSt.acc).replace('.', ',')} %` : '—'], ['Récente', osu.length ? `${r1(avg(osu.map((x) => x.acc)), 2)} %` : '—']]],
+      ['Activité', [['Parties (60 j)', String(osu.length)], ['Heures de jeu', osuSt?.hours ? String(osuSt.hours) : '—']]],
+    ] } : null,
+].filter(Boolean) as { key: string; title: string; rank: string | null; sub: string | null; emblem: string | null; trend: string; groups: [string, [string, string][]][] }[];
 
 // Présence (90 jours) sur les séances de ses rosters
 const rIds = target.rosterIds;
@@ -70,25 +93,43 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
 <Qg title={`${m?.name ?? 'Profil'} · Inside`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="pf">
       <ul class="pf-kpis">
-        <li><b>{presence === null ? '—' : `${presence} %`}</b><span>présence aux séances (90 j)</span></li>
-        <li><b>{goals.filter((g) => g.status === 'en-cours').length}</b><span>objectif(s) en cours</span></li>
-        <li><b>{Number(deb?.n ?? 0)}</b><span>débrief(s) écrits{Number(deb?.n ?? 0) ? ` · ${r1(Number(deb.avg))}/10 en moyenne` : ''}</span></li>
-        <li class="pf-links">
+        <li><b>{presence === null ? '—' : `${presence} %`}</b><span>Présence aux séances (90 j)</span></li>
+        <li><b>{goals.filter((g) => g.status === 'en-cours').length}</b><span>Objectifs en cours</span></li>
+        <li><b>{Number(deb?.n ?? 0)}</b><span>Débriefs écrits{Number(deb?.n ?? 0) ? ` · ${r1(Number(deb.avg))}/10 en moyenne` : ''}</span></li>
+      </ul>
+
+      <div class="pf-accounts">
+        <p>Comptes</p>
+        <div class="pf-links">
           {riot && <a href={links.opgg(riot.ident, riot.region ?? 'euw')!} rel="noopener" target="_blank">op.gg</a>}
-          {riot && <a href={links.valo(riot.ident)!} rel="noopener" target="_blank">tracker Valorant</a>}
-          {acc('rl') && <a href={links.rl(acc('rl')!.ident)} rel="noopener" target="_blank">tracker RL</a>}
+          {riot && <a href={links.valo(riot.ident)!} rel="noopener" target="_blank">Tracker Valorant</a>}
+          {acc('rl') && <a href={links.rl(acc('rl')!.ident)} rel="noopener" target="_blank">Tracker RL</a>}
           {acc('osu') && <a href={links.osu(acc('osu')!.ident)} rel="noopener" target="_blank">osu!</a>}
           {acc('osu') && <a href={links.osutrack(acc('osu')!.ident)} rel="noopener" target="_blank">osu!track</a>}
           {!accounts.length && <span>{uid === user.id ? <a href="/equipe/joueurs/">Relier mes comptes de jeu</a> : 'Aucun compte relié'}</span>}
-        </li>
-      </ul>
+        </div>
+      </div>
 
       {cards.length ? (
         <div class="pf-games">
           {cards.map((c) => (
             <section class={`pf-game g-${c.key}`}>
-              <header><h2>{c.title}</h2>{c.rank && <p class="pf-rank">{c.rank}</p>}<span set:html={c.trend} /></header>
-              <dl>{c.kpis.map(([l, v]) => <div><dt>{l}</dt><dd>{v}</dd></div>)}</dl>
+              <header class="pf-game__head">
+                <h2>{c.title}</h2>
+                {c.rank ? (
+                  <div class="pf-game__rank">
+                    {c.emblem && <img src={c.emblem} alt="" width="64" height="64" loading="lazy" referrerpolicy="no-referrer" />}
+                    <div><strong>{c.rank}</strong>{c.sub && <span>{c.sub}</span>}</div>
+                  </div>
+                ) : <p class="pf-game__norank">Rang pas encore relevé</p>}
+                {c.trend && <div class="pf-game__trend"><span set:html={c.trend} /><small>Tendance du rang</small></div>}
+              </header>
+              {c.groups.map(([t, items]) => (
+                <div class="pf-block">
+                  <p>{t}</p>
+                  <dl>{items.map(([l, v]) => <div class:list={{ 'is-empty': v === '—' }}><dd>{v}</dd><dt>{l}</dt></div>)}</dl>
+                </div>
+              ))}
             </section>
           ))}
         </div>
@@ -148,17 +189,7 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
   .pf-kpis li { display: grid; gap: .2rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid var(--ink); }
   .pf-kpis b { font-family: var(--font-display); font-size: 1.7rem; }
   .pf-kpis span { color: var(--muted); font-size: var(--step--1); }
-  .pf-links { display: flex !important; flex-wrap: wrap; gap: .4rem .9rem; align-content: center; }
-  .pf-links a { color: var(--red-text); font-weight: 700; }
-  .pf-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
-  .pf-game { padding: 1rem; border: 1px solid var(--line); border-top: 4px solid var(--g, var(--ink)); display: grid; gap: .8rem; }
   .g-rl { --g: #2f6bff; } .g-lol { --g: #0f8a9b; } .g-valo { --g: #ff4655; } .g-osu { --g: #ff66aa; }
-  .pf-game header { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
-  .pf-game h2 { font-size: 1.15rem; flex-basis: 100%; }
-  .pf-rank { margin: 0; font-weight: 700; }
-  .pf-game dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: 0; }
-  .pf-game dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-  .pf-game dd { margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
   .pf-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; }
   .pf-deb { margin-bottom: 2rem; }
   .pf-ih { list-style: none; margin: 0 0 .5rem; padding: 0; display: flex; flex-wrap: wrap; gap: .75rem; }

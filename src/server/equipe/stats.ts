@@ -74,3 +74,14 @@ export const TIERS_FR: Record<string, string> = {
   IRON: 'Fer', BRONZE: 'Bronze', SILVER: 'Argent', GOLD: 'Or', PLATINUM: 'Platine', EMERALD: 'Émeraude', DIAMOND: 'Diamant',
   MASTER: 'Maître', GRANDMASTER: 'Grand maître', CHALLENGER: 'Challenger', UNRANKED: 'Non classé',
 };
+
+let valoTiers: { at: number; map: Record<string, string> } | null = null;
+/** Emblèmes de rang Valorant du dernier épisode (valorant-api.com), par nom anglais en capitales (« IRON 3 »). Gardés 12 h. */
+export async function valoIcons(): Promise<Record<string, string>> {
+  if (valoTiers && Date.now() - valoTiers.at < 12 * 3600_000) return valoTiers.map;
+  const r = await fetch('https://valorant-api.com/v1/competitivetiers').then((x) => x.json()).catch(() => null) as any;
+  const last = r?.data?.at?.(-1);
+  const map = last ? Object.fromEntries(last.tiers.filter((t: any) => t.largeIcon).map((t: any) => [String(t.tierName).toUpperCase(), String(t.largeIcon)])) : {};
+  valoTiers = { at: Date.now(), map };
+  return map;
+}
