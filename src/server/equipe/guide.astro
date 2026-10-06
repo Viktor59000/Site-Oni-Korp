@@ -37,6 +37,16 @@ const OUTILS = [
   ['Drafter LoL · Lineups Valorant · Défis osu!', 'Les outils propres à chaque jeu.', ''],
   ['Setups · Joueurs · Docs', 'Réglages de chacun, comptes de jeu et profils, documents du roster (routines, règles, appels).', ''],
 ];
+// Les rôles et ce qu'ils ouvrent (SWOT-ROLES.md, chantier 1)
+const ROLES: [string, string][] = [
+  ['Joueur', 'Ton roster : planning, matchs, stats, objectifs, outils du jeu. Titulaire, remplaçant ou en essai (avec une date de fin et un retour écrit).'],
+  ['Capitaine', 'Gère son roster : séances, compo, objectifs, épingles, statuts des joueurs. Sur Discord : /match, /entrainement, /dispos, /presences pour son roster.'],
+  ['Analyste', 'Suit un roster (scouting, drafter, VOD) sans compter comme joueur.'],
+  ['Responsable d\'un jeu', 'Tous les rosters de son jeu, la vue d\'ensemble de ce jeu (candidatures, essais, tournois) et les commandes du bot pour ces rosters.'],
+  ['Coach, manager', 'Encadrement : tous les rosters, tout gérer.'],
+  ['Pôle contenu', 'Casteur, graphiste, monteur, community manager, créateur, marketing : l\'onglet Contenu (matchs à couvrir, tâches, calendrier éditorial, indicateurs). Rien n\'est publié sans validation de la direction.'],
+  ['Modération, accueil, organisation', 'La vie du serveur : règlement, nouveaux, soirées et tournois communautaires.'],
+];
 ---
 <Qg title="Guide · Inside" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="gd">
@@ -51,13 +61,18 @@ const OUTILS = [
         </section>
       )}
       <section>
+        <h2 class="gd-h">Les rôles : qui voit quoi, qui gère quoi</h2>
+        <dl class="gd-tools">{ROLES.map(([t2, d]) => <div><dt>{t2}</dt><dd>{d}</dd></div>)}</dl>
+        <p class="eq-note">Les rôles se donnent sur Discord. Une question sur le tien : ton responsable de jeu, ou la direction.</p>
+      </section>
+      <section>
         <h2 class="gd-h">Les outils</h2>
         <dl class="gd-tools">{OUTILS.map(([t2, d, cmd]) => <div><dt>{t2}</dt><dd>{d}{cmd && <code>{cmd}</code>}</dd></div>)}</dl>
       </section>
       <section class="gd-faq">
         <h2 class="gd-h">Questions fréquentes</h2>
         <details><summary>Mes stats ne s'affichent pas</summary><p>Vérifie ton compte dans Joueurs (Riot ID avec le #TAG). Le relevé passe toutes les 30 minutes. Rocket League : il faut que tes replays soient sur ballchasing.com (envoie les fichiers .replay de tes parties sur le site, ou colle les liens dans Stats après un match).</p></details>
-        <details><summary>Qui voit quoi ?</summary><p>Tu vois les rosters dont tu fais partie. L'encadrement et les administrateurs Discord voient tout. Le public ne voit que l'agenda des matchs officiels, jamais les scrims ni l'espace équipe.</p></details>
+        <details><summary>Qui voit quoi ?</summary><p>Tu vois les rosters dont tu fais partie (le détail par rôle est juste au-dessus). L'encadrement et les administrateurs Discord voient tout. Le public ne voit que l'agenda des matchs officiels, jamais les scrims ni l'espace équipe.</p></details>
         <details><summary>Ma réponse sur le site apparaît-elle sur Discord ?</summary><p>Oui : le message de la séance sur Discord se met à jour dans la minute, et inversement.</p></details>
         <details><summary>Je veux une fonction en plus</summary><p>Dis-le au staff sur Discord : l'espace évolue avec le club.</p></details>
       </section>
