@@ -82,3 +82,20 @@ Colonne « écrit » : qui crée les lignes. « Lit » : qui s'en sert.
 | `warnings`, `sanctions` | avertissements et sanctions | bot | bot |
 | `giveaways`, `birthdays`, `playlists`, `sounds`, `temp_voices` | fonctions communautaires du bot | bot | bot |
 | `meta` | réglages internes (saison des inhouses, version publiée, files sauvegardées…) | bot | bot |
+
+## Durées de conservation
+
+Promises sur la page publique de confidentialité (`/mentions-legales/#confidentialite`) et tenues par `purgeOld()` dans `oni-bot/src/store.ts` (une fois par jour, après la sauvegarde). **Changer une durée = changer les deux.**
+
+| Données | Durée |
+|---|---|
+| Membres et rôles (`guild_members`) | effacés quand la personne quitte le serveur |
+| Disponibilités (`dispo_days`, `availability`) | 90 jours |
+| Candidatures closes (`applications`), tickets fermés | 1 an |
+| Messages de contact et avis (`contacts`) | 1 an ; empreinte d'adresse IP effacée après 48 h |
+| Réponses au sondage (`survey_answers`) | 1 an |
+| Parties (`perf`) | 6 mois |
+| Historique de rang (`rank_history`) | 1 an |
+| Cache des rangs et profils (`stats_cache`) | 30 jours (sauf identifiants techniques) |
+| Avertissements et sanctions | 2 ans |
+| Sauvegardes de la base (serveur de coulisses) | 30 jours |
