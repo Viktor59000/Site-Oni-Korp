@@ -151,10 +151,10 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
               <select data-bg-select aria-label="Fond"></select>
               <label class="wb-check" data-look-wrap hidden><input type="checkbox" data-look /> Carte réaliste</label>
               <label class="wb-check" data-bush-wrap hidden><input type="checkbox" data-bush-show checked /> Buissons</label>
-              <label class="wb-baron" data-baron-wrap hidden>Fosse du Nashor<select data-baron><option value="1">Forme 1</option><option value="2">Forme 2</option><option value="3">Forme 3</option></select></label>
+              <label class="wb-baron" data-baron-wrap hidden>Fosse du Nashor<select data-baron><option value="1">Chasse</option><option value="2">Observation</option><option value="3">Territoire</option></select></label>
               <p class="eq-note">Change le fond pour tout le monde. « Image » : colle le lien d'une capture ou d'un schéma.</p>
             </details>
-            <p class="eq-note wb-help">Sélection : glisser pour déplacer, double-clic sur un post-it ou un texte pour le modifier, Suppr pour retirer. Ctrl+Z / Ctrl+Y.{current?.game === 'lol' && <> Buissons : <a href="https://map.riftkit.net/" rel="noopener" target="_blank">RiftKit</a> (Coach Kirei), merci à lui.</>}</p>
+            <p class="eq-note wb-help">Sélection : glisser pour déplacer, double-clic sur un post-it ou un texte pour le modifier, Suppr pour retirer. Ctrl+Z / Ctrl+Y.{current?.game === 'lol' && <> Carte vectorielle et buissons : <a href="https://map.riftkit.net/" rel="noopener" target="_blank">RiftKit</a> (Coach Kirei), merci à lui.</>}</p>
           </aside>
         </div>
 
@@ -172,7 +172,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   const isRift = (bg: string) => bg === 'Faille' || bg.startsWith('Faille:');
   const riftParts = (bg: string) => { const [, t = 'base', n = '1'] = bg.split(':'); return { t: LOL_TERRAINS.some(([k]) => k === t) ? t : 'base', n: ['1', '2', '3'].includes(n) ? n : '1' }; };
   // L'âme Infernale n'existe qu'en une forme de fosse
-  const riftUrl = (bg: string) => { const { t, n } = riftParts(bg); return `/img/lol/map-${t}-${t === 'infernal' ? '1' : n}.webp`; };
+  // Carte vectorielle de RiftKit (Coach Kirei, avec son accord) : murs selon l'âme (Montagne change les murs), fosse du Nashor en 3 formes
+  const riftUrl = (bg: string) => { const { t, n } = riftParts(bg); return `/img/lol/vmap-${t === 'mountain' ? 'mountain' : 'normal'}-${({ 1: 'hunting', 2: 'seeing', 3: 'territorial' } as Record<string, string>)[t === 'infernal' ? '1' : n]}.svg`; };
   const LOL_MAP = riftUrl('Faille');
   // Rendu réaliste (vue du dessus du jeu) ; les murs pour la vision restent lus sur la minicarte vectorielle
   const RIFT_IMG = '/img/lol/faille-image.webp';
