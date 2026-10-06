@@ -447,12 +447,39 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       changed();
     });
 
-    // Palette : repères, pings, portraits du jeu
+    // Palette : repères, pings, portraits du jeu. Glisser-déposer sur la carte, ou cliquer puis cliquer sur la carte.
+    const itemOf = (b: HTMLElement): Partial<Item> => b.dataset.add === 'ping' ? { type: 'ping', ref: b.dataset.ref, label: b.dataset.label } : { type: 'tok', kind: b.dataset.add, ref: b.dataset.ref, label: b.dataset.label };
+    let carry: { b: HTMLElement; x: number; y: number; ghost: HTMLElement | null } | null = null, justDropped = false;
+    root.addEventListener('pointerdown', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b || e.button !== 0) return;
+      carry = { b, x: e.clientX, y: e.clientY, ghost: null };
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!carry) return;
+      if (!carry.ghost) {
+        if (Math.hypot(e.clientX - carry.x, e.clientY - carry.y) < 6) return;
+        const g = carry.b.cloneNode(true) as HTMLElement;
+        g.removeAttribute('data-add'); g.className = 'wb-ghost'; g.setAttribute('aria-hidden', 'true');
+        document.body.append(g); carry.ghost = g; hint('Lâche sur la carte pour poser l’élément');
+      }
+      carry.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      const r = stage.getBoundingClientRect();
+      stage.classList.toggle('is-drop', e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom);
+    });
+    const drop = (e: PointerEvent) => {
+      if (!carry) return;
+      const c = carry; carry = null;
+      if (!c.ghost) return; // simple clic : géré plus bas
+      c.ghost.remove(); stage.classList.remove('is-drop'); hint(null); justDropped = true; setTimeout(() => (justDropped = false), 0);
+      const r = stage.getBoundingClientRect();
+      if (e.type === 'pointercancel' || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      const [x, y] = pos(e); snapshot(); frame().items.push({ id: uid(), x, y, ...itemOf(c.b) } as Item); pending = null; changed();
+    };
+    document.addEventListener('pointerup', drop); document.addEventListener('pointercancel', drop);
     root.addEventListener('click', (e) => {
-      const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b) return;
-      const k = b.dataset.add!;
-      pending = k === 'ping' ? { type: 'ping', ref: b.dataset.ref, label: b.dataset.label } : { type: 'tok', kind: k, ref: b.dataset.ref, label: b.dataset.label };
-      hint("Clique sur la carte pour poser l'élément");
+      const b = (e.target as Element).closest<HTMLElement>('[data-add]'); if (!b || justDropped) return;
+      pending = itemOf(b);
+      hint("Clique sur la carte pour poser l'élément, ou glisse-le directement");
     });
 
     // Carte
@@ -727,6 +754,11 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-stage[data-tool="pen"], .wb-stage[data-tool="arrow"], .wb-stage[data-tool="line"], .wb-stage[data-tool="rect"], .wb-stage[data-tool="circle"], .wb-stage[data-tool="zone"] { cursor: crosshair; }
   .wb-stage[data-tool="note"], .wb-stage[data-tool="text"] { cursor: text; }
   .wb-stage[data-tool="erase"] { cursor: not-allowed; }
+  /* Glisser-déposer depuis la palette */
+  .wb :global([data-add]) { cursor: grab; }
+  .wb-stage:global(.is-drop) { outline: 3px solid var(--qg-focus, #156b85); outline-offset: -3px; }
+  :global(.wb-ghost) { position: fixed; left: 0; top: 0; z-index: 100; margin: -20px 0 0 -20px; pointer-events: none; opacity: .85; cursor: grabbing; }
+  :global(.wb-ghost img) { display: block; width: 40px; height: 40px; border-radius: 50%; }
   .wb-bg { position: absolute; inset: 0; background: #0f1923 center / contain no-repeat; }
   .wb-bg.is-blank { background-color: #fbfaf7; }
   .wb-bg.is-grid { background-color: #fbfaf7; background-image: linear-gradient(#e3e0d8 1px, transparent 1px), linear-gradient(90deg, #e3e0d8 1px, transparent 1px); background-size: 5% 5%; }
