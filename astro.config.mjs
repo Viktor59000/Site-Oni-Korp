@@ -33,6 +33,7 @@ const api = {
       route('/api/equipe/dispos', './src/server/equipe/dispos.ts');
       route('/equipe', './src/server/equipe/accueil.astro');
       route('/equipe/planning', './src/server/equipe.astro');
+      route('/sondage', './src/server/sondage.astro');
       route('/equipe/vue', './src/server/equipe/vue.astro');
       route('/equipe/contenu', './src/server/equipe/contenu.astro');
       route('/equipe/tournois', './src/server/equipe/tournois.astro');

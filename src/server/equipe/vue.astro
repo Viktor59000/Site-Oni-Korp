@@ -4,6 +4,7 @@
 import Qg from './Qg.astro';
 import { rosterMembers, teamUser } from './outils';
 import { rows } from '../db';
+import { CAMPAIGN, QUESTIONS } from '../sondage-questions';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
@@ -102,6 +103,18 @@ const talents = Object.keys(MODE_GAME).filter((mode) => mineGame(MODE_GAME[mode]
   list: elo.filter((e) => e.mode === mode && !allRosters.some((r) => r.game === MODE_GAME[mode] && (e.roles ?? '').includes(`"${r.role_id}"`))).slice(0, 3),
 })).filter((x) => x.list.length);
 
+// Sondage des membres (chantier 9) : synthèse pour la direction seulement
+const survey = me.staff ? await rows<{ answers: string; name: string | null }>(
+  'SELECT s.answers, g.name FROM survey_answers s LEFT JOIN guild_members g ON g.id = s.user_id WHERE s.campaign = ?', CAMPAIGN).catch(() => []) : [];
+const sv = survey.map((x) => ({ a: JSON.parse(x.answers) as Record<string, any>, name: x.name }));
+const svAvg = (id: string) => { const v = sv.map((x) => x.a[id]).filter((n) => typeof n === 'number'); return v.length ? v.reduce((s, n) => s + n, 0) / v.length : null; };
+const nps = (() => { const v = sv.map((x) => x.a.recommande).filter((n) => typeof n === 'number'); return v.length ? Math.round(((v.filter((n) => n >= 9).length - v.filter((n) => n <= 6).length) / v.length) * 100) : null; })();
+const svCounts = QUESTIONS.filter((q) => q.type === 'multi' || q.type === 'single').map((q) => ({
+  label: q.label, rows: (q as { options: string[] }).options.map((o) => ({ o, n: sv.filter((x) => Array.isArray(x.a[q.id]) ? x.a[q.id].includes(o) : x.a[q.id] === o).length })).filter((r) => r.n).sort((x, y) => y.n - x.n),
+}));
+const volunteers = sv.filter((x) => Array.isArray(x.a.aider) && x.a.aider.some((v: string) => v !== 'Non merci')).map((x) => `${x.name ?? 'Membre'} (${x.a.aider.filter((v: string) => v !== 'Non merci').join(', ')})`);
+const svTexts = sv.flatMap((x) => [x.a.plus, x.a.manque].filter(Boolean)) as string[];
+
 // Tournois repérés dont l'inscription ferme dans moins de 3 jours (chantier 5)
 const comps = await rows<{ name: string; signup_by: number; roster: string; game: string }>(
   `SELECT c.name, c.signup_by, r.name AS roster, r.game FROM competitions c JOIN rosters r ON r.id = c.roster_id
@@ -173,6 +186,15 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
 
       <div class="ov-cols">
         <section class="ov-block">
+          {me.staff && (<>
+            <h2>Sondage des membres</h2>
+            {sv.length ? (<>
+              <p class="eq-note">{sv.length} réponse{sv.length > 1 ? 's' : ''} · bien-être {svAvg('satisfaction')?.toFixed(1).replace('.', ',') ?? '—'}/5 · recommandation (NPS) {nps ?? '—'}</p>
+              <ul class="ov-survey">{svCounts.filter((c) => c.rows.length).map((c) => <li><b>{c.label}</b><span>{c.rows.slice(0, 4).map((r) => `${r.o} ${r.n}`).join(' · ')}</span></li>)}</ul>
+              {volunteers.length > 0 && <p class="eq-note"><b>Volontaires pour aider :</b> {volunteers.join(' ; ')}</p>}
+              {svTexts.length > 0 && <details><summary>{svTexts.length} commentaire{svTexts.length > 1 ? 's' : ''}</summary><ul class="ov-survey">{svTexts.map((t) => <li>{t}</li>)}</ul></details>}
+            </>) : <p class="eq-note">Pas encore de réponse. Lien à partager une fois validé : <a href="/sondage/">/sondage/</a></p>}
+          </>)}
           {talents.length > 0 && (<>
             <h2>Talents des inhouses</h2>
             <p class="eq-note">Meilleurs Elo de la saison (10 parties au moins) sans roster dans ce jeu : à inviter en essai ?</p>
@@ -224,6 +246,9 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
 </Qg>
 
 <style>
+  .ov-survey { display: grid; gap: .3rem; margin: .3rem 0 1rem; padding: 0; list-style: none; font-size: .85rem; }
+  .ov-survey li { display: grid; gap: .1rem; padding: .4rem .6rem; background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .ov-survey li span { color: var(--muted); }
   .ov-talents { display: grid; gap: .4rem; margin: 0 0 1.5rem; padding: 0; list-style: none; font-size: .85rem; }
   .ov-talents li { display: flex; flex-wrap: wrap; gap: .3rem .9rem; padding: .5rem .7rem; border-left: 3px solid #2fbf71; background: color-mix(in srgb, var(--ink) 4%, transparent); }
   .ov-talents b { min-width: 5.5rem; }

@@ -1,0 +1,96 @@
+---
+// /sondage : le sondage des membres (chantier 9). Connexion Discord obligatoire (une réponse par membre, modifiable).
+// Les réponses ne sont lues que par la direction, dans Inside > Vue d'ensemble ; rien n'est publié avec un nom.
+import Base from '../layouts/Base.astro';
+import { currentSession, sameOrigin } from './session';
+import { exec, rows } from './db';
+import { CAMPAIGN, QUESTIONS } from './sondage-questions';
+
+export const prerender = false;
+const user = await currentSession(Astro.cookies);
+await exec('CREATE TABLE IF NOT EXISTS survey_answers (campaign TEXT, user_id TEXT, answers TEXT, at INTEGER, PRIMARY KEY (campaign, user_id))').catch(() => {});
+
+let saved = false;
+if (Astro.request.method === 'POST' && user && sameOrigin(Astro.request)) {
+  const f = await Astro.request.formData();
+  const answers: Record<string, unknown> = {};
+  for (const q of QUESTIONS) {
+    if (q.type === 'multi') answers[q.id] = f.getAll(q.id).map(String).filter((v) => q.options.includes(v));
+    else if (q.type === 'single') { const v = String(f.get(q.id) ?? ''); answers[q.id] = q.options.includes(v) ? v : null; }
+    else if (q.type === 'scale') { const v = Number(f.get(q.id)); answers[q.id] = Number.isInteger(v) && v >= q.min && v <= q.max ? v : null; }
+    else answers[q.id] = String(f.get(q.id) ?? '').trim().slice(0, 1000) || null;
+  }
+  await exec('INSERT INTO survey_answers (campaign, user_id, answers, at) VALUES (?,?,?,?) ON CONFLICT(campaign, user_id) DO UPDATE SET answers = excluded.answers, at = excluded.at',
+    CAMPAIGN, user.id, JSON.stringify(answers), Date.now());
+  saved = true;
+}
+const [prev] = user ? await rows<{ answers: string }>('SELECT answers FROM survey_answers WHERE campaign = ? AND user_id = ?', CAMPAIGN, user.id).catch(() => []) : [];
+const a: Record<string, any> = prev ? JSON.parse(prev.answers) : {};
+const has = (id: string, v: string) => Array.isArray(a[id]) ? a[id].includes(v) : a[id] === v;
+---
+<Base title="Sondage des membres" description="Le sondage d'Oni Korp : ce que tu viens chercher sur le serveur, ce qui manque, et comment tu veux participer.">
+  <header class="page-head page-head--plain">
+    <div class="wrap">
+      <h1>Ton avis</h1>
+      <p>Deux minutes, neuf questions. Ça nous dit quoi garder, quoi changer, et qui a envie de s'impliquer.</p>
+    </div>
+  </header>
+  <section class="section">
+    <div class="wrap"><div class="sv">
+      {!user ? (
+        <div class="sv-login">
+          <p>On demande la connexion Discord pour éviter les doublons. Tes réponses ne sont lues que par la direction du club, et rien n'est publié avec ton nom.</p>
+          <a class="btn" href="/api/auth/login?next=/sondage/">Se connecter avec Discord</a>
+        </div>
+      ) : (
+        <>
+          {saved && <p class="sv-ok" role="status">Merci {user.name} : c'est enregistré. Tu peux modifier tes réponses quand tu veux.</p>}
+          {!saved && prev && <p class="sv-ok" role="status">Tu as déjà répondu : tes réponses sont pré-remplies, tu peux les modifier.</p>}
+          <form method="post" class="sv-form">
+            {QUESTIONS.map((q, n) => (
+              <fieldset>
+                <legend><span>{n + 1}</span>{q.label}{'required' in q && q.required ? '' : <small> (facultatif)</small>}</legend>
+                {q.type === 'multi' && <div class="sv-opts">{q.options.map((o) => <label><input type="checkbox" name={q.id} value={o} checked={has(q.id, o)} />{o}</label>)}</div>}
+                {q.type === 'single' && <div class="sv-opts">{q.options.map((o) => <label><input type="radio" name={q.id} value={o} checked={has(q.id, o)} required={q.required} />{o}</label>)}</div>}
+                {q.type === 'scale' && (
+                  <div class="sv-scale">
+                    <span>{q.low}</span>
+                    {Array.from({ length: q.max - q.min + 1 }, (_, k) => q.min + k).map((v) => <label><input type="radio" name={q.id} value={v} checked={a[q.id] === v} required={q.required} /><b>{v}</b></label>)}
+                    <span>{q.high}</span>
+                  </div>
+                )}
+                {q.type === 'text' && <textarea name={q.id} rows="3" maxlength="1000" placeholder={q.hint}>{a[q.id] ?? ''}</textarea>}
+              </fieldset>
+            ))}
+            <button class="btn">Envoyer</button>
+          </form>
+        </>
+      )}
+    </div></div>
+  </section>
+</Base>
+
+<style>
+  .page-head--plain { padding-block: clamp(4rem, 10vw, 7rem) 2rem; }
+  .sv { max-width: 44rem; }
+  .sv-login p { margin-bottom: 1.25rem; }
+  .sv-ok { margin-bottom: 1.5rem; padding: .75rem 1rem; border-left: 3px solid #2fbf71; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+  .sv-form { display: grid; gap: 1.75rem; }
+  .sv-form fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: .7rem; }
+  .sv-form legend { display: flex; gap: .6rem; align-items: baseline; margin-bottom: .6rem; font-weight: 700; font-size: var(--step-0); }
+  .sv-form legend span { font-family: var(--font-display); color: var(--lacquer); }
+  .sv-form legend small { font-weight: 400; color: var(--muted); }
+  .sv-opts { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .sv-opts label { display: flex; align-items: center; gap: .45rem; padding: .45rem .8rem; border: 1px solid var(--line); cursor: pointer; transition: border-color .15s; }
+  .sv-opts label:hover, .sv-opts label:has(input:checked) { border-color: var(--lacquer); }
+  .sv-scale { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+  .sv-scale span { color: var(--muted); font-size: var(--step--1); }
+  .sv-scale label { position: relative; cursor: pointer; }
+  .sv-scale input { position: absolute; opacity: 0; }
+  .sv-scale b { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border: 1px solid var(--line); font-variant-numeric: tabular-nums; transition: border-color .15s, background .15s; }
+  .sv-scale label:hover b { border-color: var(--ink); }
+  .sv-scale input:checked + b { background: var(--lacquer); border-color: var(--lacquer); color: #fff; }
+  .sv-scale input:focus-visible + b { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .sv-form textarea { width: 100%; box-sizing: border-box; padding: .6rem .75rem; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; }
+  .sv-form .btn { width: fit-content; }
+</style>
