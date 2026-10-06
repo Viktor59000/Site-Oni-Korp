@@ -387,3 +387,10 @@ body.qg .pf-avatar { width: 72px; height: 72px; border-radius: 50%; border: 3px 
 body.qg :is(.eq-empty, .nt-empty, .ag-empty) { font-family: inherit !important; font-size: var(--text-sm) !important; line-height: 1.5; }
 /* Tableau ouvert : l'en-tête d'écran laisse la place à la carte (le titre du tableau est juste au-dessus) */
 body.qg .qg-main:has(.wb) .qg-head { display: none; }
+/* Menu replié : la colonne disparaît, le contenu prend toute la largeur */
+body.qg .qg-icon.qg-fold svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+@media (min-width: 901px) {
+  body.qg.qg-folded .qg-body:not(.is-bare) { grid-template-columns: minmax(0, 1fr); max-width: none; }
+  body.qg.qg-folded .qg-nav { display: none; }
+}
+@media (max-width: 900px) { body.qg .qg-fold { display: none; } }

@@ -53,6 +53,7 @@ const currentLabel = section?.label ?? heading;
 <Base title={title} qg>
   <div class="qg-app" style={`--game:${accent};--game-fg:${accent === '#ff66aa' ? '#1a0b13' : '#fff'}`}>
     <header class="qg-top">
+      {!bare && <button class="qg-icon qg-fold" type="button" data-qg-fold aria-label="Replier le menu" title="Replier / déplier le menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>}
       <a class="qg-brand" href={`/equipe/${q}`} aria-label="Inside, accueil de l'espace équipe"><img src="/img/oni-logo.svg" alt="" width="28" height="28" /><span><b translate="no">Oni Korp</b> Inside</span></a>
       {!bare && rosters.length > 0 && (
         <details class="qg-switch">
@@ -126,6 +127,10 @@ const currentLabel = section?.label ?? heading;
 </Base>
 
 <script>
+  // Menu de gauche repliable (mémorisé) : plus de place pour le tableau blanc, le drafter…
+  const fold = (on: boolean) => { document.body.classList.toggle('qg-folded', on); document.querySelector('[data-qg-fold]')?.setAttribute('aria-expanded', String(!on)); };
+  try { fold(localStorage.getItem('qg-folded') === '1'); } catch {}
+  document.querySelector('[data-qg-fold]')?.addEventListener('click', () => { const on = !document.body.classList.contains('qg-folded'); fold(on); try { localStorage.setItem('qg-folded', on ? '1' : '0'); } catch {} });
   // Thème (même choix mémorisé que la vitrine)
   document.querySelector('[data-qg-theme]')?.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
