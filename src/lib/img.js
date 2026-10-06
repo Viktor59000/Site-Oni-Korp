@@ -19,6 +19,7 @@ export const variants = {
   'entete-postuler': [800, 2000],
   'bandeau-pinceau': [800, 2000],
   'entete-boosters': [800, 2000],
+  'entete-inhouses': [800, 2000],
   'album-couverture': [560, 1122],
   'accueil-album': [560, 1122],
   'accueil-inhouses': [800, 1586],

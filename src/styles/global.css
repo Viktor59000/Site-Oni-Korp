@@ -1047,6 +1047,3 @@ main { counter-reset: page; }
 
 /* Lien Inside du menu : petit cadenas, sans bordure ni pastille */
 .nav__lock { width: 13px; height: 13px; fill: currentColor; margin-right: .35rem; vertical-align: -1px; opacity: .7; }
-
-/* En-tête dont l'illustration n'a pas de moitié noire (inhouses) : la gauche est assombrie pour le titre */
-.page-head__bg--full { mask-image: linear-gradient(90deg, rgb(0 0 0 / .12) 25%, #000 75%); }

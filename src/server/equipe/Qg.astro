@@ -29,12 +29,18 @@ const GAME_TOOL: Record<string, [string, string]> = { lol: ['lol', 'Drafter'], v
 const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
 // Outil propre au jeu : seulement celui du roster choisi (un roster osu! ne voit pas le drafter LoL)
 const gameTools = game && GAME_TOOL[game] ? [GAME_TOOL[game]] : [];
-const GROUPS: [string, [string, string][]][] = [
-  ['', [['accueil', 'Accueil']]],
-  ['Semaine', [['planning', 'Planning'], ['calendrier', 'Calendrier'], ['match', 'Avant-match']]],
-  ['Progresser', [['stats', 'Stats'], ['objectifs', 'Objectifs'], ['notes', 'Notes de match'], ['vod', 'VOD']]],
-  ['Préparer', [['tactique', 'Tableau blanc'], ['scouting', 'Scouting'], ...gameTools as [string, string][]]],
+// Six rubriques au plus dans le menu ; les pages d'une rubrique deviennent des onglets en haut de l'écran.
+// Profil et guide sont dans le menu du compte, la vue d'ensemble (staff) dans le sélecteur de roster.
+const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = [
+  { key: 'accueil', label: 'Accueil', pages: [['accueil', 'Accueil']] },
+  { key: 'semaine', label: 'Semaine', pages: [['planning', 'Planning'], ['calendrier', 'Calendrier']] },
+  { key: 'match', label: 'Match', pages: [['match', 'Avant-match'], ['notes', 'Notes de match'], ['vod', 'VOD'], ['scouting', 'Scouting']] },
+  { key: 'progres', label: 'Progrès', pages: [['stats', 'Stats'], ['objectifs', 'Objectifs']] },
+  { key: 'outils', label: 'Outils', pages: [['tactique', 'Tableau blanc'], ...gameTools as [string, string][]] },
+  { key: 'equipe', label: 'Équipe', pages: [['joueurs', 'Joueurs'], ['setup', 'Setups'], ['docs', 'Docs']] },
 ];
+const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current));
+const GROUPS: [string, [string, string][]][] = SECTIONS.map((x) => [x.label, x.pages]);
 // Changer de roster en restant sur le même outil (sauf outil propre à un autre jeu)
 const switchTo = (r: RosterRow) => {
   const tool = PATH[current] && !(GAME_TOOL[current] && current !== r.game) ? PATH[current] : '/equipe/';
@@ -42,7 +48,7 @@ const switchTo = (r: RosterRow) => {
 };
 const byGame = Object.entries(GAMES).map(([k, g]) => ({ key: k, ...g, list: rosters.filter((r) => r.game === k) })).filter((g) => g.list.length);
 const accent = activeRoster ? GAMES[activeRoster.game]?.color ?? '#e5251f' : '#e5251f';
-const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === current)?.[1] ?? heading;
+const currentLabel = section?.label ?? heading;
 ---
 <Base title={title} qg>
   <div class="qg-app" style={`--game:${accent};--game-fg:${accent === '#ff66aa' ? '#1a0b13' : '#fff'}`}>
@@ -83,33 +89,28 @@ const currentLabel = GROUPS.flatMap(([, items]) => items).find(([k]) => k === cu
       {!bare && (
         <details class="qg-nav" data-qg-nav open>
           <summary>{currentLabel}<span class="qg-caret" aria-hidden="true"></span></summary>
-          <nav aria-label="Outils du roster">
-            {GROUPS.map(([label, items]) => (
-              <div class="qg-group">
-                {label && <p>{label}</p>}
-                {items.map(([k, l]) => <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}>{l}</a>)}
-              </div>
+          <nav aria-label="Rubriques d'Inside">
+            {SECTIONS.map((x) => (
+              <a href={`${PATH[x.pages[0][0]]}${q}`} aria-current={x === section ? 'page' : undefined}>{x.label}</a>
             ))}
-            <div class="qg-group qg-group--foot">
-              <p>Équipe</p>
-              {([['joueurs', 'Joueurs'], ['setup', 'Setups'], ['docs', 'Docs']] as [string, string][]).map(([k, l]) => <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}>{l}</a>)}
-              {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
-              <a href="/equipe/profil/" aria-current={current === 'profil' ? 'page' : undefined}>Mon profil</a>
-              <a href="/equipe/guide/" aria-current={current === 'guide' ? 'page' : undefined}>Guide</a>
-            </div>
           </nav>
         </details>
       )}
       {!bare && <script is:inline>if (matchMedia('(max-width: 900px)').matches) document.querySelector('[data-qg-nav]')?.removeAttribute('open');</script>}
       {!bare && (
         <nav class="qg-tabs" aria-label="Accès rapide">
-          {([['accueil', 'Accueil', 'M4 11l8-7 8 7v9H4z'], ['planning', 'Semaine', 'M4 6h16M4 12h16M4 18h10'], ['stats', 'Stats', 'M5 20V11M12 20V5M19 20v-7'], ['tactique', 'Tableau', 'M4 19l5-5 4 4 7-9M4 5h16']] as [string, string, string][]).map(([k, l, d]) => (
+          {([['accueil', 'Accueil', 'M4 11l8-7 8 7v9H4z'], ['planning', 'Semaine', 'M4 6h16M4 12h16M4 18h10'], ['match', 'Match', 'M4 19l5-5 4 4 7-9M4 5h16'], ['stats', 'Progrès', 'M5 20V11M12 20V5M19 20v-7']] as [string, string, string][]).map(([k, l, d]) => (
             <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>{l}</a>
           ))}
           <button type="button" data-qg-more><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>Menu</button>
         </nav>
       )}
       <main id="contenu" class="qg-main">
+        {section && section.pages.length > 1 && (
+          <nav class="qg-sub" aria-label={section.label}>
+            {section.pages.map(([k, l]) => <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}>{l}</a>)}
+          </nav>
+        )}
         <header class="qg-head">
           <div>
             {activeRoster && <p class="qg-kicker"><span aria-hidden="true"></span>{activeRoster.name} · {GAMES[activeRoster.game]?.label}</p>}

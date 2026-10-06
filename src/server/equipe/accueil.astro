@@ -270,7 +270,7 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-start .is-done a { background: var(--qg-sunk, rgb(0 0 0 / .04)); }
   .ac-start .is-done strong { text-decoration: line-through; color: var(--qg-muted); }
   .ac-start .is-done a::before { content: '✓'; background: #2fbf71; color: #fff; }
-  .ac-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: var(--space-4, 1rem); }
+  .ac-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: var(--space-5, 1.5rem) var(--space-6, 2rem); align-items: start; }
   .ac-card { display: grid; gap: .9rem; align-content: start; }
   .ac-card h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
   .ac-more { justify-self: start; font-weight: 700; font-size: var(--text-sm); color: var(--qg-ink); }
