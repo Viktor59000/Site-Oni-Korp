@@ -10,8 +10,10 @@ import { album } from '../lib/album.js';
 ---
 <Base>
   <section class="hero" aria-labelledby="hero-title">
-    <img class="hero__bg" src="/img/hero-fond.webp" srcset={srcset("/img/hero-fond.webp")} sizes="100vw" alt="" width="1983" height="793" fetchpriority="high" />
-    <img class="hero__kanji" src="/img/kanji-oni-pinceau.webp" srcset={srcset("/img/kanji-oni-pinceau.webp")} sizes="(max-width: 860px) 95vw, 50vw" alt="" width="1100" height="1138" fetchpriority="low" decoding="async" />
+    <picture>
+      <source media="(max-width: 860px)" srcset="/img/hero-v2-mobile.webp" width="700" height="778" />
+      <img class="hero__bg" src="/img/hero-v2.webp" srcset="/img/hero-v2-900.webp 900w, /img/hero-v2.webp 1916w" sizes="100vw" alt="" width="1916" height="821" fetchpriority="high" />
+    </picture>
     <span class="hero__hud hud" aria-hidden="true"></span>
     <span class="hero__motto" aria-hidden="true">Oni's never on knees</span>
     <div class="wrap hero__inner">
