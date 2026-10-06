@@ -1,5 +1,7 @@
 ---
 // Drafter League of Legends : ordre de draft de tournoi, mode fearless (séries), drafts sauvegardés pour le roster,
+// préparation (rôle, note et variantes par pick, bans proposés, plan de jeu), lecture des compos (données Riot) et
+// suggestions tirées des parties classées de nos joueurs,
 // op.gg multi de notre équipe et de l'adversaire. Champions et icônes : Data Dragon (Riot), à jour automatiquement.
 import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
@@ -18,13 +20,28 @@ const ours = rosterIds.length ? await rows<{ ident: string; region: string }>(`S
   WHERE a.game = 'riot' AND (${rosterIds.map(() => 'g.roles LIKE ?').join(' OR ')})`, ...rosterIds.map((id) => `%"${id}"%`)) : [];
 const oursMulti = ours.length ? links.opggMulti(ours.map((o) => o.ident), ours[0].region ?? 'euw') : null;
 const games = [...new Set(me.rosters.map((r) => r.game))];
+type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number }> };
+const pool: PoolPlayer[] = [];
+for (const r of lolRosters) {
+  const members = await rows<{ id: string; name: string }>(`SELECT id, name FROM guild_members WHERE roles LIKE ?`, `%"${r.role_id}"%`);
+  const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
+  for (const m of members) {
+    if (pool.some((p) => p.name === m.name)) continue;
+    const perfs = await rows<{ data: string }>(`SELECT data FROM perf WHERE user_id = ? AND game = 'lol' AND at > ?`, m.id, Date.now() - 90 * 86400_000).catch(() => []);
+    const champs: PoolPlayer['champs'] = {};
+    for (const p of perfs) { try { const d = JSON.parse(p.data); if (!d.champ) continue; const c = (champs[d.champ] ??= { g: 0, w: 0 }); c.g++; if (d.win) c.w++; } catch {} }
+    pool.push({ name: m.name, poste: postes.get(m.id) ?? null, champs });
+  }
+}
 ---
 <Qg title="Drafter LoL · Inside" heading="Drafter LoL" lead="Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless." current="lol" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
-  <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))}>
+  <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))} data-pool={JSON.stringify(pool)}>
     <div>
       <div class="dr-top">
         <p class="dr-step" data-step aria-live="polite">Chargement des champions…</p>
         <div class="dr-actions">
+          <div class="dr-seg" role="group" aria-label="Notre côté"><span>Notre côté</span><button type="button" data-ours="blue" aria-pressed="true">Bleu</button><button type="button" data-ours="red" aria-pressed="false">Rouge</button></div>
+          <div class="dr-seg" role="group" aria-label="Un clic sur un champion"><span>Un clic</span><button type="button" data-mode="draft" aria-pressed="true">Draft</button><button type="button" data-mode="plan" aria-pressed="false">Ban proposé</button><button type="button" data-mode="variant" aria-pressed="false" disabled>Variante</button></div>
           <button type="button" class="dr-btn" data-undo>Annuler</button>
           <button type="button" class="dr-btn" data-next-game title="Les champions joués sont bloqués pour la partie suivante">Partie suivante (fearless)</button>
           <button type="button" class="dr-btn" data-reset>Tout effacer</button>
@@ -52,6 +69,31 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
         </div>
       </div>
 
+      <div class="dr-prep">
+        <section class="dr-slot" data-slot-panel>
+          <h3>Préparation du pick</h3>
+          <p class="eq-note" data-slot-empty>Clique sur un de nos picks (colonne de notre côté) pour lui donner un rôle, une note et des variantes selon la situation.</p>
+          <div data-slot-body hidden>
+            <p class="dr-slot__title" data-slot-title></p>
+            <label>Rôle<select data-slot-role><option value="">—</option><option>Top</option><option>Jungle</option><option>Mid</option><option>ADC</option><option>Support</option></select></label>
+            <div><p class="dr-label">Variantes <small>(si le champion est banni, pris ou mauvais dans le matchup ; passe en mode « Variante » puis clique dans la liste)</small></p><ul class="dr-chips" data-slot-variants></ul></div>
+            <label>Note<textarea rows="3" maxlength="400" data-slot-note placeholder="Ex. : seulement si leur jungle est un engage ; sinon Sejuani"></textarea></label>
+          </div>
+        </section>
+        <section class="dr-plan">
+          <h3>Bans proposés <small>mode « Ban proposé »</small></h3>
+          <ul class="dr-chips" data-plan-bans><li class="eq-note">Aucun pour l'instant.</li></ul>
+          <label>Plan de jeu<textarea rows="4" maxlength="1500" data-plan-notes placeholder="Conditions de victoire, priorités, ce qu'on cherche à contester…"></textarea></label>
+        </section>
+      </div>
+
+      <section class="dr-read" aria-labelledby="dr-read-title">
+        <h3 id="dr-read-title">Lecture des compos</h3>
+        <p class="eq-note">Calculée sur les données officielles des champions (Riot) et sur les parties classées de nos joueurs relevées par Oni Bot (90 jours). Pas de taux de victoire mondiaux : seulement ce qu'on sait vraiment.</p>
+        <div class="dr-read__grid"><div data-read="blue"></div><div data-read="red"></div></div>
+        <div class="dr-suggest" data-suggest></div>
+      </section>
+
       <div class="dr-bottom">
         <form class="dr-save" method="post" action="/api/equipe/outils" data-save>
           <h3>Garder ce draft</h3>
@@ -77,7 +119,8 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 </Qg>
 
 <script>
-  type Champ = { id: string; name: string; tags: string[] };
+  type Champ = { id: string; name: string; tags: string[]; info: { attack: number; defense: number; magic: number; difficulty: number } };
+  type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number }> };
   type Side = 'blue' | 'red';
   // Ordre de draft de tournoi : 3 bans chacun, 6 picks, 2 bans chacun, 4 picks
   const ORDER: [Side, 'ban' | 'pick', number][] = [
@@ -94,6 +137,11 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   let steps: (string | null)[] = []; // champion choisi à chaque étape (null = pas de ban)
   let locked = new Set<string>();    // fearless : champions des parties précédentes
   let tag = '';
+  // Préparation : notre côté, rôle / note / variantes par pick, bans proposés, plan de jeu
+  let ours: Side = 'blue', mode: 'draft' | 'plan' | 'variant' = 'draft', slot: number | null = null;
+  let prep: { roles: Record<number, string>; notes: Record<number, string>; variants: Record<number, string[]>; bans: string[]; plan: string } = { roles: {}, notes: {}, variants: {}, bans: [], plan: '' };
+  const pool: PoolPlayer[] = JSON.parse(root.dataset.pool || '[]');
+  const POSTE_ROLE: Record<string, string> = { Top: 'Top', Jungle: 'Jungle', Mid: 'Mid', ADC: 'ADC', Support: 'Support' };
   const lazyIcons = new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) { const img = e.target as HTMLImageElement; img.src = img.dataset.src!; img.removeAttribute('data-src'); lazyIcons.unobserve(img); }
   }, { root: document.querySelector('[data-grid]'), rootMargin: '150px' });
@@ -117,7 +165,9 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       }).join('');
       $(`[data-picks="${side}"]`).innerHTML = s[side].pick.map((c, n) => {
         const active = cur && cur[0] === side && cur[1] === 'pick' && cur[2] === n;
-        return `<li class="${active ? 'is-active' : ''}">${c ? `<img src="${icon(c)}" alt="" width="56" height="56" /><span>${esc(name(c))}</span>` : `<span class="dr-empty">${side === 'blue' ? 'B' : 'R'}${n + 1}</span>`}</li>`;
+        const mine = side === ours, extra = mine ? `${prep.roles[n] ? `<em>${esc(prep.roles[n])}</em>` : ''}${prep.variants[n]?.length ? `<small>+${prep.variants[n].length} variante${prep.variants[n].length > 1 ? 's' : ''}</small>` : ''}` : '';
+        const inner = c ? `<img src="${icon(c)}" alt="" width="56" height="56" /><span>${esc(name(c))}${extra}</span>` : `<span class="dr-empty">${side === 'blue' ? 'B' : 'R'}${n + 1}${extra}</span>`;
+        return `<li class="${active ? 'is-active' : ''}${mine ? ' is-mine' : ''}${mine && slot === n ? ' is-slot' : ''}">${mine ? `<button type="button" data-slot="${n}">${inner}</button>` : inner}</li>`;
       }).join('');
     }
     $('[data-step]').textContent = cur ? `${cur[0] === 'blue' ? 'Bleu' : 'Rouge'} · ${cur[1] === 'ban' ? 'ban' : 'pick'} ${cur[2] + 1}` : 'Draft terminé';
@@ -127,28 +177,108 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       .filter((c) => (!tag || c.tags.includes(tag)) && (!q || c.name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').includes(q)))
       .map((c) => {
         const off = used.has(c.id) || locked.has(c.id);
-        return `<li><button type="button" data-champ="${c.id}" ${off || !cur ? 'disabled' : ''} title="${esc(c.name)}"><img data-src="${icon(c.id)}" alt="" width="48" height="48" /><span>${esc(c.name)}</span></button></li>`;
+        return `<li><button type="button" data-champ="${c.id}" ${mode === 'draft' && (off || !cur) ? 'disabled' : ''} title="${esc(c.name)}"><img data-src="${icon(c.id)}" alt="" width="48" height="48" /><span>${esc(c.name)}</span></button></li>`;
       }).join('');
     // Icônes chargées seulement quand elles apparaissent dans la grille (170 champions, sinon ~4 Mo d'un coup)
     $('[data-grid]').querySelectorAll<HTMLImageElement>('img[data-src]').forEach((img) => lazyIcons.observe(img));
     const l = $('[data-locked]');
     l.hidden = !locked.size;
     l.textContent = locked.size ? `Fearless : ${locked.size} champions déjà joués dans la série sont bloqués.` : '';
-    $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version });
+    $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version, ours, prep });
+    renderPrep(s); renderRead(s);
+  }
+
+  // ---------- Préparation ----------
+  const chip = (id: string, attr: string) => `<li><img src="${icon(id)}" alt="" width="28" height="28" />${esc(name(id))}<button type="button" ${attr}="${id}" aria-label="Retirer ${esc(name(id))}">×</button></li>`;
+  function renderPrep(s: ReturnType<typeof state>) {
+    root.querySelectorAll('[data-ours]').forEach((b) => b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.ours === ours)));
+    root.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.mode === mode)));
+    $<HTMLButtonElement>('[data-mode="variant"]').disabled = slot === null;
+    $('[data-plan-bans]').innerHTML = prep.bans.length ? prep.bans.map((c) => chip(c, 'data-rm-plan')).join('') : '<li class="eq-note">Aucun pour l\'instant.</li>';
+    if (document.activeElement !== $('[data-plan-notes]')) $<HTMLTextAreaElement>('[data-plan-notes]').value = prep.plan;
+    $('[data-slot-empty]').hidden = slot !== null; $('[data-slot-body]').hidden = slot === null;
+    if (slot === null) return;
+    const c = s[ours].pick[slot];
+    $('[data-slot-title]').textContent = `${ours === 'blue' ? 'B' : 'R'}${slot + 1}${c ? ` · ${name(c)}` : ' · pas encore choisi'}`;
+    $<HTMLSelectElement>('[data-slot-role]').value = prep.roles[slot] ?? '';
+    if (document.activeElement !== $('[data-slot-note]')) $<HTMLTextAreaElement>('[data-slot-note]').value = prep.notes[slot] ?? '';
+    const v = prep.variants[slot] ?? [];
+    $('[data-slot-variants]').innerHTML = v.length ? v.map((x) => chip(x, 'data-rm-variant')).join('') : '<li class="eq-note">Aucune variante.</li>';
+  }
+
+  // ---------- Lecture des compos (données Riot + nos parties) ----------
+  const champ = (id: string | null) => champs.find((c) => c.id === id);
+  function profile(ids: string[]) {
+    const cs = ids.map(champ).filter(Boolean) as Champ[];
+    const ap = cs.reduce((a, c) => a + c.info.magic, 0), ad = cs.reduce((a, c) => a + c.info.attack, 0);
+    const front = cs.filter((c) => c.tags.includes('Tank') || (c.tags.includes('Fighter') && c.info.defense >= 5)).length;
+    const engage = cs.filter((c) => c.tags.includes('Tank')).length;
+    const picks = cs.filter((c) => c.tags.includes('Assassin')).length;
+    const range = cs.filter((c) => c.tags.includes('Marksman') || (c.tags.includes('Mage') && c.info.defense <= 3)).length;
+    const diff = cs.length ? cs.reduce((a, c) => a + c.info.difficulty, 0) / cs.length : 0;
+    return { cs, apShare: ap + ad ? ap / (ap + ad) : 0, front, engage, picks, range, diff };
+  }
+  function renderRead(s: ReturnType<typeof state>) {
+    for (const side of ['blue', 'red'] as Side[]) {
+      const ids = s[side].pick.filter(Boolean) as string[];
+      const p = profile(ids), box = $(`[data-read="${side}"]`);
+      if (!ids.length) { box.innerHTML = `<h4 class="is-${side}">${side === 'blue' ? 'Bleu' : 'Rouge'}${side === ours ? ' (nous)' : ''}</h4><p class="eq-note">Pas encore de pick.</p>`; continue; }
+      const warn: string[] = [];
+      if (ids.length >= 3 && p.apShare < .25) warn.push('Presque tout en dégâts physiques : une armure suffit à les gêner.');
+      if (ids.length >= 3 && p.apShare > .75) warn.push('Presque tout en dégâts magiques : la résistance magique suffit.');
+      if (ids.length >= 4 && !p.front) warn.push('Aucune ligne de front : personne pour encaisser en combat.');
+      if (ids.length >= 4 && !p.engage) warn.push('Pas d\'engage clair : il faudra un autre moyen de lancer les combats.');
+      if (p.diff >= 7) warn.push(`Compo exigeante (difficulté moyenne ${p.diff.toFixed(1)}/10).`);
+      // Nos picks : qui les a joués récemment ?
+      const mineNotes = side === ours ? ids.map((id) => {
+        const who = pool.map((pl) => ({ pl, c: pl.champs[id] })).filter((x) => x.c).sort((a, b) => b.c.g - a.c.g)[0];
+        return who ? `<li><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · ${esc(who.pl.name)} : ${who.c.g} partie${who.c.g > 1 ? 's' : ''}, ${Math.round((who.c.w / who.c.g) * 100)} %</li>`
+          : `<li class="is-warn"><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · personne ne l'a joué en classé ces 90 jours</li>`;
+      }).join('') : '';
+      box.innerHTML = `<h4 class="is-${side}">${side === 'blue' ? 'Bleu' : 'Rouge'}${side === ours ? ' (nous)' : ''}</h4>
+        <div class="dr-dmg" title="Part des dégâts magiques"><span style="width:${Math.round((1 - p.apShare) * 100)}%">Physique ${Math.round((1 - p.apShare) * 100)} %</span><span style="width:${Math.round(p.apShare * 100)}%">Magique ${Math.round(p.apShare * 100)} %</span></div>
+        <ul class="dr-stats"><li><b>${p.front}</b> ligne de front</li><li><b>${p.engage}</b> engage</li><li><b>${p.picks}</b> assassin${p.picks > 1 ? 's' : ''}</li><li><b>${p.range}</b> à distance</li></ul>
+        ${warn.length ? `<ul class="dr-warn">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>` : '<p class="dr-ok">Rien d\'alarmant dans l\'équilibre de la compo.</p>'}
+        ${mineNotes ? `<ul class="dr-who">${mineNotes}</ul>` : ''}`;
+    }
+    // Suggestions pour notre prochain pick : les champions de nos joueurs dont le rôle n'est pas encore couvert
+    const cur = ORDER[steps.length], sug = $('[data-suggest]');
+    if (!cur || cur[0] !== ours || cur[1] !== 'pick' || !pool.length) { sug.innerHTML = ''; return; }
+    const used = new Set([...steps.filter(Boolean) as string[], ...locked]);
+    const taken = new Set(Object.entries(prep.roles).filter(([n]) => s[ours].pick[Number(n)]).map(([, r]) => r));
+    const rows2 = pool.filter((pl) => !pl.poste || !taken.has(POSTE_ROLE[pl.poste] ?? '')).map((pl) => {
+      const top = Object.entries(pl.champs).filter(([id]) => !used.has(id) && champ(id)).sort((a, b) => b[1].g - a[1].g || b[1].w / b[1].g - a[1].w / a[1].g).slice(0, 5);
+      return top.length ? `<li><strong>${esc(pl.name)}</strong>${pl.poste ? ` <small>${esc(pl.poste)}</small>` : ''}<span>${top.map(([id, c]) => `<button type="button" data-champ="${id}" title="${c.g} parties, ${Math.round((c.w / c.g) * 100)} % de victoires"><img src="${icon(id)}" alt="" width="36" height="36" /><small>${c.g} · ${Math.round((c.w / c.g) * 100)} %</small></button>`).join('')}</span></li>` : '';
+    }).filter(Boolean);
+    sug.innerHTML = rows2.length ? `<h4>À nous de choisir : ce que nos joueurs maîtrisent</h4><ul>${rows2.join('')}</ul>` : '';
   }
 
   root.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-champ]');
-    if (b && steps.length < ORDER.length) { steps.push(b.dataset.champ!); render(); }
+    const t = e.target as HTMLElement;
+    const sl = t.closest<HTMLElement>('[data-slot]');
+    if (sl) { slot = slot === Number(sl.dataset.slot) ? null : Number(sl.dataset.slot); if (slot === null && mode === 'variant') mode = 'draft'; render(); return; }
+    const rp = t.closest<HTMLElement>('[data-rm-plan]'); if (rp) { prep.bans = prep.bans.filter((x) => x !== rp.dataset.rmPlan); render(); return; }
+    const rv = t.closest<HTMLElement>('[data-rm-variant]'); if (rv && slot !== null) { prep.variants[slot] = (prep.variants[slot] ?? []).filter((x) => x !== rv.dataset.rmVariant); render(); return; }
+    const b = t.closest<HTMLButtonElement>('[data-champ]');
+    if (!b) return;
+    const id = b.dataset.champ!;
+    if (mode === 'plan') { if (!prep.bans.includes(id)) prep.bans.push(id); render(); return; }
+    if (mode === 'variant' && slot !== null) { const v = (prep.variants[slot] ??= []); if (!v.includes(id)) v.push(id); render(); return; }
+    if (steps.length < ORDER.length) { steps.push(id); render(); }
   });
   $('[data-undo]').addEventListener('click', () => { steps.pop(); render(); });
-  $('[data-reset]').addEventListener('click', () => { steps = []; locked.clear(); render(); });
+  $('[data-reset]').addEventListener('click', () => { steps = []; locked.clear(); slot = null; prep = { roles: {}, notes: {}, variants: {}, bans: [], plan: '' }; render(); });
   $('[data-next-game]').addEventListener('click', () => {
     const s = state();
     [...s.blue.pick, ...s.red.pick].forEach((c) => c && locked.add(c));
     steps = []; render();
   });
   $('[data-search]').addEventListener('input', render);
+  root.querySelectorAll<HTMLElement>('[data-ours]').forEach((b) => b.addEventListener('click', () => { ours = b.dataset.ours as Side; slot = null; render(); }));
+  root.querySelectorAll<HTMLElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode as typeof mode; render(); }));
+  $('[data-slot-role]').addEventListener('change', (e) => { if (slot !== null) { prep.roles[slot] = (e.target as HTMLSelectElement).value; render(); } });
+  $('[data-slot-note]').addEventListener('input', (e) => { if (slot !== null) { prep.notes[slot] = (e.target as HTMLTextAreaElement).value; $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version, ours, prep }); } });
+  $('[data-plan-notes]').addEventListener('input', (e) => { prep.plan = (e.target as HTMLTextAreaElement).value; $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version, ours, prep }); });
   $('[data-tags]').innerHTML = `<button type="button" aria-pressed="true" data-tag="">Tous</button>` + Object.entries(TAGS).map(([k, v]) => `<button type="button" aria-pressed="false" data-tag="${k}">${v}</button>`).join('');
   $('[data-tags]').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-tag]'); if (!b) return;
@@ -158,7 +288,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
     const ids = $<HTMLTextAreaElement>('[data-opp]').value.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
     if (ids.length) window.open(`https://www.op.gg/multisearch/euw?summoners=${encodeURIComponent(ids.join(','))}`, '_blank', 'noopener');
   });
-  $('[data-save]').addEventListener('submit', (e) => { if (!steps.length) { e.preventDefault(); alert('Le draft est vide.'); } });
+  $('[data-save]').addEventListener('submit', (e) => { if (!steps.length && !prep.bans.length && !prep.plan) { e.preventDefault(); alert('Le draft est vide.'); } });
 
   // Drafts sauvegardés du roster
   async function loadSaved() {
@@ -173,7 +303,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   }
   $('[data-saved]').addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-load]'); if (!b) return;
-    try { const d = JSON.parse(b.dataset.load!); steps = d.steps ?? []; locked = new Set(d.locked ?? []); render(); window.scrollTo({ top: root.offsetTop - 120, behavior: 'smooth' }); } catch {}
+    try { const d = JSON.parse(b.dataset.load!); steps = d.steps ?? []; locked = new Set(d.locked ?? []); ours = d.ours ?? 'blue'; prep = { roles: {}, notes: {}, variants: {}, bans: [], plan: '', ...(d.prep ?? {}) }; slot = null; render(); window.scrollTo({ top: root.offsetTop - 120, behavior: 'smooth' }); } catch {}
   });
   root.querySelector('[data-roster-select]')?.addEventListener('change', loadSaved);
 
@@ -181,7 +311,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   (async () => {
     version = (await fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()))[0];
     const data = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/fr_FR/champion.json`).then((r) => r.json());
-    champs = Object.values<any>(data.data).map((c) => ({ id: c.id, name: c.name, tags: c.tags })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    champs = Object.values<any>(data.data).map((c) => ({ id: c.id, name: c.name, tags: c.tags, info: c.info })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
     render(); loadSaved();
   })().catch(() => { $('[data-step]').textContent = 'Impossible de charger les champions (Data Dragon). Réessaie plus tard.'; });
 </script>
@@ -223,6 +353,51 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   .dr-grid :global(button:hover img) { border-color: var(--lacquer); }
   .dr-grid :global(button:disabled) { opacity: .25; cursor: default; }
   .dr-grid :global(span) { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-seg { display: inline-flex; align-items: center; border: 1.5px solid var(--line); }
+  .dr-seg span { padding: 0 .55rem; font-size: .75rem; color: var(--muted); }
+  .dr-seg button { min-height: 36px; padding: 0 .7rem; border: 0; border-left: 1px solid var(--line); background: none; color: var(--ink); font: 700 .8rem var(--font-body); cursor: pointer; }
+  .dr-seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface, #111); }
+  .dr-seg button:disabled { opacity: .35; cursor: default; }
+  .dr-picks :global(li.is-mine > button) { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 56px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .dr-picks :global(li.is-mine:hover) { border-color: var(--ink); }
+  .dr-picks :global(li.is-slot) { border-color: var(--lacquer); box-shadow: inset 4px 0 0 var(--lacquer); }
+  .dr-picks :global(span em) { display: block; font-style: normal; font-weight: 400; font-size: .75rem; color: var(--muted); }
+  .dr-picks :global(span small) { display: block; font-weight: 400; font-size: .72rem; color: var(--red-text); }
+  .dr-prep { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+  .dr-prep h3, .dr-read h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; margin-bottom: .6rem; }
+  .dr-prep h3 small { font-weight: 400; font-size: .75rem; color: var(--muted); margin-left: .3rem; }
+  .dr-prep label { display: grid; gap: .3rem; margin-top: .6rem; font-weight: 700; font-size: .85rem; }
+  .dr-prep :is(select, textarea) { width: 100%; box-sizing: border-box; padding: .45rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .9rem var(--font-body); }
+  .dr-slot, .dr-plan { padding: 1rem; border: 1px solid var(--line); }
+  .dr-slot__title { font-weight: 700; margin: 0; }
+  .dr-label { margin: .6rem 0 .3rem; font-weight: 700; font-size: .85rem; }
+  .dr-label small { font-weight: 400; color: var(--muted); }
+  .dr-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+  .dr-chips :global(li:not(.eq-note)) { display: inline-flex; align-items: center; gap: .35rem; padding: 2px .4rem 2px 2px; border: 1px solid var(--line); font-size: .8rem; }
+  .dr-chips :global(button) { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .dr-read { margin-top: 1.5rem; }
+  .dr-read__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1.5rem; margin-top: .75rem; }
+  .dr-read :global(h4) { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; padding: .3rem .5rem; color: #fff; margin: 0 0 .6rem; }
+  .dr-read :global(h4.is-blue) { background: #1f5fd1; } .dr-read :global(h4.is-red) { background: #c8282d; }
+  .dr-read :global(.dr-dmg) { display: flex; height: 22px; font-size: .7rem; font-weight: 700; color: #fff; overflow: hidden; }
+  .dr-read :global(.dr-dmg span) { display: flex; align-items: center; padding: 0 .4rem; white-space: nowrap; overflow: hidden; }
+  .dr-read :global(.dr-dmg span:first-child) { background: #b5651d; } .dr-read :global(.dr-dmg span:last-child) { background: #6b3fd1; }
+  .dr-read :global(.dr-stats) { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .6rem 0; padding: 0; list-style: none; font-size: .82rem; color: var(--muted); }
+  .dr-read :global(.dr-stats b) { color: var(--ink); font-size: 1rem; }
+  .dr-read :global(.dr-warn) { display: grid; gap: .25rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; }
+  .dr-read :global(.dr-warn li) { padding-left: .6rem; border-left: 3px solid #f0a04b; }
+  .dr-read :global(.dr-ok) { font-size: .85rem; color: #2fbf71; }
+  .dr-read :global(.dr-who) { display: grid; gap: .25rem; margin: .6rem 0 0; padding: 0; list-style: none; font-size: .82rem; }
+  .dr-read :global(.dr-who li) { display: flex; align-items: center; gap: .4rem; }
+  .dr-read :global(.dr-who .is-warn) { color: #f0a04b; }
+  .dr-suggest :global(h4) { margin-top: 1.25rem; background: none !important; color: var(--ink) !important; padding: 0 !important; }
+  .dr-suggest :global(ul) { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+  .dr-suggest :global(li) { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+  .dr-suggest :global(li > strong) { min-width: 7rem; }
+  .dr-suggest :global(li > small) { color: var(--muted); }
+  .dr-suggest :global(li > span) { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .dr-suggest :global(button) { display: grid; justify-items: center; gap: 1px; padding: 2px; border: 1px solid var(--line); background: none; color: var(--muted); font-size: .68rem; cursor: pointer; }
+  .dr-suggest :global(button:hover) { border-color: var(--lacquer); }
   .dr-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 2rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 2px solid var(--ink); }
   .dr-bottom h3 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; margin-bottom: .6rem; }
   .dr-bottom form, .dr-scout { display: grid; gap: .75rem; align-content: start; }
