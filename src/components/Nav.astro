@@ -1,12 +1,13 @@
 ---
 import site from '../data/site.json';
 import Icon from './Icon.astro';
+// Règle : le logo, cinq liens au plus, un seul bouton. Le reste (partenaires, boosters, thème…) vit dans le pied de page.
 const links = [
   { href: '/club/', label: 'Le club' },
-  { href: '/effectif/', label: 'Légendes', badge: true },
+  { href: '/effectif/', label: 'Légendes' },
   { href: '/agenda/', label: 'Agenda', live: true },
   { href: '/recrutement/', label: 'Recrutement' },
-  { href: '/partenaires/', label: 'Partenaires' },
+  { href: '/equipe/', label: 'Inside', lock: true },
 ];
 // Chemin sans le préfixe de base (GitHub Pages), pour surligner la page courante
 const path = '/' + Astro.url.pathname.slice(import.meta.env.BASE_URL.length).replace(/^\//, '');
@@ -20,17 +21,11 @@ const path = '/' + Astro.url.pathname.slice(import.meta.env.BASE_URL.length).rep
     <nav aria-label="Navigation principale" style="display:contents">
       <ul class="nav__links" id="nav-links">
         {links.map((l) => (
-          <li><a href={l.href} aria-current={path.startsWith(l.href) ? 'page' : undefined}>{l.label}{l.badge && <span class="nav__badge" hidden></span>}{l.live && <span class="nav__live" hidden><span class="sr-only"> : live en cours</span></span>}</a></li>
+          <li><a href={l.href} aria-current={path.startsWith(l.href) ? 'page' : undefined}>{l.lock && <svg class="nav__lock" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0110 0v3h1a1 1 0 011 1v9a1 1 0 01-1 1H6a1 1 0 01-1-1v-9a1 1 0 011-1h1zm2 0h6V7a3 3 0 00-6 0v3z" /></svg>}{l.label}{l.lock && <span class="sr-only"> : espace équipe</span>}{l.live && <span class="nav__live" hidden><span class="sr-only"> : live en cours</span></span>}</a></li>
         ))}
-        <li class="nav__mobile-only"><a href="/equipe/">Espace équipe</a></li>
         <li><a class="nav__mobile-cta" href={site.discord} rel="noopener">Rejoindre le Discord</a></li>
       </ul>
     </nav>
-    <a class="nav__qg" href="/equipe/" title="Espace équipe : réservé aux joueurs et au staff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0110 0v3h1a1 1 0 011 1v9a1 1 0 01-1 1H6a1 1 0 01-1-1v-9a1 1 0 011-1h1zm2 0h6V7a3 3 0 00-6 0v3z" /></svg><span>Espace équipe</span></a>
-    <button class="theme-toggle" type="button" aria-pressed="false">
-      <span class="sr-only">Thème sombre</span>
-      <span class="theme-toggle__opt" data-t="light" aria-hidden="true">明</span><span class="theme-toggle__opt" data-t="dark" aria-hidden="true">暗</span>
-    </button>
     <a class="btn nav__cta" href={site.discord} rel="noopener"><Icon name="discord" />Rejoindre le Discord</a>
     <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-links">
       <span class="sr-only">Ouvrir le menu</span>

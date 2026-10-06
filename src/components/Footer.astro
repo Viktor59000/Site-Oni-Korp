@@ -7,7 +7,7 @@ import Icon from './Icon.astro';
     <div class="footer__top">
       <div>
         <div class="footer__brand"><img src="/img/oni-logo.svg" alt="" width="52" height="52" /><span translate="no">Oni Korp</span></div>
-        <p style="margin-top:1rem">Club esport français fondé le 12 juillet 2021. Rocket League, League of Legends, Valorant et osu!.</p>
+        <p style="margin-top:1rem">Club esport français depuis 2021.<br />Rocket League, LoL, Valorant, osu!.</p>
         <div class="socials">
           {site.socials.map((s) => (
             <a href={s.url} rel="noopener" aria-label={`Oni Korp sur ${s.label}`}><Icon name={s.icon} /></a>
@@ -17,31 +17,39 @@ import Icon from './Icon.astro';
       <div>
         <h2>Le club</h2>
         <ul>
-          <li><a href="/club/">Histoire du club</a></li>
-          <li><a href="/effectif/">Légendes du club</a></li>
-          <li><a href="/agenda/">Agenda et lives</a></li>
-          <li><a href="/createurs/">Créateurs de contenu</a></li>
-          <li><a href="/vestiaire/">Vestiaire et decals</a></li>
-          <li><a href="/boosters/">Boosters et collection</a></li>
-          <li><a href="/inhouses/">Inhouses et classement</a></li>
-          <li><a href="/equipe/">Espace équipe</a></li>
+          <li><a href="/club/">Histoire</a></li>
+          <li><a href="/effectif/">Légendes</a></li>
+          <li><a href="/agenda/">Agenda</a></li>
+          <li><a href="/inhouses/">Inhouses</a></li>
+          <li><a href="/createurs/">Créateurs</a></li>
         </ul>
       </div>
       <div>
-        <h2>Nous rejoindre</h2>
+        <h2>Collection</h2>
         <ul>
-          <li><a href="/postuler/?type=joueur">Candidature joueur</a></li>
-          <li><a href="/postuler/?type=staff">Candidature staff</a></li>
-          <li><a href={site.discord} rel="noopener">Serveur Discord</a></li>
-          <li><a href="/partenaires/">Partenaires</a></li>
+          <li><a href="/boosters/">Boosters</a></li>
+          <li><a href="/vestiaire/">Vestiaire</a></li>
           <li><a href="/marque/">Kit de marque</a></li>
+          <li><a href="/partenaires/">Partenaires</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Rejoindre</h2>
+        <ul>
+          <li><a href="/recrutement/">Postuler</a></li>
+          <li><a href={site.discord} rel="noopener">Discord</a></li>
+          <li><a href="/equipe/">Inside</a></li>
           <li><a href="/contact/">Contact</a></li>
         </ul>
       </div>
     </div>
     <div class="footer__bottom">
       <span>© {new Date().getFullYear()} Oni Korp. #Oni'sNeverOnKnees</span>
-      <a href="/mentions-legales/">Mentions légales et confidentialité</a>
+      <a href="/mentions-legales/">Mentions légales</a>
+      <button class="theme-toggle" type="button" aria-pressed="false">
+        <span class="sr-only">Thème sombre</span>
+        <span class="theme-toggle__opt" data-t="light" aria-hidden="true">明</span><span class="theme-toggle__opt" data-t="dark" aria-hidden="true">暗</span>
+      </button>
     </div>
   </div>
 </footer>
