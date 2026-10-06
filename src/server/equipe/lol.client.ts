@@ -10,7 +10,6 @@ const ORDER: [Side, 'ban' | 'pick', number][] = [
   ['red', 'ban', 3], ['blue', 'ban', 3], ['red', 'ban', 4], ['blue', 'ban', 4],
   ['red', 'pick', 3], ['blue', 'pick', 3], ['blue', 'pick', 4], ['red', 'pick', 4],
 ];
-const TAGS: Record<string, string> = { Fighter: 'Combattant', Tank: 'Tank', Mage: 'Mage', Assassin: 'Assassin', Marksman: 'Tireur', Support: 'Support' };
 const root = document.querySelector<HTMLElement>('[data-drafter]')!;
 const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
 let version = '';
@@ -336,7 +335,6 @@ root.querySelectorAll<HTMLElement>('[data-mode]').forEach((b) => b.addEventListe
 $('[data-slot-role]').addEventListener('change', (e) => { if (slot !== null) { prep.roles[slot] = (e.target as HTMLSelectElement).value; render(); } });
 $('[data-slot-note]').addEventListener('input', (e) => { if (slot !== null) { prep.notes[slot] = (e.target as HTMLTextAreaElement).value; $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version, ours, prep }); } });
 $('[data-plan-notes]').addEventListener('input', (e) => { prep.plan = (e.target as HTMLTextAreaElement).value; $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version, ours, prep }); });
-$('[data-tags]').innerHTML = `<button type="button" aria-pressed="true" data-tag="">Tous</button>` + Object.entries(TAGS).map(([k, v]) => `<button type="button" aria-pressed="false" data-tag="${k}">${v}</button>`).join('');
 $('[data-tags]').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-tag]'); if (!b) return;
   tag = b.dataset.tag!; root.querySelectorAll('[data-tag]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render();

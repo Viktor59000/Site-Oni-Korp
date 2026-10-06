@@ -318,6 +318,8 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
   .ac-pick__card:not(.ac-pick__card--vue):is(:hover, :focus-visible) { background: color-mix(in srgb, var(--g) 22%, #0b0c0f); }
   .ac-pick__code { position: absolute; top: 1rem; left: 1rem; font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--g); }
   .ac-pick__card span { font-family: var(--font-display); font-size: 1.5rem; line-height: 1.1; }
-  .ac-pick__card small { color: rgb(255 255 255 / .8); }
-  .ac-pick__card--vue { background: var(--game, #e5251f); }
+  .ac-pick__card small { color: rgb(255 255 255 / .85); }
+  /* Vermillon foncé, fixe dans les deux thèmes : le petit texte blanc garde un contraste suffisant (4,5:1) */
+  .ac-pick__card--vue { background: #b3241e; }
+  .ac-pick__card--vue small { color: #fff; }
 </style>

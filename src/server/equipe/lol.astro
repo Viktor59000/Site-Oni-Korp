@@ -60,21 +60,22 @@ for (const r of lolRosters) {
       <div class="dr-board">
         <div class="dr-side is-blue">
           <h2>Bleu</h2>
-          <ol class="dr-bans" data-bans="blue"></ol>
-          <ol class="dr-picks" data-picks="blue"></ol>
+          <ol class="dr-bans" data-bans="blue"><li></li><li></li><li></li><li></li><li></li></ol>
+          <ol class="dr-picks" data-picks="blue"><li><span class="dr-empty">B1</span></li><li><span class="dr-empty">B2</span></li><li><span class="dr-empty">B3</span></li><li><span class="dr-empty">B4</span></li><li><span class="dr-empty">B5</span></li></ol>
         </div>
         <div class="dr-pool">
           <div class="dr-filters">
             <input type="search" placeholder="Chercher un champion" aria-label="Chercher un champion" data-search />
-            <div class="dr-tags" data-tags></div>
+            <!-- Écrits ici (et non par le script) pour que la grille ne bouge pas au chargement -->
+            <div class="dr-tags" data-tags><button type="button" aria-pressed="true" data-tag="">Tous</button><button type="button" aria-pressed="false" data-tag="Fighter">Combattant</button><button type="button" aria-pressed="false" data-tag="Tank">Tank</button><button type="button" aria-pressed="false" data-tag="Mage">Mage</button><button type="button" aria-pressed="false" data-tag="Assassin">Assassin</button><button type="button" aria-pressed="false" data-tag="Marksman">Tireur</button><button type="button" aria-pressed="false" data-tag="Support">Support</button></div>
           </div>
           <p class="dr-locked" data-locked hidden></p>
           <ul class="dr-grid" data-grid></ul>
         </div>
         <div class="dr-side is-red">
           <h2>Rouge</h2>
-          <ol class="dr-bans" data-bans="red"></ol>
-          <ol class="dr-picks" data-picks="red"></ol>
+          <ol class="dr-bans" data-bans="red"><li></li><li></li><li></li><li></li><li></li></ol>
+          <ol class="dr-picks" data-picks="red"><li><span class="dr-empty">R1</span></li><li><span class="dr-empty">R2</span></li><li><span class="dr-empty">R3</span></li><li><span class="dr-empty">R4</span></li><li><span class="dr-empty">R5</span></li></ol>
         </div>
       </div>
 
