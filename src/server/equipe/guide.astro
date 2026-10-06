@@ -47,6 +47,21 @@ const ROLES: [string, string][] = [
   ['Pôle contenu', 'Casteur, graphiste, monteur, community manager, créateur, marketing : l\'onglet Contenu (matchs à couvrir, tâches, calendrier éditorial, indicateurs). Rien n\'est publié sans validation de la direction.'],
   ['Modération, accueil, organisation', 'La vie du serveur : règlement, nouveaux, soirées et tournois communautaires.'],
 ];
+// Fiches de poste (NUIT-2026-10-07.md, § 1.3) : [titre, mission, semaine type, ce que le club donne, première semaine, interlocuteur]
+const FICHES: [string, string, string, string, string, string][] = [
+  ['Responsable d\'un jeu', 'Faire vivre un jeu dans le club, des rosters au recrutement.', 'Répondre aux candidatures du jeu sous 48 h, un point avec chaque capitaine, tenir à jour les tournois visés, lire la vue d\'ensemble du jeu. Environ 3 h.', 'La vue d\'ensemble filtrée sur ton jeu, tous ses rosters dans Inside, /match, /entrainement, /dispos et /presences sur Discord.', 'Lire les candidatures, rencontrer chaque capitaine (15 min), ajouter 2 tournois réalistes dans Tournois, écrire la règle de compo du jeu dans Docs.', 'La direction.'],
+  ['Capitaine', 'La voix du roster, en jeu et hors jeu.', 'Planifier les séances, ouvrir les dispos, faire la compo des matchs, relancer qui ne répond pas, tenir les statuts à jour.', 'La gestion de ton roster dans Inside (objectifs, compo, épingles, statuts) et les commandes du bot pour ton roster.', 'Désigner un remplaçant, fixer 2 séances, créer 1 objectif de roster.', 'Le responsable du jeu.'],
+  ['Manager', 'L\'organisation : inscriptions, contacts avec les adversaires, logistique des matchs.', 'Chercher des scrims, inscrire aux tournois, annoncer les matchs avec /match ajouter (le brief contenu part tout seul).', 'Les messages d\'approche prêts, le suivi des tournois.', 'Contacter 3 équipes de la bonne tranche de niveau, avec des messages validés par la direction.', 'Le responsable du jeu.'],
+  ['Coach', 'Faire progresser le roster.', 'Une séance de travail, une revue de VOD, un débrief après chaque match, les objectifs individuels.', 'VOD avec repères, tableau blanc, drafter LoL, lineups Valorant, stats et notes de match.', 'Fixer un objectif individuel par joueur, avec lui.', 'Le responsable du jeu.'],
+  ['Analyste', 'Préparer les adversaires, analyser les drafts et les VOD.', 'Une fiche de scouting avant chaque match, la revue des drafts.', 'Le rôle Analyste (tu suis un roster sans compter comme joueur), scouting, drafter, VOD.', 'Une fiche de scouting sur le prochain adversaire.', 'Le coach, sinon le capitaine.'],
+  ['Casteur', 'Commenter les matchs et les inhouses.', 'Prendre les matchs publics à caster, préparer les fiches des équipes.', 'L\'appel au cast sur Discord (« Je caste »), les matchs à venir dans Contenu, la chaîne Twitch du club.', 'Caster un inhouse pour t\'échauffer. Préviens 24 h avant si tu ne peux plus caster.', 'La direction.'],
+  ['Graphiste', 'Les visuels d\'annonce et de résultat, les demandes du calendrier.', 'Les visuels des matchs publics (tâches créées toutes seules), les demandes ponctuelles.', 'Les tâches dans Contenu, le kit de marque, le crédit sur la page Staff.', 'Prendre une tâche « Visuel », déposer le lien du livrable : la direction valide.', 'Le community manager, sinon la direction.'],
+  ['Monteur vidéo', 'Les clips des temps forts et les formats courts.', 'Le clip de chaque match casté (J+3), les vidéos du calendrier.', 'Les VOD des casts, les repères horodatés, la tâche « Clip » de chaque match.', 'Prendre la tâche « Clip » du prochain match casté.', 'Le community manager, sinon la direction.'],
+  ['Community manager', 'La voix du club sur les réseaux.', 'Annonces, rappels et résultats (tâches automatiques), calendrier éditorial, un chiffre d\'abonnés par semaine dans Contenu.', 'La charte éditoriale, le calendrier éditorial, les indicateurs.', 'Remplir le calendrier de la semaine et saisir les abonnés de chaque réseau. Rien n\'est publié sans validation de la direction.', 'La direction.'],
+  ['Modérateur', 'Un serveur sain.', 'Suivre les tickets, appliquer le règlement et la procédure de médiation.', 'La modération automatique par paliers, les tickets, le journal.', 'Relire le règlement et la procédure. Une exclusion ne se décide jamais seul.', 'La direction.'],
+  ['Accueil', 'Que personne n\'arrive sans qu\'on lui parle.', 'Saluer les arrivées, proposer un inhouse, orienter vers le bon salon.', 'La carte de bienvenue et le parcours d\'arrivée du bot (relances à 3 et 7 jours).', 'Accueillir les 5 prochaines arrivées.', 'Le modérateur, sinon la direction.'],
+  ['Organisateur', 'Une soirée ou un tournoi communautaire par semaine.', 'Choisir le format, annoncer, lancer, annoncer le résultat.', '/tournoi, les inhouses, l\'agenda public.', 'Organiser une soirée inhouse.', 'La direction.'],
+];
 ---
 <Qg title="Guide · Inside" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="gd">
@@ -64,6 +79,22 @@ const ROLES: [string, string][] = [
         <h2 class="gd-h">Les rôles : qui voit quoi, qui gère quoi</h2>
         <dl class="gd-tools">{ROLES.map(([t2, d]) => <div><dt>{t2}</dt><dd>{d}</dd></div>)}</dl>
         <p class="eq-note">Les rôles se donnent sur Discord. Une question sur le tien : ton responsable de jeu, ou la direction.</p>
+      </section>
+      <section class="gd-faq">
+        <h2 class="gd-h">Fiches de poste</h2>
+        <p class="eq-note">Pour chaque fonction : la mission, la semaine type, ce que le club te donne et ta première semaine. Les temps sont indicatifs.</p>
+        {FICHES.map(([titre, mission, semaine, outils, debut, contact]) => (
+          <details>
+            <summary>{titre}</summary>
+            <dl class="gd-fiche">
+              <dt>Mission</dt><dd>{mission}</dd>
+              <dt>La semaine type</dt><dd>{semaine}</dd>
+              <dt>Ce que le club te donne</dt><dd>{outils}</dd>
+              <dt>Ta première semaine</dt><dd>{debut}</dd>
+              <dt>Ton interlocuteur</dt><dd>{contact}</dd>
+            </dl>
+          </details>
+        ))}
       </section>
       <section>
         <h2 class="gd-h">Les outils</h2>
@@ -83,6 +114,10 @@ const ROLES: [string, string][] = [
   .eq-mini { padding-block: 2.5rem 1.5rem; }
   .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
   .gd { display: grid; gap: 2.5rem; max-width: 60rem; }
+  .gd-fiche { display: grid; grid-template-columns: 11rem 1fr; gap: .4rem 1rem; margin: .75rem 0 .5rem; font-size: .9rem; }
+  .gd-fiche dt { font-weight: 700; color: var(--muted); }
+  .gd-fiche dd { margin: 0; }
+  @media (max-width: 640px) { .gd-fiche { grid-template-columns: 1fr; } .gd-fiche dd { margin-bottom: .4rem; } }
   .gd-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
   .gd-steps { display: grid; gap: .5rem; counter-reset: s; }
   .gd-steps li { counter-increment: s; }
