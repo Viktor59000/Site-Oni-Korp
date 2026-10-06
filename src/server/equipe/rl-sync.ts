@@ -9,7 +9,7 @@ import type { APIRoute } from 'astro';
 import { sameOrigin } from '../session';
 import { exec, rows } from '../db';
 import { teamUser } from './outils';
-import { ONI_SYNC_PS } from './oni-sync-script';
+import { ONI_SYNC_PS, ONI_SYNC_VERSION } from './oni-sync-script';
 
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 const norm = (s: string) => String(s ?? '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, '');
@@ -18,6 +18,8 @@ let ready = false;
 export async function ensureSync() {
   if (ready) return;
   await exec(`CREATE TABLE IF NOT EXISTS rl_sync (user_id TEXT PRIMARY KEY, token TEXT UNIQUE, created_at INTEGER, last_at INTEGER, last_error TEXT)`);
+  // Dernier signal d'Oni Sync (lancé, connecté au jeu, partie quittée) : pour aider un joueur à distance
+  for (const c of ['seen_at INTEGER', 'seen_state TEXT', 'seen_note TEXT', 'version TEXT']) await exec(`ALTER TABLE rl_sync ADD COLUMN ${c}`).catch(() => {});
   ready = true;
 }
 
@@ -25,7 +27,8 @@ const newToken = () => [...crypto.getRandomValues(new Uint8Array(24))].map((b) =
 
 export async function syncStatus(userId: string) {
   await ensureSync();
-  const [s] = await rows<{ token: string; created_at: number; last_at: number | null; last_error: string | null }>('SELECT token, created_at, last_at, last_error FROM rl_sync WHERE user_id = ?', userId);
+  const [s] = await rows<{ token: string; created_at: number; last_at: number | null; last_error: string | null; seen_at: number | null; seen_state: string | null; seen_note: string | null; version: string | null }>(
+    'SELECT token, created_at, last_at, last_error, seen_at, seen_state, seen_note, version FROM rl_sync WHERE user_id = ?', userId);
   return s ?? null;
 }
 
@@ -45,13 +48,12 @@ export const GET: APIRoute = async ({ cookies, url }) => {
   const token = await tokenFor(t.user.id);
   const [acc] = await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE user_id = ? AND game = 'rl'`, t.user.id);
   const api = `${url.origin}/api/rl/sync`;
-  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
+  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION)
+    .replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
+  // La fenêtre de commande se ferme aussitôt : Oni Sync tourne caché, avec son icône près de l'horloge
   const cmd = [
     '@echo off',
-    'chcp 65001 >nul',
-    'title Oni Sync',
-    `powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='%~f0'; $s=[IO.File]::ReadAllText($f,[Text.Encoding]::UTF8); iex $s.Substring($s.IndexOf('#ONI'+'PS')+6)"`,
-    'pause',
+    `start "" powershell -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -Command "$env:ONI_SYNC_FILE='%~f0'; $s=[IO.File]::ReadAllText($env:ONI_SYNC_FILE,[Text.Encoding]::UTF8); iex $s.Substring($s.IndexOf('#ONI'+'PS')+6)"`,
     'exit /b',
     '#ONIPS',
     ps,
@@ -83,6 +85,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const raw = await request.text();
   if (raw.length > 400_000) return json({ ok: false, error: 'Message trop gros.' }, 413);
   let body: any; try { body = JSON.parse(raw); } catch { return json({ ok: false, error: 'Message illisible.' }, 400); }
+
+  // Signal d'état (pas une partie)
+  if (body?.hello) {
+    const h = body.hello;
+    await exec('UPDATE rl_sync SET seen_at = ?, seen_state = ?, seen_note = ?, version = ? WHERE user_id = ?', Date.now(), String(h.state ?? '').slice(0, 20), String(h.note ?? '').slice(0, 200), String(h.version ?? '').slice(0, 10), uid);
+    return json({ ok: true });
+  }
 
   // Les premiers messages reçus sont gardés tels quels (débogage du format de l'API Stats)
   const [dbg] = await rows<{ value: string }>(`SELECT value FROM stats_cache WHERE key = 'rl-sync-raw'`);

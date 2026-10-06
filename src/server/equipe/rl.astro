@@ -78,11 +78,13 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
           <h2 id="rl-sync-h">{sync?.last_at ? 'Tes parties arrivent toutes seules' : 'Relie ton jeu au tracker'}</h2>
           {!accounts.get(user.id) && <p class="rl-warn">Relie d’abord ton pseudo Rocket League dans <a href={`/equipe/joueurs/${q}`}>Joueurs</a> : c’est lui qui permet de te retrouver dans chaque partie.</p>}
           {sync?.last_at && <p>Dernière partie reçue {when(Number(sync.last_at))}.</p>}
+          {sync?.seen_at && <p class="rl-note">Oni Sync{sync.version ? ` v${sync.version}` : ''} : {({ lance: 'lancé, en attente du jeu', connecte: 'connecté à Rocket League', abandon: 'partie quittée avant la fin (non comptée)' } as Record<string, string>)[String(sync.seen_state)] ?? String(sync.seen_state)} ({when(Number(sync.seen_at))}){sync.seen_note ? ` · ${sync.seen_note}` : ''}.</p>}
+          {sync && !sync.version && <p class="rl-warn">Ta version d’Oni Sync est ancienne et pouvait abîmer la config du jeu : retélécharge-la.</p>}
           {sync?.last_error && <p class="rl-warn">Dernier envoi refusé : {sync.last_error}</p>}
           {cle === 'nouvelle' && <p class="rl-ok">Nouvelle clé créée : retélécharge Oni Sync, l’ancien fichier ne marche plus.</p>}
           <ol>
             <li><b>Télécharge Oni Sync</b> : un seul fichier, propre à toi (ne le partage pas).</li>
-            <li><b>Double-clique dessus</b> avant de jouer. La première fois, il active l’API Stats de Rocket League ; si Windows refuse, fais clic droit &gt; Exécuter en tant qu’administrateur, une seule fois.</li>
+            <li><b>Double-clique dessus</b> avant de jouer. Pas de fenêtre : Oni Sync se range près de l’horloge (flèche ^), clic droit sur son icône pour le menu (état, journal, lancer avec Windows, quitter). La première fois, il active l’API Stats de Rocket League : relance le jeu s’il était ouvert. Si Windows refuse, clic droit sur le fichier &gt; Exécuter en tant qu’administrateur, une seule fois.</li>
             <li><b>Joue.</b> Chaque partie terminée apparaît ici, en classé comme en privé ou en inhouse.</li>
           </ol>
           <p class="rl-note">Oni Sync lit seulement ce que Rocket League publie lui-même sur ton PC (comme Bakkboard) : aucune injection, rien d’autre n’est envoyé.</p>
