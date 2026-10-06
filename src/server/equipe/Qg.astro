@@ -19,8 +19,8 @@ const GAMES: Record<string, { label: string; color: string }> = {
   rl: { label: 'Rocket League', color: '#2f6bff' }, lol: { label: 'League of Legends', color: '#0f8a9b' },
   valo: { label: 'Valorant', color: '#ff4655' }, osu: { label: 'osu!', color: '#ff66aa' },
 };
-// Roster de travail : celui choisi, ou le seul qu'on ait
-const activeRoster = rosters.find((r) => r.slug === active) ?? (rosters.length === 1 && !staff ? rosters[0] : null);
+// Roster de travail : celui de la page (chaque outil d'équipe en a toujours un, voir scope()). Sans roster : Mon espace, vue d'ensemble, profil…
+const activeRoster = rosters.find((r) => r.slug === active) ?? null;
 const game = activeRoster?.game ?? null;
 const PATH: Record<string, string> = {
   accueil: '/equipe/', planning: '/equipe/planning/', calendrier: '/equipe/calendrier/', match: '/equipe/match/', stats: '/equipe/stats/', objectifs: '/equipe/objectifs/',
@@ -40,8 +40,8 @@ const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = on
   { key: 'semaine', label: 'Semaine', pages: [['planning', 'Planning'], ['calendrier', 'Calendrier']] },
   { key: 'match', label: 'Match', pages: [['match', 'Avant-match'], ['tournois', 'Tournois'], ['notes', 'Notes de match'], ['vod', 'VOD'], ['scouting', 'Scouting']] },
   { key: 'progres', label: 'Progrès', pages: [['stats', 'Stats'], ['objectifs', 'Objectifs']] },
-  { key: 'outils', label: 'Outils', pages: [...(withBoard ? [['tactique', 'Tableau blanc']] : []), ...gameTools] as [string, string][] },
-  { key: 'equipe', label: 'Équipe', pages: [['joueurs', 'Joueurs'], ['setup', 'Setups'], ['docs', 'Docs']] },
+  { key: 'outils', label: 'Préparer', pages: [...(withBoard ? [['tactique', 'Tableau blanc']] : []), ...gameTools, ['docs', 'Docs']] as [string, string][] },
+  { key: 'equipe', label: 'Équipe', pages: [['joueurs', 'Joueurs'], ['setup', 'Setups']] },
 ];
 const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current)) ?? (GAME_TOOL[current] ? SECTIONS.find((x) => x.key === 'outils') : undefined);
 // Changer de roster en restant sur le même outil (sauf outil propre à un autre jeu)
@@ -60,11 +60,11 @@ const currentLabel = section?.label ?? heading;
       <a class="qg-brand" href={`/equipe/${q}`} aria-label="Inside, accueil de l'espace équipe"><img src="/img/oni-logo.svg" alt="" width="28" height="28" /><span><b translate="no">Oni Korp</b> Inside</span></a>
       {!bare && (rosters.length > 0 || contenu) && (
         <details class="qg-switch">
-          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : current === 'contenu' ? 'Contenu' : 'Tous les rosters'}<span class="qg-caret" aria-hidden="true"></span></summary>
+          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : current === 'contenu' ? 'Contenu' : 'Mon espace'}<span class="qg-caret" aria-hidden="true"></span></summary>
           <div class="qg-menu">
+            <a href="/equipe/" aria-current={current === 'espace' ? 'page' : undefined}>Mon espace</a>
             {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
             {contenu && <a href="/equipe/contenu/" aria-current={current === 'contenu' ? 'page' : undefined}>Contenu</a>}
-            {rosters.length > 1 && <a href={PATH[current] && !GAME_TOOL[current] ? PATH[current] : '/equipe/'} aria-current={!activeRoster && current !== 'vue' ? 'page' : undefined}>Tous les rosters</a>}
             {byGame.map((g) => (
               <>
                 <p style={`--g:${g.color}`}><span aria-hidden="true"></span>{g.label}</p>
@@ -95,16 +95,31 @@ const currentLabel = section?.label ?? heading;
         <details class="qg-nav" data-qg-nav open>
           <summary>{currentLabel}<span class="qg-caret" aria-hidden="true"></span></summary>
           <nav aria-label="Rubriques d'Inside">
-            {SECTIONS.map((x) => (
-              <a href={`${PATH[x.pages[0][0]]}${q}`} aria-current={x === section ? 'page' : undefined}>{x.label}</a>
-            ))}
+            {!onlyContent && <a class="qg-nav__home" href="/equipe/" aria-current={current === 'espace' ? 'page' : undefined}>Mon espace</a>}
+            {activeRoster ? (
+              <>
+                <p class="qg-nav__roster" style={`--g:${GAMES[activeRoster.game]?.color ?? accent}`}><span aria-hidden="true"></span>{activeRoster.name}</p>
+                {SECTIONS.map((x) => (
+                  <a href={`${PATH[x.pages[0][0]]}${q}`} aria-current={x === section ? 'page' : undefined}>{x.label}</a>
+                ))}
+              </>
+            ) : onlyContent ? SECTIONS.map((x) => <a href={PATH[x.pages[0][0]]} aria-current={x === section ? 'page' : undefined}>{x.label}</a>) : (
+              <>
+                {rosters.length > 0 && <p class="qg-nav__roster">Mes rosters</p>}
+                {rosters.map((r) => <a href={`/equipe/?r=${r.slug}`} style={`--g:${GAMES[r.game]?.color}`} class="qg-nav__team">{r.name}</a>)}
+                {(staff || contenu) && <p class="qg-nav__roster">Encadrement</p>}
+                {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
+                {contenu && <a href="/equipe/contenu/" aria-current={current === 'contenu' ? 'page' : undefined}>Contenu</a>}
+              </>
+            )}
           </nav>
         </details>
       )}
       {!bare && <script is:inline>if (matchMedia('(max-width: 900px)').matches) document.querySelector('[data-qg-nav]')?.removeAttribute('open');</script>}
       {!bare && !onlyContent && (
         <nav class="qg-tabs" aria-label="Accès rapide">
-          {([['accueil', 'Accueil', 'M4 11l8-7 8 7v9H4z'], ['planning', 'Semaine', 'M4 6h16M4 12h16M4 18h10'], ['match', 'Match', 'M4 19l5-5 4 4 7-9M4 5h16'], ['stats', 'Progrès', 'M5 20V11M12 20V5M19 20v-7']] as [string, string, string][]).map(([k, l, d]) => (
+          <a href="/equipe/" aria-current={current === 'espace' ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" /></svg>Moi</a>
+          {activeRoster && ([['accueil', 'Roster', 'M4 11l8-7 8 7v9H4z'], ['planning', 'Semaine', 'M4 6h16M4 12h16M4 18h10'], ['match', 'Match', 'M4 19l5-5 4 4 7-9M4 5h16'], ['stats', 'Progrès', 'M5 20V11M12 20V5M19 20v-7']] as [string, string, string][]).map(([k, l, d]) => (
             <a href={`${PATH[k]}${q}`} aria-current={k === current ? 'page' : undefined}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>{l}</a>
           ))}
           <button type="button" data-qg-more><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>Menu</button>

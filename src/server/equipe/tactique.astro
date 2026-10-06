@@ -4,7 +4,7 @@
 // des étapes pour dérouler une strat et des notes. Synchronisé en quasi direct pour tout le roster.
 import Qg from './Qg.astro';
 import { valoMaps } from './valo-api';
-import { scope, teamUser } from './outils';
+import { ownerOf, scope, teamUser } from './outils';
 import { ensureBoards } from './tableau-api';
 import { rows } from '../db';
 
@@ -13,9 +13,10 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 await ensureBoards();
-const sc = scope(me.rosters, Astro.url);
 // Pas de tableau blanc pour osu! : un roster osu! est renvoyé vers son outil
-if (sc.active && sc.list[0]?.game === 'osu') return Astro.redirect(`/equipe/osu/?r=${sc.active}`);
+const askedR = me.rosters.find((r) => r.slug === Astro.url.searchParams.get('r'));
+if (askedR?.game === 'osu') return Astro.redirect(`/equipe/osu/?r=${askedR.slug}`);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game !== 'osu', await ownerOf(Astro.url, 'boards', 'b'));
 const usable = sc.list.filter((r) => r.game !== 'osu');
 const boardId = Number(Astro.url.searchParams.get('b')) || null;
 type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null };
@@ -27,6 +28,17 @@ const initial = current ? (await rows<{ state: string; updated_at: number }>('SE
 // Fond d'une carte Valorant connu dès le HTML (sinon l'image n'arrive qu'après deux appels du navigateur) ; liste gardée 6 h
 const bgName = (() => { try { return JSON.parse(initial?.state ?? '{}').bg ?? current?.map; } catch { return current?.map; } })() as string | undefined;
 const bgSrc = bgName && !/^(blanc|grille|Terrain|Faille|https?:)/.test(bgName) ? (await valoMaps()).find((m) => m.name === bgName)?.icon : undefined;
+// Liste des tableaux : un aperçu du fond de chaque tableau, et des modèles pour démarrer en un clic
+const team = usable[0] ?? null;
+const vmaps = team?.game === 'valo' || list.some((b) => !/^(blanc|grille|Terrain|Faille|https?:)/.test(b.map)) ? (await valoMaps()).filter((m) => m.competitive) : [];
+const thumb = (m: string) => m === 'Terrain' ? '/img/rl/terrain.svg' : m === 'Faille' || m.startsWith('Faille:') ? '/img/lol/vmap-normal-hunting.svg'
+  : /^https?:/.test(m) ? m : vmaps.find((x) => x.name === m)?.icon ?? null;
+const STARTERS: Record<string, { map: string; ideas: [string, string][] }> = {
+  rl: { map: 'Terrain', ideas: [['Coup d’envoi', 'Qui part, qui couvre, qui récupère le boost'], ['Rotations', 'Le cycle à trois, qui monte, qui revient'], ['Sorties de but', 'Dégager proprement, relancer sans perdre la balle']] },
+  lol: { map: 'Faille', ideas: [['Plan de jeu', 'Conditions de victoire, objectifs, timings'], ['Début de partie', 'Chemin du jungler, niveau 1, premiers objectifs'], ['Vision', 'Balises par phase de jeu']] },
+  valo: { map: vmaps[0]?.name ?? 'blanc', ideas: [['Exécution d’un site', 'Utilitaires, entrées, placement après la pose'], ['Retake', 'Regrouper, reprendre le site, désamorcer'], ['Défense', 'Setups, rotations, informations']] },
+};
+const starter = team ? STARTERS[team.game] : undefined;
 const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
 const rosterGame = new Map(me.rosters.map((r) => [Number(r.id), r.game]));
 const q = sc.active ? `&r=${sc.active}` : '';
@@ -55,7 +67,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={listUrl} />
             <input type="hidden" name="game" data-game />
             <label>Titre<input name="title" required maxlength="60" placeholder="Ex. : Ascent · retake B, kickoff, plan de jeu" /></label>
-            <label>Roster<select name="roster" data-roster>{usable.map((r) => <option value={r.id} data-g={r.game}>{r.name}</option>)}</select></label>
+            <label hidden>Roster<select name="roster" data-roster>{usable.map((r) => <option value={r.id} data-g={r.game}>{r.name}</option>)}</select></label>
             <label>Fond<select name="map" data-bg>
               <optgroup label="Neutre"><option value="blanc">Tableau blanc</option><option value="grille">Quadrillage</option></optgroup>
               <optgroup label="Rocket League" data-for="rl"><option value="Terrain">Terrain</option></optgroup>
@@ -72,13 +84,43 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     {!current ? (
       <div class="tb-home">
         {!usable.length && <p class="eq-note">Aucun roster pour l'instant : le tableau blanc s'ouvrira dès la création d'un roster sur Discord.</p>}
+        {starter && team && (
+          <section class="tb-start" aria-labelledby="tb-start-h">
+            <h2 id="tb-start-h">{list.length ? 'Démarrer un tableau' : 'Premier tableau du roster'}</h2>
+            <p class="tb-start__lead">Choisis un point de départ : le tableau s’ouvre sur le bon terrain avec ce titre, tu changes tout ensuite. Toute l’équipe le voit et le modifie en direct.</p>
+            <form method="post" action="/api/equipe/outils" class="tb-start__form">
+              <input type="hidden" name="action" value="tableau" /><input type="hidden" name="back" value={listUrl} />
+              <input type="hidden" name="roster" value={team.id} /><input type="hidden" name="game" value={team.game} />
+              {team.game === 'valo' && vmaps.length ? (
+                <label class="tb-start__map">Carte<select name="map" onchange="this.form.querySelectorAll('button').forEach((b) => b.style.setProperty('--bg', `url(&quot;${this.selectedOptions[0].dataset.img}&quot;)`))">{vmaps.map((m) => <option data-img={m.icon}>{m.name}</option>)}</select></label>
+              ) : <input type="hidden" name="map" value={starter.map} />}
+              <div class="tb-start__ideas">
+                {starter.ideas.map(([t, why]) => (
+                  <button type="submit" name="title" value={t} style={thumb(starter.map) ? `--bg:url("${thumb(starter.map)}")` : undefined}>
+                    <span class="tb-start__img" aria-hidden="true"></span>
+                    <strong>{t}</strong><small>{why}</small>
+                  </button>
+                ))}
+              </div>
+            </form>
+          </section>
+        )}
         {list.length > 0 && (
-          <section class="tb-list">
-            <h2>Tableaux du roster</h2>
+          <section class="tb-list" aria-labelledby="tb-list-h">
+            <h2 id="tb-list-h">Tableaux de {team?.name ?? 'l’équipe'} · {list.length}</h2>
             <ul>
-              {list.map((b) => (
-                <li><a href={`/equipe/tactique/?b=${b.id}${q}`}><strong>{b.title}</strong><span>{BG_LABEL(b.map)} · {rosterName.get(Number(b.roster_id))} · modifié {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span></a></li>
-              ))}
+              {list.map((b) => {
+                const im = thumb(b.map);
+                return (
+                  <li>
+                    <a href={`/equipe/tactique/?b=${b.id}${q}`}>
+                      <span class:list={['tb-list__img', { 'is-grid': b.map === 'grille', 'is-blank': !im && b.map !== 'grille' }]} style={im ? `background-image:url("${im}")` : undefined} aria-hidden="true"></span>
+                      <strong>{b.title}</strong>
+                      <span class="tb-list__meta">{BG_LABEL(b.map)} · {ago(Number(b.updated_at))}{b.name ? ` par ${b.name}` : ''}</span>
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}
@@ -193,10 +235,28 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .tb-new label[hidden] { display: none; }
   .tb-new :is(input, select) { width: 100%; box-sizing: border-box; min-height: 42px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
   .tb-new .btn { justify-self: start; }
-  .tb-list ul { display: grid; gap: .5rem; margin-top: .75rem; }
-  .tb-list a { display: grid; gap: .2rem; padding: .8rem 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; }
-  .tb-list a:hover { border-color: var(--ink); }
-  .tb-list span { color: var(--muted); font-size: var(--step--1); }
+  .tb-start { display: grid; gap: .6rem; }
+  .tb-start h2, .tb-list h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .tb-start__lead { margin: 0; color: var(--muted); max-width: 46rem; }
+  .tb-start__form { display: grid; gap: .8rem; }
+  .tb-start__map { display: grid; gap: .3rem; max-width: 16rem; font-weight: 700; font-size: .85rem; }
+  .tb-start__map select { min-height: 42px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; font-weight: 400; }
+  .tb-start__ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: 1rem; }
+  .tb-start__ideas button { display: grid; gap: .25rem; align-content: start; padding: 0 0 .9rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, transform .15s; }
+  .tb-start__ideas button:hover, .tb-start__ideas button:focus-visible { border-color: var(--game, var(--ink)); transform: translateY(-2px); }
+  .tb-start__ideas strong, .tb-start__ideas small { padding: 0 .9rem; }
+  .tb-start__ideas small { color: var(--muted); font-size: var(--step--1); }
+  .tb-start__img { display: block; height: 7rem; margin-bottom: .5rem; background: var(--bg, none) center / contain no-repeat, #101614; border-bottom: 4px solid var(--game, var(--ink)); }
+  .tb-list { display: grid; gap: .75rem; }
+  .tb-list ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  .tb-list a { display: grid; gap: .2rem; padding: 0 0 .8rem; border: 1px solid var(--line); color: inherit; text-decoration: none; transition: border-color .15s; }
+  .tb-list a:hover, .tb-list a:focus-visible { border-color: var(--ink); }
+  .tb-list strong, .tb-list__meta { padding: 0 .8rem; }
+  .tb-list strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tb-list__meta { color: var(--muted); font: 400 var(--step--1) / 1.4 var(--qg-sans, var(--font-body)); }
+  .tb-list__img { display: block; aspect-ratio: 16 / 10; margin-bottom: .45rem; background: #101614 center / contain no-repeat; }
+  .tb-list__img.is-blank { background: var(--paper); border-bottom: 1px solid var(--line); }
+  .tb-list__img.is-grid { background: var(--paper) repeating-linear-gradient(0deg, transparent 0 15px, var(--line) 15px 16px), repeating-linear-gradient(90deg, transparent 0 15px, var(--line) 15px 16px); border-bottom: 1px solid var(--line); }
 
   .wb-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: .6rem; }
   .wb-bar h2 { font-size: var(--step-1); }

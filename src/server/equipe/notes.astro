@@ -11,7 +11,7 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { user, me } = t;
 
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies);
 const ids = sc.list.map((r) => Number(r.id));
 type M = { id: number; roster_id: number; opponent: string; format: string; at: number; kind: string | null; score_us: number | null; score_them: number | null };
 const matches = ids.length ? await rows<M>(`SELECT id, roster_id, opponent, format, at, kind, score_us, score_them FROM matches

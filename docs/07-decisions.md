@@ -27,6 +27,11 @@ Le journal des choix qui structurent le projet. Avant de défaire l'un d'eux, li
 - **Soirée inhouse fixe : le jeudi à 21 h** (6 oct. 2026) : un soir de semaine, loin des matchs et tournois du week-end, assez tard pour qui travaille ou étudie. Annonce à 17 h (rôle « Notif inhouses »), ouverture des files à 20 h 55.
 - **Pas de tableau blanc pour osu!** (6 oct. 2026) : les joueurs osu! n'en ont pas l'usage ; leur outil reste « Défis et maps ».
 
+- **Mon espace, puis un roster à la fois** (7 oct. 2026) : `/equipe/` est la page perso de chacun ; chaque outil d'équipe n'affiche qu'un roster. Raison : les tableaux, objectifs et docs des autres équipes « polluaient » les pages. Analyse complète dans `notes/strategie/ANALYSE-CLUB.md` (PESTEL, SWOT, fiche par profil).
+- **Rubrique « Préparer »** (ex-« Outils ») : tableau blanc, outil du jeu et Docs du roster côte à côte.
+- **Terrain Rocket League réaliste** sur le tableau blanc : vraie forme, buts, 34 boosts aux positions du jeu, coups d'envoi (`scripts/terrain-rl.mjs`).
+- **Oni Sync dans la zone de notification** (7 oct. 2026), sans fenêtre ; notifications Windows seulement quand il faut agir (jamais à chaque partie). **Pas de mod type BakkesMod qui contourne l'anti-triche** (Easy Anti-Cheat) : risque de bannissement des comptes et contraire aux conditions d'Epic et Psyonix.
+
 - **Nom « Inside »** (l'ancien « QG » était froid et confus). Noms d'outils sobres.
 - **Rangement par usage** (Accueil, Semaine, Match, Progrès, Outils, Équipe) et **outils filtrés selon le jeu** du roster.
 - **Accès par fonction** (6 oct. 2026) : capitaine, analyste, responsable de jeu et pôle contenu ont un accès adapté, pas seulement l'encadrement. Le diagnostic de l'audit : « l'outillage existe, il manque les gens ». Ceux qui aident devaient pouvoir utiliser les outils.

@@ -9,7 +9,7 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'valo');
 const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.active));
 // Cartes de compétition (celles qui ont des sites et une minicarte), envoyées avec la page
 const maps = valoRosters.length ? (await valoMaps()).filter((m) => m.competitive) : [];
@@ -78,9 +78,42 @@ const maps = valoRosters.length ? (await valoMaps()).filter((m) => m.competitive
       )}
     </div>
   </section>
+  <!-- Visionneuse : un clic sur une capture l'agrandit sur place (flèches pour passer à la suivante, Échap pour fermer) -->
+  <dialog class="lu-zoom" data-zoom aria-label="Capture agrandie">
+    <img alt="" data-zoom-img />
+    <p class="lu-zoom__cap" data-zoom-cap></p>
+    <button type="button" class="lu-zoom__btn lu-zoom__prev" data-zoom-go="-1" aria-label="Capture précédente">‹</button>
+    <button type="button" class="lu-zoom__btn lu-zoom__next" data-zoom-go="1" aria-label="Capture suivante">›</button>
+    <button type="button" class="lu-zoom__btn lu-zoom__close" data-zoom-close aria-label="Fermer">×</button>
+  </dialog>
 </Qg>
 
 <script>
+  // Visionneuse des captures de lineups (les liens restent valables : Ctrl+clic ou clic molette ouvre toujours un onglet)
+  {
+    const zoom = document.querySelector<HTMLDialogElement>('[data-zoom]')!;
+    const img = zoom.querySelector<HTMLImageElement>('[data-zoom-img]')!, cap = zoom.querySelector<HTMLElement>('[data-zoom-cap]')!;
+    let group: HTMLAnchorElement[] = [], at = 0;
+    const show = () => {
+      const a = group[at]; img.src = a.href; img.alt = a.querySelector('img')?.alt ?? '';
+      const lab = (a.querySelector('span')?.textContent ?? '').replace(/^\d+\s*·?\s*/, '');
+      cap.textContent = `${at + 1} / ${group.length}${lab ? ` · ${lab}` : ''}`;
+      zoom.querySelectorAll<HTMLElement>('[data-zoom-go]').forEach((b) => (b.hidden = group.length < 2));
+    };
+    document.addEventListener('click', (e) => {
+      const a = (e.target as Element).closest<HTMLAnchorElement>('.lu-shots a');
+      if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      group = [...a.closest('.lu-shots')!.querySelectorAll<HTMLAnchorElement>('a')]; at = group.indexOf(a);
+      show(); zoom.showModal();
+    });
+    const go = (d: number) => { at = (at + d + group.length) % group.length; show(); };
+    zoom.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.dataset.zoomGo) go(Number(t.dataset.zoomGo)); else if (t === zoom || t.hasAttribute('data-zoom-close')) zoom.close();
+    });
+    zoom.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); });
+  }
   type Map = { uuid: string; name: string; icon: string };
   type Agent = { name: string; icon: string; abilities: { name: string; icon: string }[] };
   type L = { id: number; map: string; agent: string; side: string; title: string; x: number; y: number; tx: number | null; ty: number | null; url: string | null; note: string; author: string; author_name: string | null; at: number; ability: string | null; kind: string | null; imgs: string | null };
@@ -327,4 +360,16 @@ const maps = valoRosters.length ? (await valoMaps()).filter((m) => m.competitive
   .lu-list :global(span) { display: grid; }
   .lu-list :global(small) { color: var(--muted); font-size: var(--step--1); }
   @media (max-width: 900px) { .lu-main { grid-template-columns: 1fr; } }
+  .lu-zoom { max-width: none; max-height: none; width: 100vw; height: 100dvh; margin: 0; padding: 0; border: 0; background: rgba(8, 8, 10, .92); color: #fff; }
+  .lu-zoom[open] { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; }
+  .lu-zoom::backdrop { background: transparent; }
+  .lu-zoom img { max-width: min(92vw, 1600px); max-height: 82dvh; object-fit: contain; cursor: default; }
+  .lu-zoom__cap { margin: 0; font-size: .9rem; text-align: center; }
+  .lu-zoom__btn { position: absolute; width: 3rem; height: 3rem; border: 1px solid rgba(255, 255, 255, .4); background: rgba(0, 0, 0, .5); color: #fff; font-size: 1.8rem; line-height: 1; cursor: pointer; }
+  .lu-zoom__btn:hover, .lu-zoom__btn:focus-visible { background: #000; border-color: #fff; }
+  .lu-zoom__btn[hidden] { display: none; }
+  .lu-zoom__prev { left: 1rem; top: 50%; transform: translateY(-50%); }
+  .lu-zoom__next { right: 1rem; top: 50%; transform: translateY(-50%); }
+  .lu-zoom__close { right: 1rem; top: 1rem; }
+  :global(.lu-shots a) { cursor: zoom-in; }
 </style>

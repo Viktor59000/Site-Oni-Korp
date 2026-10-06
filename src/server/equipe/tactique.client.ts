@@ -83,11 +83,9 @@ const opts_keep = (bg: string): string[][] => (['blanc', 'grille', 'url'].includ
 const loadValo = () => fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()).then((d) => {
   valoMaps = d.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ name: m.displayName, icon: m.displayIcon })).sort((a: any, b: any) => a.name.localeCompare(b.name, 'fr'));
 }).catch(() => {});
-const RL_PITCH = (() => {
-  const pads = [[.08, .5], [.92, .5], [.08, .1], [.92, .1], [.08, .9], [.92, .9]].map(([x, y]) => `<circle cx="${x * 600}" cy="${y * 1000}" r="16" fill="#ffb020" opacity=".85"/>`).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1000"><rect width="600" height="1000" fill="#1d5a2f"/><rect x="20" y="40" width="560" height="920" rx="70" fill="#247038" stroke="#fff" stroke-width="5"/><line x1="20" y1="500" x2="580" y2="500" stroke="#fff" stroke-width="4"/><circle cx="300" cy="500" r="90" fill="none" stroke="#fff" stroke-width="4"/><rect x="210" y="8" width="180" height="34" fill="#ff7a1a" stroke="#fff" stroke-width="4"/><rect x="210" y="958" width="180" height="34" fill="#2f6bff" stroke="#fff" stroke-width="4"/><rect x="150" y="40" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/><rect x="150" y="820" width="300" height="140" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>${pads}</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-})();
+// Terrain Rocket League réaliste (scripts/terrain-rl.mjs) : vraie forme, buts, 34 boosts, positions de coup d'envoi
+const RL_PITCH = '/img/rl/terrain.svg';
+const RL_RATIO = 8800 / 12400;
 
 // ---------- Création ----------
 const form = document.querySelector<HTMLFormElement>('[data-new]');
@@ -159,8 +157,8 @@ if (root) {
   // ---------- Fond ----------
   function background() {
     const bg = state.bg, el = $('[data-bg]');
-    stage.style.aspectRatio = bg === 'Terrain' ? '3 / 5' : '1 / 1';
-    stage.style.setProperty('--ratio', bg === 'Terrain' ? '.6' : '1');
+    stage.style.aspectRatio = bg === 'Terrain' ? '8800 / 12400' : '1 / 1';
+    stage.style.setProperty('--ratio', bg === 'Terrain' ? String(RL_RATIO) : '1');
     el.className = 'wb-bg'; el.style.backgroundImage = '';
     if (bg === 'blanc') el.classList.add('is-blank');
     else if (bg === 'grille') el.classList.add('is-grid');
@@ -493,7 +491,7 @@ if (root) {
   // ---------- Export en image (PNG) ----------
   const loadImg = (src: string) => new Promise<HTMLImageElement | null>((ok) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
   async function toCanvas() {
-    const ratio = state.bg === 'Terrain' ? 3 / 5 : 1;
+    const ratio = state.bg === 'Terrain' ? RL_RATIO : 1;
     const W = ratio < 1 ? 960 : 1600, H = Math.round(W / ratio);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H + 70;
     const c = cv.getContext('2d')!;

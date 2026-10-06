@@ -21,7 +21,7 @@ const get = (g: string) => mine.find((a) => a.game === g);
 
 const POSTE_ICON: Record<string, string> = { Top: 'lol-top', Jungle: 'lol-jungle', Mid: 'lol-mid', ADC: 'lol-adc', Support: 'lol-support', Duelliste: 'valo-duelliste', Initiateur: 'valo-initiateur', 'Contrôleur': 'valo-controleur', Sentinelle: 'valo-sentinelle' };
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies);
 const rosters = await Promise.all(sc.list.map(async (r) => {
   const members = await rosterMembers(r.role_id);
   const postes = new Map<string, string>((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste] as [string, string]));

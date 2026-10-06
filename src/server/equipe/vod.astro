@@ -3,14 +3,14 @@
 // YouTube : lecteur intégré, « Repère ici » prend le moment en cours et un clic sur un repère y saute.
 // Autres liens (Twitch, Medal…) : repères saisis à la main (mm:ss).
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { ownerOf, scope, teamUser } from './outils';
 import { rows } from '../db';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, undefined, await ownerOf(Astro.url, 'vods', 'v'));
 const q = sc.active ? `r=${sc.active}` : '';
 const listUrl = `/equipe/vod/${q ? `?${q}` : ''}`;
 const ids = sc.list.map((r) => r.id);

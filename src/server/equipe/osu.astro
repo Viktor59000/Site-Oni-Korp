@@ -10,7 +10,7 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'osu');
 // Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
 const manage = sc.list.some((r) => canLead(me, r.id));
 const osuRosters = sc.list.filter((r) => r.game === 'osu' || (me.staff && !sc.active));

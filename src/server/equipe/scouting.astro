@@ -2,7 +2,7 @@
 // Scouting : une fiche par équipe adverse. Historique contre nous (automatique, d'après les matchs et scrims du roster),
 // joueurs, style de jeu, forces, faiblesses, notre plan, liens (op.gg, tracker, chaîne), VOD et tableaux qui les mentionnent.
 import Qg from './Qg.astro';
-import { scope, teamUser } from './outils';
+import { ownerOf, scope, teamUser } from './outils';
 import { exec, rows } from '../db';
 import { md } from './ui';
 
@@ -11,7 +11,7 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
 await exec(`CREATE TABLE IF NOT EXISTS opponents (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, players TEXT, style TEXT, forces TEXT, faiblesses TEXT, plan TEXT, links TEXT, author TEXT, updated_at INTEGER)`).catch(() => {});
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, undefined, await ownerOf(Astro.url, 'opponents', 'o'));
 const q = sc.active ? `r=${sc.active}` : '';
 const listUrl = `/equipe/scouting/${q ? `?${q}` : ''}`;
 const ids = sc.list.map((r) => r.id);
