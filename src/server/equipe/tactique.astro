@@ -293,7 +293,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
     const id = Number(root.dataset.board), game = root.dataset.game ?? '';
     let state: State = { bg: root.dataset.map ?? 'blanc', notes: '', frames: [{ name: 'Étape 1', items: [], strokes: [] }] };
-    let fi = 0, at = 0, tool = 'select', color = '#ff4655', width = 6, dirty = false, saveTimer = 0, editingNotes = false;
+    let fi = 0, at = 0, tool = 'select', color = '#ff4655', width = 6, dirty = false, saveTimer = 0, editingNotes = false, pollDelay = 2000, pollTimer = 0;
     let pending: Partial<Item> | null = null, sel: string | null = null;
     let drag: { id: string; dx: number; dy: number; dx2?: number; dy2?: number } | null = null;
     let drawing: Stroke | null = null, shape: Item | null = null;
@@ -310,17 +310,24 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
     try { const s0 = JSON.parse(root.dataset.state || '{}'); if (s0 && (s0.frames || s0.tokens)) state = upgrade(s0); at = Number(root.dataset.at) || 0; } catch {}
     const snapshot = () => { undo.push(JSON.stringify(state)); if (undo.length > 50) undo.shift(); redo.length = 0; };
-    function changed() { dirty = true; render(); clearTimeout(saveTimer); saveTimer = window.setTimeout(save, 350); }
+    function changed() { dirty = true; render(); clearTimeout(saveTimer); saveTimer = window.setTimeout(save, 700); wake(); }
     async function save() {
       const r = await fetch('/api/equipe/tableau', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, state }) }).then((x) => x.json()).catch(() => null);
       if (r?.at) { at = r.at; dirty = false; }
     }
+    // Suivi en direct économe : toutes les 2 s quand ça bouge, puis de plus en plus espacé quand rien ne change
+    // (jusqu'à 20 s), rien quand l'onglet est caché. Chaque appel compte dans les quotas Vercel et Turso (06/10).
+    function schedule() { clearTimeout(pollTimer); pollTimer = window.setTimeout(async () => { await poll(); schedule(); }, pollDelay); }
+    function wake() { pollDelay = 2000; schedule(); }
     async function poll() {
-      if (document.hidden || drag || drawing || shape || dirty || editingNotes) return;
+      if (document.hidden) return;
+      if (drag || drawing || shape || dirty || editingNotes) { pollDelay = 2000; return; }
       const r = await fetch(`/api/equipe/tableau?id=${id}&depuis=${at}`).then((x) => x.json()).catch(() => null);
       $('[data-live]').classList.toggle('is-off', !r);
+      if (!r?.changed) pollDelay = Math.min(20000, Math.round(pollDelay * 1.5));
       if (r?.changed && !drag && !drawing && !shape && !dirty) {
         state = upgrade(r.state); at = r.at; if (fi >= state.frames.length) fi = 0; render();
+        pollDelay = 2000;
         if (r.by !== root!.dataset.me && r.byName) { $('[data-live] em').textContent = `${r.byName} modifie…`; setTimeout(() => ($('[data-live] em').textContent = 'En direct'), 2500); }
       }
     }
@@ -706,8 +713,9 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     stage.dataset.tool = tool;
     loadValo().then(render);
     render();
-    setInterval(poll, 1500); poll();
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+    poll().then(schedule);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { pollDelay = 2000; poll().then(schedule); } });
+    stage.addEventListener('pointerdown', wake);
   }
 </script>
 
