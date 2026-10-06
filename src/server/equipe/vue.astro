@@ -75,6 +75,14 @@ const cards = await Promise.all(me.rosters.map(async (r) => {
 // Alertes club
 // Deux niveaux : « urgent » (bloque le club ou une échéance proche), « à faire » (action sans urgence)
 const clubAlerts: [string, 'urgent' | 'action'][] = [];
+// Essais : fin dans les 3 jours, ou terminés sans retour écrit
+const essais = await rows<{ user_id: string; essai_fin: number; retour: string | null; name: string | null; roster: string; game: string }>(
+  `SELECT s.user_id, s.essai_fin, s.retour, g.name, r.name AS roster, r.game FROM roster_status s JOIN rosters r ON r.id = s.roster_id LEFT JOIN guild_members g ON g.id = s.user_id
+   WHERE s.statut = 'essai' AND s.essai_fin IS NOT NULL AND r.archived = 0 AND s.essai_fin < ?`, now + 3 * DAY).catch(() => []);
+for (const e of essais.filter((x) => mineGame(x.game))) {
+  if (Number(e.essai_fin) < now && !e.retour) clubAlerts.push([`Essai de ${e.name ?? 'un joueur'} (${e.roster}) terminé : décide de la suite et écris le retour dans Joueurs`, 'urgent']);
+  else if (Number(e.essai_fin) >= now) clubAlerts.push([`Essai de ${e.name ?? 'un joueur'} (${e.roster}) jusqu'au ${fmt.format(new Date(Number(e.essai_fin)))} : prépare le retour`, 'action']);
+}
 if (!botOnline && me.staff) clubAlerts.push([beat ? `Oni Bot hors ligne depuis ${ago(beat)} : rappels et annonces en pause` : 'Oni Bot pas encore relié à la base', 'urgent']);
 for (const m of upcoming) {
   if ((m.kind ?? 'officiel') !== 'scrim' && !m.caster) clubAlerts.push([`Pas de casteur pour vs ${m.opponent} (${fmt.format(new Date(Number(m.at)))})`, 'action']);

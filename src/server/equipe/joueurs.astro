@@ -1,7 +1,7 @@
 ---
 // Joueurs : chacun relie ses comptes de jeu ; le roster voit les profils (op.gg, tracker.gg, osu!) et les rangs quand une clé d'API est configurée.
 import Qg from './Qg.astro';
-import { rosterMembers, scope, teamUser } from './outils';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { REGIONS, TIERS_FR, links, lolRank, osuStats } from './stats';
 
@@ -11,6 +11,11 @@ if (!t) return Astro.redirect('/equipe/');
 const { user, me } = t;
 
 type Acc = { user_id: string; game: string; ident: string; region: string | null };
+type St = { user_id: string; statut: string; essai_fin: number | null; retour: string | null };
+const dayFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+const isoDay = (ms: number | null) => (ms ? new Date(Number(ms)).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }) : '');
+// Ordre d'affichage : titulaires, remplaçants, puis joueurs en essai
+const RANK: Record<string, number> = { titulaire: 0, remplacant: 1, essai: 2 };
 const mine = await rows<Acc>('SELECT * FROM accounts WHERE user_id = ?', user.id);
 const get = (g: string) => mine.find((a) => a.game === g);
 
@@ -20,12 +25,13 @@ const sc = scope(me.rosters, Astro.url);
 const rosters = await Promise.all(sc.list.map(async (r) => {
   const members = await rosterMembers(r.role_id);
   const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
+  const statuts = new Map((await rows<St>('SELECT user_id, statut, essai_fin, retour FROM roster_status WHERE roster_id = ?', r.id).catch(() => [] as St[])).map((x) => [String(x.user_id), x]));
   const accs = members.length ? await rows<Acc>(`SELECT * FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [];
   const people = await Promise.all(members.map(async (m) => {
     const a = (g: string) => accs.find((x) => x.user_id === m.id && x.game === g);
     const riot = a('riot'), rl = a('rl'), osu = a('osu');
     return {
-      ...m, riot, rl, osu, poste: postes.get(m.id) ?? null,
+      ...m, riot, rl, osu, poste: postes.get(m.id) ?? null, st: statuts.get(m.id) ?? null,
       lol: riot && r.game === 'lol' ? await lolRank(riot.ident, riot.region ?? 'euw') : null,
       osuS: osu && r.game === 'osu' ? await osuStats(osu.ident) : null,
     };
@@ -90,9 +96,9 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
           </div>
           {people.length ? (
             <ul class="jo-list">
-              {people.map((p) => (
+              {[...people].sort((a, b) => (RANK[a.st?.statut ?? 'titulaire'] ?? 0) - (RANK[b.st?.statut ?? 'titulaire'] ?? 0)).map((p) => (
                 <li>
-                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar ? <img src={p.avatar} alt="" width="44" height="44" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="jo-ini" aria-hidden="true">{p.name.slice(0, 1)}</span>}<span><strong>{p.name}</strong><small>{p.poste && POSTE_ICON[p.poste] && <img class="jo-poste" src={`/img/postes/${POSTE_ICON[p.poste]}.webp`} alt="" width="16" height="16" />}{p.poste ?? 'Poste à définir'}</small></span></a>
+                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar ? <img src={p.avatar} alt="" width="44" height="44" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="jo-ini" aria-hidden="true">{p.name.slice(0, 1)}</span>}<span><strong>{p.name}{p.st && p.st.statut !== 'titulaire' && <em class:list={['jo-badge', { 'is-essai': p.st.statut === 'essai' }]}>{p.st.statut === 'essai' ? `En essai${p.st.essai_fin ? ` · jusqu'au ${dayFmt.format(new Date(Number(p.st.essai_fin)))}` : ''}` : 'Remplaçant'}</em>}</strong><small>{p.poste && POSTE_ICON[p.poste] && <img class="jo-poste" src={`/img/postes/${POSTE_ICON[p.poste]}.webp`} alt="" width="16" height="16" />}{p.poste ?? 'Poste à définir'}</small></span></a>
                   <span class="jo-stat">
                     {p.lol && p.lol.tier !== 'UNRANKED' && <img class="jo-emblem" src={`/img/rangs/lol/${p.lol.tier.toLowerCase()}.webp`} alt="" width="32" height="32" loading="lazy" />}
                     {p.lol && (p.lol.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.lol.tier] ?? p.lol.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.lol.tier) ? '' : p.lol.rank} · ${p.lol.lp} LP · ${p.lol.wins}V ${p.lol.losses}D`)}
@@ -107,6 +113,18 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
                     {r.game === 'osu' && p.osu && <a href={links.osutrack(p.osu.ident)} rel="noopener">osu!track</a>}
                     {!({ lol: p.riot, valo: p.riot, rl: p.rl, osu: p.osu } as Record<string, unknown>)[r.game] && <em>compte {GAME_LABEL[r.game] ?? ''} pas encore relié</em>}
                   </span>
+                  {canLead(me, r.id) && (
+                    <details class="jo-statut">
+                      <summary>Statut</summary>
+                      <form method="post" action="/api/equipe/outils">
+                        <input type="hidden" name="action" value="statut" /><input type="hidden" name="roster" value={r.id} /><input type="hidden" name="user" value={p.id} /><input type="hidden" name="back" value={`/equipe/joueurs/${sc.active ? `?r=${sc.active}` : ''}`} />
+                        <label>Statut<select name="statut">{[['titulaire', 'Titulaire'], ['remplacant', 'Remplaçant'], ['essai', 'En essai']].map(([v, l]) => <option value={v} selected={(p.st?.statut ?? 'titulaire') === v}>{l}</option>)}</select></label>
+                        <label>Fin de l'essai<input type="date" name="fin" value={isoDay(p.st?.essai_fin ?? null)} /></label>
+                        <label class="jo-retour">Retour à la fin de l'essai<textarea name="retour" rows="2" maxlength="1000" placeholder="Ce qui a convaincu, ce qui manque, la suite">{p.st?.retour ?? ''}</textarea></label>
+                        <button class="btn btn--ghost">Enregistrer</button>
+                      </form>
+                    </details>
+                  )}
                 </li>
               ))}
             </ul>
@@ -142,6 +160,15 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
   .jo-stat { display: flex; align-items: center; gap: .6rem; }
   .jo-emblem { width: 32px; height: 32px; object-fit: contain; flex: none; }
   .jo-who { display: flex; align-items: center; gap: .6rem; }
+  .jo-badge { margin-left: .45rem; padding: .05rem .4rem; border: 1px solid var(--line); font: 600 .7rem var(--font-body); font-style: normal; color: var(--muted); vertical-align: middle; }
+  .jo-badge.is-essai { border-color: #f0a04b; color: #f0a04b; }
+  .jo-statut { grid-column: 1 / -1; font-size: .85rem; }
+  .jo-statut summary { width: fit-content; color: var(--muted); cursor: pointer; }
+  .jo-statut summary:hover { color: var(--ink); }
+  .jo-statut form { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem 1rem; margin-top: .5rem; }
+  .jo-statut label { display: grid; gap: .2rem; font-weight: 700; font-size: .8rem; }
+  .jo-statut :is(select, input, textarea) { padding: .35rem .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .85rem var(--font-body); }
+  .jo-retour { flex: 1 1 18rem; } .jo-retour textarea { width: 100%; box-sizing: border-box; }
   .jo-who { color: inherit; text-decoration: none; } .jo-who:hover strong { text-decoration: underline; }
   .jo-who img { border-radius: 50%; background: var(--line); }
   .jo-stat { color: var(--ink); font-size: .92rem; }

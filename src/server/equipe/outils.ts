@@ -11,6 +11,8 @@ let ready = false;
 export async function ensureTables() {
   if (ready) return;
   const statements = [
+    // Statut dans un roster (06/10) : titulaire, remplaçant ou en essai (date de fin, retour écrit en fin d'essai)
+    `CREATE TABLE IF NOT EXISTS roster_status (roster_id INTEGER, user_id TEXT, statut TEXT, essai_fin INTEGER, retour TEXT, by TEXT, at INTEGER, PRIMARY KEY (roster_id, user_id))`,
     `CREATE TABLE IF NOT EXISTS accounts (user_id TEXT, game TEXT, ident TEXT, region TEXT, updated_at INTEGER, PRIMARY KEY (user_id, game))`,
     `CREATE TABLE IF NOT EXISTS match_notes (match_id INTEGER, user_id TEXT, good TEXT, work TEXT, rating INTEGER, at INTEGER, PRIMARY KEY (match_id, user_id))`,
     `CREATE TABLE IF NOT EXISTS drafts (id INTEGER PRIMARY KEY, roster_id INTEGER, title TEXT, data TEXT, author TEXT, at INTEGER)`,
@@ -67,6 +69,19 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // Sécurité du compte : nouveau lien d'agenda perso ; déconnexion de tous les appareils
   if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
   if (action === 'deconnexion-partout') { await bumpKey(user.id, 'session'); clearSession(cookies); return redirect('/'); }
+
+  // Statut d'un joueur dans un roster : seulement l'encadrement, le responsable du jeu ou le capitaine
+  if (action === 'statut') {
+    const roster = Number(f.get('roster')), target = clip(f.get('user'), 25);
+    if (!target || !canLead(me, roster)) return redirect(back);
+    const statut = ['titulaire', 'remplacant', 'essai'].includes(clip(f.get('statut'), 12)) ? clip(f.get('statut'), 12) : 'titulaire';
+    const d = clip(f.get('fin'), 10);
+    const fin = statut === 'essai' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T23:59:00+02:00`).getTime() : null;
+    await exec(`INSERT INTO roster_status (roster_id, user_id, statut, essai_fin, retour, by, at) VALUES (?,?,?,?,?,?,?)
+      ON CONFLICT(roster_id, user_id) DO UPDATE SET statut = excluded.statut, essai_fin = excluded.essai_fin, retour = excluded.retour, by = excluded.by, at = excluded.at`,
+      roster, target, statut, fin, clip(f.get('retour'), 1000) || null, user.id, Date.now());
+    return redirect(back);
+  }
 
   if (action === 'comptes') {
     for (const g of GAMES_ACCOUNTS) {
