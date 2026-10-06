@@ -88,6 +88,11 @@ const clubAlerts: [string, 'urgent' | 'action'][] = [];
 const essais = await rows<{ user_id: string; essai_fin: number; retour: string | null; name: string | null; roster: string; game: string }>(
   `SELECT s.user_id, s.essai_fin, s.retour, g.name, r.name AS roster, r.game FROM roster_status s JOIN rosters r ON r.id = s.roster_id LEFT JOIN guild_members g ON g.id = s.user_id
    WHERE s.statut = 'essai' AND s.essai_fin IS NOT NULL AND r.archived = 0 AND s.essai_fin < ?`, now + 3 * DAY).catch(() => []);
+// Tournois repérés dont l'inscription ferme dans moins de 3 jours (chantier 5)
+const comps = await rows<{ name: string; signup_by: number; roster: string; game: string }>(
+  `SELECT c.name, c.signup_by, r.name AS roster, r.game FROM competitions c JOIN rosters r ON r.id = c.roster_id
+   WHERE c.status = 'repere' AND c.signup_by BETWEEN ? AND ?`, now, now + 3 * DAY).catch(() => []);
+for (const c of comps.filter((x) => mineGame(x.game))) clubAlerts.push([`Inscription à ${c.name} (${c.roster}) avant ${fmt.format(new Date(Number(c.signup_by)))} (onglet Tournois)`, 'urgent']);
 // Tâches de contenu que personne n'a prises, échéance dans moins de 24 h (ou dépassée)
 if (me.staff) {
   const [orph] = await rows<{ n: number }>("SELECT COUNT(*) AS n FROM content_tasks WHERE assignee IS NULL AND status = 'a-faire' AND due < ?", now + DAY).catch(() => [{ n: 0 }]);

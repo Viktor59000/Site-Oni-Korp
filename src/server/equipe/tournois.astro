@@ -1,0 +1,114 @@
+---
+// Suivi des tournois (SWOT-ROLES.md, chantier 5) : les compétitions qu'un roster vise, avec leur date limite d'inscription,
+// le niveau demandé, le statut (repéré → inscrit → en cours → terminé) et le résultat.
+// Les gérants du roster (encadrement, responsable du jeu, capitaine) les ajoutent et les mettent à jour ; le roster les voit.
+import Qg from './Qg.astro';
+import { canLead, scope, teamUser } from './outils';
+import { exec, rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const manage = sc.list.some((r) => canLead(me, r.id));
+const back = `/equipe/tournois/${sc.active ? `?r=${sc.active}` : ''}`;
+
+await exec(`CREATE TABLE IF NOT EXISTS competitions (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, organizer TEXT, url TEXT, level TEXT,
+  signup_by INTEGER, starts INTEGER, status TEXT DEFAULT 'repere', result TEXT, note TEXT, created_by TEXT, at INTEGER)`);
+type C = { id: number; roster_id: number; name: string; organizer: string | null; url: string | null; level: string | null; signup_by: number | null; starts: number | null; status: string; result: string | null; note: string | null };
+const ids = sc.list.map((r) => r.id);
+const list = ids.length ? await rows<C>(`SELECT * FROM competitions WHERE roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY status = 'termine', status = 'abandonne', COALESCE(signup_by, starts, at)`, ...ids) : [];
+const now = Date.now(), DAY = 86400_000;
+const STATUS: Record<string, string> = { repere: 'Repéré', inscrit: 'Inscrit', 'en-cours': 'En cours', termine: 'Terminé', abandonne: 'Pas cette fois' };
+const day = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+const iso = (ms: number | null) => (ms ? new Date(Number(ms)).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }) : '');
+const rosterName = (id: number) => sc.list.find((r) => Number(r.id) === Number(id))?.name ?? '';
+const urgent = (c: C) => c.status === 'repere' && c.signup_by && Number(c.signup_by) > now && Number(c.signup_by) - now < 3 * DAY;
+const missed = (c: C) => c.status === 'repere' && c.signup_by && Number(c.signup_by) < now;
+---
+<Qg title="Tournois · Inside" heading="Tournois" lead="Les compétitions qu'on vise : quand s'inscrire, à quel niveau, et ce qu'on en a tiré." current="tournois" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  <section class="tn">
+    {list.length ? (
+      <ul class="tn-list">
+        {list.map((c) => (
+          <li class:list={['tn-item', `st-${c.status}`, { 'is-urgent': urgent(c), 'is-missed': missed(c) }]}>
+            <div class="tn-main">
+              <strong>{c.url ? <a href={c.url} rel="noopener" target="_blank">{c.name}</a> : c.name}</strong>
+              <span class="tn-st">{STATUS[c.status] ?? c.status}</span>
+              <small>{[sc.list.length > 1 && rosterName(c.roster_id), c.organizer, c.level && `niveau : ${c.level}`].filter(Boolean).join(' · ')}</small>
+              <small>
+                {c.signup_by && <span class:list={{ 'tn-warn': urgent(c) || missed(c) }}>Inscription avant le {day.format(new Date(Number(c.signup_by)))}{missed(c) ? ' (passée)' : ''}</span>}
+                {c.starts && <span> · début le {day.format(new Date(Number(c.starts)))}</span>}
+              </small>
+              {c.result && <p class="tn-result">Résultat : {c.result}</p>}
+              {c.note && <p class="tn-note">{c.note}</p>}
+            </div>
+            {canLead(me, c.roster_id) && (
+              <details class="tn-edit">
+                <summary>Mettre à jour</summary>
+                <form method="post" action="/api/equipe/outils">
+                  <input type="hidden" name="action" value="competition" /><input type="hidden" name="id" value={c.id} /><input type="hidden" name="roster" value={c.roster_id} /><input type="hidden" name="back" value={back} />
+                  <label>Statut<select name="status">{Object.entries(STATUS).map(([k, v]) => <option value={k} selected={c.status === k}>{v}</option>)}</select></label>
+                  <label>Nom<input name="name" value={c.name} maxlength="100" required /></label>
+                  <label>Organisateur<input name="organizer" value={c.organizer ?? ''} maxlength="80" /></label>
+                  <label>Lien<input name="url" type="url" value={c.url ?? ''} maxlength="300" /></label>
+                  <label>Niveau demandé<input name="level" value={c.level ?? ''} maxlength="60" /></label>
+                  <label>Inscription avant<input type="date" name="signup_by" value={iso(c.signup_by)} /></label>
+                  <label>Début<input type="date" name="starts" value={iso(c.starts)} /></label>
+                  <label class="tn-wide">Résultat<input name="result" value={c.result ?? ''} maxlength="200" placeholder="Ex. : top 8, sorti par X en quart" /></label>
+                  <label class="tn-wide">Note<textarea name="note" rows="2" maxlength="800">{c.note ?? ''}</textarea></label>
+                  <button class="btn btn--ghost">Enregistrer</button>
+                  <button class="btn btn--ghost" name="op" value="suppr">Supprimer</button>
+                </form>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    ) : <p class="eq-note">Aucun tournoi suivi pour l'instant.{manage ? ' Ajoute le premier ci-dessous : les pistes repérées sont dans PROSPECTION.md.' : ' L\'encadrement ou le capitaine les ajoute ici.'}</p>}
+
+    {manage && (
+      <details class="tn-add" open={!list.length || undefined}>
+        <summary>Suivre un tournoi</summary>
+        <form method="post" action="/api/equipe/outils">
+          <input type="hidden" name="action" value="competition" /><input type="hidden" name="back" value={back} />
+          <label>Roster<select name="roster">{sc.list.filter((r) => canLead(me, r.id)).map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+          <label class="tn-wide">Nom<input name="name" maxlength="100" required placeholder="Ex. : Nexus Tour, étape d'octobre" /></label>
+          <label>Organisateur<input name="organizer" maxlength="80" /></label>
+          <label>Lien<input name="url" type="url" maxlength="300" /></label>
+          <label>Niveau demandé<input name="level" maxlength="60" placeholder="Ex. : Champion 1 minimum" /></label>
+          <label>Inscription avant<input type="date" name="signup_by" /></label>
+          <label>Début<input type="date" name="starts" /></label>
+          <button class="btn">Ajouter</button>
+        </form>
+      </details>
+    )}
+    <p class="eq-note">Une inscription qui ferme dans moins de 3 jours apparaît en orange ici et dans la vue d'ensemble. Le bot rappelle aussi les dates limites des matchs annoncés avec <code>/match ajouter … inscription:</code>.</p>
+  </section>
+</Qg>
+
+<style>
+  .tn { display: grid; gap: 1rem; max-width: 60rem; }
+  .tn-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+  .tn-item { padding: .75rem 1rem; border-left: 3px solid var(--line); background: color-mix(in srgb, var(--ink) 4%, transparent); transition: background .15s; }
+  .tn-item:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+  .tn-item.st-inscrit, .tn-item.st-en-cours { border-left-color: #2fbf71; }
+  .tn-item.is-urgent { border-left-color: #f0a04b; }
+  .tn-item.is-missed { border-left-color: #e5251f; opacity: .8; }
+  .tn-item.st-termine, .tn-item.st-abandonne { opacity: .65; }
+  .tn-main { display: grid; gap: .15rem; }
+  .tn-main strong { font-size: 1rem; } .tn-main strong a { color: inherit; }
+  .tn-main small { color: var(--muted); font-size: .8rem; }
+  .tn-st { width: fit-content; padding: .05rem .4rem; border: 1px solid var(--line); font-size: .72rem; font-weight: 700; }
+  .tn-warn { color: #f0a04b; font-weight: 700; }
+  .tn-result { margin: .3rem 0 0; font-weight: 700; } .tn-note { margin: .2rem 0 0; color: var(--muted); font-size: .85rem; }
+  .tn-edit, .tn-add { margin-top: .5rem; font-size: .85rem; }
+  .tn-add { padding: .75rem 1rem; border: 1px solid var(--line); }
+  .tn-edit summary, .tn-add summary { width: fit-content; color: var(--muted); cursor: pointer; font-weight: 700; }
+  .tn-add summary { color: var(--ink); }
+  .tn form { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: end; margin-top: .6rem; }
+  .tn label { display: grid; gap: .2rem; font-weight: 700; font-size: .8rem; }
+  .tn :is(input, select, textarea) { padding: .35rem .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .85rem var(--font-body); }
+  .tn .tn-wide { flex: 1 1 18rem; } .tn textarea { width: 100%; box-sizing: border-box; }
+</style>

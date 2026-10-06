@@ -71,6 +71,29 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
   if (action === 'deconnexion-partout') { await bumpKey(user.id, 'session'); clearSession(cookies); return redirect('/'); }
 
+  // Suivi des tournois (chantier 5) : gérants du roster seulement
+  if (action === 'competition') {
+    const roster = Number(f.get('roster')), id = Number(f.get('id'));
+    if (!canLead(me, roster)) return redirect(back);
+    await exec(`CREATE TABLE IF NOT EXISTS competitions (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, organizer TEXT, url TEXT, level TEXT,
+      signup_by INTEGER, starts INTEGER, status TEXT DEFAULT 'repere', result TEXT, note TEXT, created_by TEXT, at INTEGER)`);
+    if (id) {
+      const [c] = await rows<{ roster_id: number }>('SELECT roster_id FROM competitions WHERE id = ?', id);
+      if (!c || !canLead(me, c.roster_id)) return redirect(back);
+      if (clip(f.get('op'), 6) === 'suppr') { await exec('DELETE FROM competitions WHERE id = ?', id); return redirect(back); }
+    }
+    const dayMs = (v: FormDataEntryValue | null) => { const d = clip(v, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T23:59:00+02:00`).getTime() : null; };
+    const url = clip(f.get('url'), 300);
+    const vals = [clip(f.get('name'), 100), clip(f.get('organizer'), 80) || null, /^https?:\/\//.test(url) ? url : null, clip(f.get('level'), 60) || null, dayMs(f.get('signup_by')), dayMs(f.get('starts'))];
+    if (!vals[0]) return redirect(back);
+    const status = ['repere', 'inscrit', 'en-cours', 'termine', 'abandonne'].includes(clip(f.get('status'), 10)) ? clip(f.get('status'), 10) : 'repere';
+    if (id) await exec('UPDATE competitions SET name = ?, organizer = ?, url = ?, level = ?, signup_by = ?, starts = ?, status = ?, result = ?, note = ? WHERE id = ?',
+      ...vals, status, clip(f.get('result'), 200) || null, clip(f.get('note'), 800) || null, id);
+    else await exec('INSERT INTO competitions (roster_id, name, organizer, url, level, signup_by, starts, status, created_by, at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      roster, ...vals, 'repere', user.id, Date.now());
+    return redirect(back);
+  }
+
   // Tâches de contenu : brief des matchs, calendrier éditorial, demandes de visuels (pôle contenu, encadrement, responsables, capitaines)
   if (action.startsWith('tache')) {
     const may = me.staff || me.content.length > 0 || me.lead.length > 0;

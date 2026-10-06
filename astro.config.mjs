@@ -34,6 +34,7 @@ const api = {
       route('/equipe/planning', './src/server/equipe.astro');
       route('/equipe/vue', './src/server/equipe/vue.astro');
       route('/equipe/contenu', './src/server/equipe/contenu.astro');
+      route('/equipe/tournois', './src/server/equipe/tournois.astro');
       route('/equipe/joueurs', './src/server/equipe/joueurs.astro');
       route('/equipe/notes', './src/server/equipe/notes.astro');
       route('/equipe/lol', './src/server/equipe/lol.astro');
