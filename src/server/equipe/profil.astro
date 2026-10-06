@@ -21,6 +21,9 @@ const [m] = await rows<{ name: string; avatar: string }>('SELECT name, avatar FR
 // Poste dans chaque roster (Jungle, Mid…) : « Jungle · Lion Blanc »
 const postes = new Map((await rows<{ roster_id: number; poste: string }>('SELECT roster_id, poste FROM roster_postes WHERE user_id = ?', uid).catch(() => [])).map((x) => [Number(x.roster_id), x.poste]));
 const DAY = 86400_000;
+// Page Staff du site : la case n'apparaît que sur son propre profil, pour qui a une fonction (encadrement, contenu, communauté)
+const hasFunction = uid === user.id && (me.staff || me.games.length > 0 || me.captain || me.analyst || me.content.length > 0);
+const [pub] = hasFunction ? await rows<{ visible: number; bio: string | null }>('SELECT visible, bio FROM staff_public WHERE user_id = ?', uid).catch(() => []) : [];
 const accounts = await rows<{ game: string; ident: string; region: string | null }>('SELECT game, ident, region FROM accounts WHERE user_id = ?', uid);
 const acc = (g: string) => accounts.find((a) => a.game === g);
 const cache = async (k: string) => JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', k))[0]?.value ?? 'null');
@@ -161,6 +164,18 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
         </section>
       )}
 
+      {hasFunction && (
+        <section class="pf-pub">
+          <h2 class="pf-h">Page Staff du site</h2>
+          <form method="post" action="/api/equipe/outils">
+            <input type="hidden" name="action" value="staff-public" /><input type="hidden" name="back" value="/equipe/profil/" />
+            <label class="pf-chk"><input type="checkbox" name="visible" value="1" checked={!!Number(pub?.visible ?? 0)} /> Apparaître sur <a href="/staff/">la page Staff</a> (pseudo, avatar Discord, fonctions, ce que tu as fait pour le club)</label>
+            <label>Une phrase sur toi <small>(140 caractères, facultatif)</small><input name="bio" maxlength="140" value={pub?.bio ?? ''} placeholder="Ex. : caste le RL depuis 2022, fan de rotations propres" /></label>
+            <button class="btn btn--ghost">Enregistrer</button>
+          </form>
+        </section>
+      )}
+
       <div class="pf-cols">
         <section>
           <h2 class="pf-h">Objectifs</h2>
@@ -195,6 +210,12 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', ti
   .g-rl { --g: #2f6bff; } .g-lol { --g: #0f8a9b; } .g-valo { --g: #ff4655; } .g-osu { --g: #ff66aa; }
   .pf-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 2rem; }
   .pf-deb { margin-bottom: 2rem; }
+  .pf-pub form { display: grid; gap: .6rem; max-width: 36rem; }
+  .pf-pub label { display: grid; gap: .25rem; font-weight: 700; font-size: .9rem; }
+  .pf-pub label.pf-chk { display: flex; align-items: flex-start; gap: .5rem; font-weight: 400; }
+  .pf-pub small { font-weight: 400; color: var(--muted); }
+  .pf-pub input[name=bio] { padding: .45rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .9rem var(--font-body); }
+  .pf-pub .btn { width: fit-content; }
   .pf-ih { list-style: none; margin: 0 0 .5rem; padding: 0; display: flex; flex-wrap: wrap; gap: .75rem; }
   .pf-ih li { display: grid; gap: .15rem; min-width: 140px; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: 0; }
   .pf-ih b { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; }

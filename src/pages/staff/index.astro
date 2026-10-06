@@ -1,0 +1,65 @@
+---
+// Le staff : les bénévoles qui font tourner le club, par pôle, et ce qu'ils ont fait (SWOT-ROLES.md, chantier 7).
+// Liste en direct (/api/staff) : seulement celles et ceux qui l'ont choisi dans Inside > Mon profil.
+// Pas d'image d'en-tête pour l'instant : un visuel dédié reste à générer (règle des visuels uniques).
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Le staff" description="Les bénévoles d'Oni Korp, club esport français : direction, encadrement, contenu et communauté. Qui fait quoi, et comment nous rejoindre.">
+  <header class="page-head page-head--plain">
+    <div class="wrap">
+      <h1>Le staff</h1>
+      <p>Bénévoles, à distance, et sans eux rien ne tourne : les rosters, les casts, les visuels, le Discord.</p>
+    </div>
+  </header>
+
+  <section class="section" aria-label="Les membres du staff">
+    <div class="wrap">
+      <div class="st-poles" data-staff><p class="st-empty">Chargement…</p></div>
+    </div>
+  </section>
+
+  <section class="section st-join" aria-labelledby="join-title">
+    <div class="wrap">
+      <h2 id="join-title">Rejoindre le staff</h2>
+      <p>Coach, manager, casteur, graphiste, monteur, community manager, modérateur : chaque poste a sa fiche, son interlocuteur et une période d'essai.</p>
+      <a class="btn" href="/recrutement/">Voir les postes ouverts</a>
+    </div>
+  </section>
+</Base>
+
+<script>
+  type P = { id: string; nom: string; bio: string | null; poles: { pole: string; fonctions: string[] }[]; bilan: { visuels: number; posts: number; videos: number; casts: number } };
+  const box = document.querySelector<HTMLElement>('[data-staff]')!;
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+  const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+  fetch('/api/staff').then((r) => (r.ok ? r.json() : null)).then((d: { poles: { key: string; label: string }[]; staff: P[] } | null) => {
+    if (!d?.staff.length) { box.innerHTML = '<p class="st-empty">La page se remplit au fil des arrivées : chaque bénévole choisit d\'y apparaître.</p>'; return; }
+    box.innerHTML = d.poles.map((pl) => {
+      // Chacun apparaît dans son premier pôle (le plus haut), avec toutes ses fonctions
+      const list = d.staff.filter((p) => p.poles[0]?.pole === pl.key);
+      if (!list.length) return '';
+      return `<div class="st-pole"><h3>${esc(pl.label)}</h3><ul class="st-list">${list.map((p) => {
+        const b = p.bilan, done = [b.casts && plural(b.casts, 'match casté', 'matchs castés'), b.visuels && plural(b.visuels, 'visuel', 'visuels'), b.posts && plural(b.posts, 'publication', 'publications'), b.videos && plural(b.videos, 'vidéo', 'vidéos')].filter(Boolean);
+        return `<li><img src="/api/avatar?id=${p.id}" alt="" width="72" height="72" loading="lazy" onerror="this.style.visibility='hidden'" />
+          <div><strong>${esc(p.nom)}</strong><span>${esc(p.poles.flatMap((x) => x.fonctions).join(' · '))}</span>${p.bio ? `<p>${esc(p.bio)}</p>` : ''}${done.length ? `<small>${done.join(' · ')}</small>` : ''}</div></li>`;
+      }).join('')}</ul></div>`;
+    }).join('');
+  }).catch(() => { box.innerHTML = '<p class="st-empty">La liste n\'a pas pu être chargée.</p>'; });
+</script>
+
+<style>
+  .page-head--plain { padding-block: clamp(4rem, 10vw, 7rem) 2rem; }
+  .st-poles { display: grid; gap: 2.5rem; }
+  .st-poles :global(.st-pole h3) { margin-bottom: 1rem; font-size: var(--step-1); }
+  .st-poles :global(.st-list) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  .st-poles :global(.st-list li) { display: flex; gap: 1rem; align-items: flex-start; padding: 1rem; border: 1px solid var(--line); transition: border-color .2s, transform .2s; }
+  .st-poles :global(.st-list li:hover) { border-color: var(--lacquer); transform: translateY(-2px); }
+  .st-poles :global(.st-list img) { flex: none; border-radius: 50%; background: var(--line); }
+  .st-poles :global(.st-list div) { display: grid; gap: .2rem; }
+  .st-poles :global(.st-list span) { color: var(--lacquer); font-size: var(--step--1); font-weight: 700; }
+  .st-poles :global(.st-list p) { margin: .2rem 0 0; font-size: var(--step--1); }
+  .st-poles :global(.st-list small) { color: var(--muted); font-size: .8rem; }
+  .st-poles :global(.st-empty) { color: var(--muted); }
+  .st-join p { max-width: 40rem; margin-block: .75rem 1.25rem; }
+  @media (prefers-reduced-motion: reduce) { .st-poles :global(.st-list li) { transition: none; } .st-poles :global(.st-list li:hover) { transform: none; } }
+</style>

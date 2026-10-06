@@ -20,6 +20,7 @@ const api = {
       route('/api/createurs', './src/server/createurs.ts');
       route('/api/avatar', './src/server/avatar.ts');
       route('/api/club', './src/server/club.ts');
+      route('/api/staff', './src/server/staff.ts');
       route('/api/sante', './src/server/sante.ts');
       route('/api/inhouse', './src/server/inhouse.ts');
       route('/api/contact', './src/server/contact.ts');

@@ -14,6 +14,8 @@ export async function ensureTables() {
   const statements = [
     // Statut dans un roster (06/10) : titulaire, remplaçant ou en essai (date de fin, retour écrit en fin d'essai)
     `CREATE TABLE IF NOT EXISTS roster_status (roster_id INTEGER, user_id TEXT, statut TEXT, essai_fin INTEGER, retour TEXT, by TEXT, at INTEGER, PRIMARY KEY (roster_id, user_id))`,
+    // Page Staff publique (06/10) : chacun choisit d'y apparaître, avec une phrase
+    `CREATE TABLE IF NOT EXISTS staff_public (user_id TEXT PRIMARY KEY, visible INTEGER DEFAULT 0, bio TEXT, at INTEGER)`,
     `CREATE TABLE IF NOT EXISTS accounts (user_id TEXT, game TEXT, ident TEXT, region TEXT, updated_at INTEGER, PRIMARY KEY (user_id, game))`,
     `CREATE TABLE IF NOT EXISTS match_notes (match_id INTEGER, user_id TEXT, good TEXT, work TEXT, rating INTEGER, at INTEGER, PRIMARY KEY (match_id, user_id))`,
     `CREATE TABLE IF NOT EXISTS drafts (id INTEGER PRIMARY KEY, roster_id INTEGER, title TEXT, data TEXT, author TEXT, at INTEGER)`,
@@ -70,6 +72,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // Sécurité du compte : nouveau lien d'agenda perso ; déconnexion de tous les appareils
   if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
   if (action === 'deconnexion-partout') { await bumpKey(user.id, 'session'); clearSession(cookies); return redirect('/'); }
+
+  // Apparaître sur la page Staff du site (chantier 7) : seulement pour soi
+  if (action === 'staff-public') {
+    await exec('INSERT INTO staff_public (user_id, visible, bio, at) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET visible = excluded.visible, bio = excluded.bio, at = excluded.at',
+      user.id, f.get('visible') === '1' ? 1 : 0, clip(f.get('bio'), 140) || null, Date.now());
+    return redirect(back);
+  }
 
   // Indicateurs saisis à la main (chantier 6) : direction et pôle contenu
   if (action === 'metric') {
