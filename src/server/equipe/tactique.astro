@@ -128,8 +128,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             <details open><summary>Éléments</summary>
               <div class="wb-markers" style={`--n:${({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5}`}>
                 {/* Autant de pions que de joueurs : 3 en Rocket League, 2 en osu! (tag), 5 en LoL et Valorant */}
-                {Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => k + 1).map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" aria-label={`Allié ${n}`}>{n}</button>)}
-                {Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => k + 1).map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" aria-label={`Adversaire ${n}`}>{n}</button>)}
+                {(current.game === 'lol' ? ['T', 'J', 'M', 'B', 'S'] : Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => String(k + 1))).map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" aria-label={`Allié ${n}`}>{n}</button>)}
+                {(current.game === 'lol' ? ['T', 'J', 'M', 'B', 'S'] : Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => String(k + 1))).map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" aria-label={`Adversaire ${n}`}>{n}</button>)}
               </div>
               <div class="wb-pings">
                 {PINGS.map(([k, s, l]) => <button type="button" data-add="ping" data-ref={k} data-label={s}><span class={`is-${k}`}>{s}</span>{l}</button>)}
@@ -140,6 +140,11 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             </details>
             <details open><summary>Notes de la strat</summary>
               <textarea data-notes rows="8" maxlength="5000" placeholder="Le plan, les appels, qui fait quoi… Visible par tout le roster."></textarea>
+            </details>
+            <details class="wb-towers" data-towers-panel hidden><summary>Structures</summary>
+              <p class="eq-note">Clique une tour ou un inhibiteur sur la carte pour le marquer détruit (outil Sélection). Propre à chaque étape.</p>
+              <label class="wb-check"><input type="checkbox" data-towers-show checked /> Afficher les structures</label>
+              <div class="wb-tower-btns"><button type="button" data-towers="up">Tout debout</button><button type="button" data-towers="100">Côté bleu tombé</button><button type="button" data-towers="200">Côté rouge tombé</button></div>
             </details>
             <details><summary>Fond</summary>
               <select data-bg-select aria-label="Fond"></select>
@@ -166,6 +171,18 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   // L'âme Infernale n'existe qu'en une forme de fosse
   const riftUrl = (bg: string) => { const { t, n } = riftParts(bg); return `/img/lol/map-${t}-${t === 'infernal' ? '1' : n}.webp`; };
   const LOL_MAP = riftUrl('Faille');
+  // Tours et inhibiteurs : positions relevées dans les données de partie de Riot (unités du jeu, carte de 14 870)
+  const STRUCT: [string, number, number, number, 'tour' | 'inhib'][] = [
+    ['b-top-1', 100, 981, 10441, 'tour'], ['b-top-2', 100, 1512, 6699, 'tour'], ['b-top-3', 100, 1169, 4287, 'tour'], ['b-top-i', 100, 1172, 3583, 'inhib'],
+    ['b-mid-1', 100, 5846, 6396, 'tour'], ['b-mid-2', 100, 5048, 4812, 'tour'], ['b-mid-3', 100, 3651, 3696, 'tour'], ['b-mid-i', 100, 3210, 3217, 'inhib'],
+    ['b-bot-1', 100, 10504, 1029, 'tour'], ['b-bot-2', 100, 6919, 1483, 'tour'], ['b-bot-3', 100, 4281, 1253, 'tour'], ['b-bot-i', 100, 3468, 1230, 'inhib'],
+    ['b-nex-1', 100, 1748, 2270, 'tour'], ['b-nex-2', 100, 2177, 1807, 'tour'],
+    ['r-top-1', 200, 4318, 13875, 'tour'], ['r-top-2', 200, 7943, 13411, 'tour'], ['r-top-3', 200, 10481, 13650, 'tour'], ['r-top-i', 200, 11261, 13676, 'inhib'],
+    ['r-mid-1', 200, 8955, 8510, 'tour'], ['r-mid-2', 200, 9767, 10113, 'tour'], ['r-mid-3', 200, 11134, 11207, 'tour'], ['r-mid-i', 200, 11593, 11669, 'inhib'],
+    ['r-bot-1', 200, 13866, 4505, 'tour'], ['r-bot-2', 200, 13327, 8226, 'tour'], ['r-bot-3', 200, 13624, 10572, 'tour'], ['r-bot-i', 200, 13599, 11319, 'inhib'],
+    ['r-nex-1', 200, 12611, 13084, 'tour'], ['r-nex-2', 200, 13052, 12612, 'tour'],
+  ];
+  const MAPW = 14870;
   // Portée de vision des balises sur la Faille : 900 unités sur une carte de 14 870 (en fraction de la largeur, rayon)
   const WARD_RANGE: Record<string, number> = { ward: 900 / 14870, controle: 900 / 14870 };
   const WARD_COLOR: Record<string, string> = { ward: '#ffd23f', controle: '#ff4fa3' };
@@ -205,8 +222,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   if (root) {
     type Item = { id: string; type: 'tok' | 'ping' | 'note' | 'text' | 'arrow' | 'line' | 'rect' | 'circle' | 'zone'; x: number; y: number; x2?: number; y2?: number; color?: string; w?: number; label?: string; ref?: string; kind?: string };
     type Stroke = { id: string; color: string; w: number; pts: [number, number][] };
-    type Frame = { name: string; items: Item[]; strokes: Stroke[] };
-    type State = { bg: string; notes: string; frames: Frame[] };
+    type Frame = { name: string; items: Item[]; strokes: Stroke[]; down?: string[] };
+    type State = { bg: string; notes: string; frames: Frame[]; towers?: boolean };
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
     const id = Number(root.dataset.board), game = root.dataset.game ?? '';
     let state: State = { bg: root.dataset.map ?? 'blanc', notes: '', frames: [{ name: 'Étape 1', items: [], strokes: [] }] };
@@ -222,7 +239,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
     // Ancien format (tokens / strokes) → étapes
     const upgrade = (s: any): State => s?.frames
-      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
+      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', towers: s.towers !== false, frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
       : { bg: s?.bg ?? state.bg, notes: '', frames: [{ name: 'Étape 1', items: (s?.tokens ?? []).map((t: any) => ({ id: t.id, type: 'tok', kind: t.kind, ref: t.ref, label: t.label, x: t.x, y: t.y })), strokes: (s?.strokes ?? []).map((k: any) => ({ ...k, w: 6 })) }] };
 
     try { const s0 = JSON.parse(root.dataset.state || '{}'); if (s0 && (s0.frames || s0.tokens)) state = upgrade(s0); at = Number(root.dataset.at) || 0; } catch {}
@@ -289,7 +306,11 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         + f.items.filter((it) => ['arrow', 'line', 'rect', 'circle', 'zone'].includes(it.type)).map((it) => shapeSvg(it)).join('')
         + (drawing ? `<polyline points="${drawing.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(drawing.color)}" stroke-width="${Number(drawing.w) || 6}" />` : '')
         + (shape ? shapeSvg(shape, 'opacity=".7"') : '');
-      $('[data-items]').innerHTML = f.items.filter((it) => ['tok', 'ping', 'note', 'text'].includes(it.type)).map((it) => {
+      const towersOn = isRift(state.bg) && state.towers !== false;
+      $('[data-towers-panel]').hidden = !isRift(state.bg);
+      $<HTMLInputElement>('[data-towers-show]').checked = state.towers !== false;
+      const towersHtml = towersOn ? STRUCT.map(([k, team, x, y, kind]) => `<button type="button" class="wb-struct is-${kind} is-t${team}${(f.down ?? []).includes(k) ? ' is-down' : ''}" data-struct="${k}" style="left:${x / MAPW * 100}%;top:${(1 - y / MAPW) * 100}%" aria-label="${kind === 'inhib' ? 'Inhibiteur' : 'Tour'} ${team === 100 ? 'bleu' : 'rouge'}${(f.down ?? []).includes(k) ? ' (détruit)' : ''}"></button>`).join('') : '';
+      $('[data-items]').innerHTML = towersHtml + f.items.filter((it) => ['tok', 'ping', 'note', 'text'].includes(it.type)).map((it) => {
         const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
         if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${esc(it.id)}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
         if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${esc(it.id)}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
@@ -352,6 +373,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         else if (st) { snapshot(); f.strokes = f.strokes.filter((s) => s.id !== st); changed(); }
         return;
       }
+      const stEl = (e.target as Element).closest<HTMLElement>('[data-struct]');
+      if (stEl && tool === 'select') { snapshot(); const k = stEl.dataset.struct!; f.down = (f.down ?? []).includes(k) ? f.down!.filter((x) => x !== k) : [...(f.down ?? []), k]; changed(); return; }
       if (tool === 'select') {
         sel = tid;
         const it = f.items.find((i) => i.id === tid);
@@ -407,6 +430,10 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       if (isRift(v)) { const n = $<HTMLSelectElement>('[data-baron]').value; const t = riftParts(v).t; v = t === 'base' && n === '1' ? 'Faille' : `Faille:${t}:${n}`; }
       snapshot(); state.bg = v; (e.target as HTMLSelectElement).blur(); changed();
     });
+    $('[data-towers-show]').addEventListener('change', (e) => { snapshot(); state.towers = (e.target as HTMLInputElement).checked; changed(); });
+    root.querySelectorAll<HTMLElement>('[data-towers]').forEach((b) => b.addEventListener('click', () => {
+      snapshot(); const v = b.dataset.towers; frame().down = v === 'up' ? [] : STRUCT.filter(([, team]) => String(team) === v).map(([k]) => k); changed();
+    }));
     $('[data-baron]').addEventListener('change', (e) => {
       if (!isRift(state.bg)) return;
       const n = (e.target as HTMLSelectElement).value, t = riftParts(state.bg).t;
@@ -492,6 +519,13 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
           if (it.type === 'zone') { c.globalAlpha = .35; c.fillStyle = col; c.fill(); c.globalAlpha = 1; }
           c.stroke();
         }
+      }
+      if (isRift(state.bg) && state.towers !== false) for (const [kk, team, tx, ty, kind] of STRUCT) {
+        const sx = X(tx / MAPW), sy = Y(1 - ty / MAPW), r = (kind === 'inhib' ? 7 : 6) * k, down = (f.down ?? []).includes(kk);
+        c.save(); c.translate(sx, sy); if (kind === 'inhib') c.rotate(Math.PI / 4);
+        c.globalAlpha = down ? .35 : 1; c.fillStyle = team === 100 ? '#2f6bff' : '#e5251f'; c.fillRect(-r, -r, r * 2, r * 2);
+        c.lineWidth = 1.5 * k; c.strokeStyle = '#fff'; c.strokeRect(-r, -r, r * 2, r * 2); c.restore();
+        if (down) { c.strokeStyle = '#fff'; c.lineWidth = 2 * k; c.beginPath(); c.moveTo(sx - r, sy - r); c.lineTo(sx + r, sy + r); c.moveTo(sx + r, sy - r); c.lineTo(sx - r, sy + r); c.stroke(); }
       }
       const R = 17 * k;
       for (const it of f.items) {
@@ -616,6 +650,17 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   /* Portée d'une balise : un disque translucide à l'échelle de la carte, qui ne gêne pas les clics */
   .wb-items :global(.wb-range) { position: absolute; aspect-ratio: 1; border-radius: 50%; pointer-events: none; border: 2px dashed currentColor; background: color-mix(in srgb, currentColor 16%, transparent); }
   .wb-items :global(.wb-range.is-ward) { color: #ffd23f; }
+  /* Tours (carrés) et inhibiteurs (losanges) ; détruits : estompés et barrés */
+  .wb-items :global(.wb-struct) { width: 14px; height: 14px; padding: 0; border: 1.5px solid #fff; cursor: pointer; }
+  .wb-items :global(.wb-struct.is-t100) { background-color: #2f6bff; }
+  .wb-items :global(.wb-struct.is-t200) { background-color: #e5251f; }
+  .wb-items :global(.wb-struct.is-inhib) { width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg); }
+  .wb-items :global(.wb-struct.is-down) { opacity: .35; background-image: linear-gradient(45deg, transparent 43%, #fff 43%, #fff 57%, transparent 57%); }
+  .wb-items :global(.wb-struct:hover) { outline: 2px solid #fff; outline-offset: 2px; }
+  .wb-tower-btns { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem; }
+  .wb-tower-btns button { padding: .3rem .55rem; border: 1px solid var(--line); background: none; color: var(--ink); font: 500 .78rem var(--font-body); cursor: pointer; }
+  .wb-tower-btns button:hover { border-color: var(--ink); }
+  .wb-check { display: flex; gap: .4rem; align-items: center; font-size: .85rem; margin-top: .4rem; }
   .wb-items :global(.wb-range.is-controle) { color: #ff4fa3; }
   .wb-items :global(.is-balle), .wb-pings .is-balle { background: #eee; color: #555; }
   .wb-items :global(.wb-note) { max-width: 12rem; padding: .5rem .65rem; background: var(--c); color: #111; font: 700 .8rem/1.3 var(--font-body); box-shadow: 0 3px 8px rgb(0 0 0 / .35); cursor: grab; white-space: pre-wrap; transform: translate(-50%, -50%) rotate(-1.5deg); }
