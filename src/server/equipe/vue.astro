@@ -62,7 +62,11 @@ const cards = await Promise.all(me.rosters.map(async (r) => {
 
   // Alertes : ce qui mérite une action de l'encadrement
   const alerts: string[] = [];
+  // Roster en construction (moins de joueurs qu'une équipe) : seule alerte utile, recruter ; pas de séance ni de remplaçant à réclamer
+  const TEAM: Record<string, number> = { rl: 3, lol: 5, valo: 5, osu: 2 };
+  const size = TEAM[r.game] ?? 5;
   if (!members.length) alerts.push('Aucun joueur : ajoute-les avec /roster ajouter');
+  else if (members.length < size) alerts.push(`En construction : ${members.length}/${size} joueurs. Priorité au recrutement (annonces, talents des inhouses)`);
   else {
     if (!Number(week.n)) alerts.push('Aucune séance prévue dans les 7 jours');
     if (next && Number(next.at) - now < 36 * 3600_000 && Number(nextAnswers?.n ?? 0) < members.length / 2) alerts.push(`Prochaine séance : seulement ${nextAnswers?.n ?? 0}/${members.length} réponses`);
