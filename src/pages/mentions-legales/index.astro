@@ -58,7 +58,8 @@ import site from '../../data/site.json';
 </Base>
 
 <style>
-  .legal { max-width: 46rem; }
+  /* La colonne de lecture reste alignée sur la grille du titre (pas centrée dans la page) */
+  .legal > * { max-width: 46rem; }
   .legal h2 { margin-top: 2.5rem; }
   .legal h3 { font-family: var(--font-body); font-size: 1.05rem; font-weight: 700; margin-top: 1.75rem; }
   .legal ul { padding-left: 1.2rem; list-style: square; display: grid; gap: .35rem; }

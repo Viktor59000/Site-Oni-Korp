@@ -56,7 +56,8 @@ const styleRules = [
 ];
 ---
 <Base title="Kit de marque" description="Logo Oni Korp : versions, construction, zone de protection, couleurs, typographies, interdits et style d'illustration. Fichiers SVG à télécharger.">
-  <header class="page-head">
+  <header class="page-head mk-head">
+    <img class="mk-head__logo" src="/marque/oni-symbole-rouge.svg" alt="" width="256" height="256" fetchpriority="high" />
     <div class="wrap">
       <h1>Kit de marque</h1>
       <p>Le logo, ses règles et nos couleurs. Pour un visuel, un article, une affiche ou un maillot.</p>
@@ -243,12 +244,16 @@ const styleRules = [
 
 <style>
   .mk-actions { margin-top: 1.5rem; }
-  .mk-tile { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 4px; padding: 1.5rem; }
-  .mk-tile img { width: auto; height: auto; max-width: 70%; max-height: 70%; }
+  /* En-tête : le blason lui-même, en grand, sur la moitié droite (le logo est le seul visuel réutilisable) */
+  .mk-head__logo { position: absolute; z-index: -1; right: clamp(1rem, 8vw, 9rem); top: 50%; translate: 0 -50%; height: 78%; width: auto; }
+  @media (max-width: 860px) { .mk-head__logo { height: 42%; top: 1.5rem; translate: 0 0; opacity: .25; } }
+  /* Tuiles : toutes au même format, le logo centré sans jamais déformer la case */
+  .mk-tile { position: relative; aspect-ratio: 4 / 3; border-radius: 0; border: 1px solid var(--line); overflow: hidden; }
+  .mk-tile img { position: absolute; inset: 0; margin: auto; width: auto; height: auto; max-width: 62%; max-height: 62%; object-fit: contain; }
   .mk-tile--light { background: #f3f1ec; border: 1px solid var(--line); }
   .mk-versions, .mk-lockups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1.25rem; }
   .mk-lockups { margin-top: 1.25rem; }
-  .mk-lockups .mk-tile img { max-width: 80%; max-height: 55%; }
+  .mk-lockups .mk-tile img { max-width: 78%; max-height: 50%; }
   .mk-versions p, .mk-lockups p, .mk-donts p { display: grid; gap: .15rem; margin-top: .6rem; color: var(--muted); font-size: .95rem; }
   .mk-versions strong, .mk-lockups strong { color: var(--ink); }
 
