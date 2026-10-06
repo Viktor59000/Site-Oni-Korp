@@ -88,6 +88,20 @@ const clubAlerts: [string, 'urgent' | 'action'][] = [];
 const essais = await rows<{ user_id: string; essai_fin: number; retour: string | null; name: string | null; roster: string; game: string }>(
   `SELECT s.user_id, s.essai_fin, s.retour, g.name, r.name AS roster, r.game FROM roster_status s JOIN rosters r ON r.id = s.roster_id LEFT JOIN guild_members g ON g.id = s.user_id
    WHERE s.statut = 'essai' AND s.essai_fin IS NOT NULL AND r.archived = 0 AND s.essai_fin < ?`, now + 3 * DAY).catch(() => []);
+// Talents des inhouses (chantier 8) : les meilleurs Elo de la saison (au moins 10 parties) qui ne sont dans aucun roster du jeu.
+// Une piste pour proposer un essai ; la décision reste à l'encadrement du jeu.
+const MODE_GAME: Record<string, string> = { 'rl-1v1': 'rl', 'rl-2v2': 'rl', 'rl-3v3': 'rl', 'lol-5v5': 'lol', 'valo-5v5': 'valo', 'osu-1v1': 'osu', 'osu-2v2': 'osu' };
+const MODE_LABEL: Record<string, string> = { 'rl-1v1': 'RL 1v1', 'rl-2v2': 'RL 2v2', 'rl-3v3': 'RL 3v3', 'lol-5v5': 'LoL 5v5', 'valo-5v5': 'Valo 5v5', 'osu-1v1': 'osu! 1v1', 'osu-2v2': 'osu! 2v2' };
+const [seasonRow] = await rows<{ value: string }>(`SELECT value FROM meta WHERE key = 'inhouse_season'`).catch(() => []);
+const elo = await rows<{ user_id: string; mode: string; rating: number; wins: number; losses: number; name: string | null; roles: string | null }>(
+  `SELECT e.user_id, e.mode, e.rating, e.wins, e.losses, g.name, g.roles FROM inhouse_elo e LEFT JOIN guild_members g ON g.id = e.user_id
+   WHERE e.season = ? AND e.wins + e.losses >= 10 ORDER BY e.rating DESC`, Number(seasonRow?.value) || 1).catch(() => []);
+const allRosters = await rows<{ game: string; role_id: string }>('SELECT game, role_id FROM rosters WHERE archived = 0').catch(() => []);
+const talents = Object.keys(MODE_GAME).filter((mode) => mineGame(MODE_GAME[mode])).map((mode) => ({
+  mode, label: MODE_LABEL[mode],
+  list: elo.filter((e) => e.mode === mode && !allRosters.some((r) => r.game === MODE_GAME[mode] && (e.roles ?? '').includes(`"${r.role_id}"`))).slice(0, 3),
+})).filter((x) => x.list.length);
+
 // Tournois repérés dont l'inscription ferme dans moins de 3 jours (chantier 5)
 const comps = await rows<{ name: string; signup_by: number; roster: string; game: string }>(
   `SELECT c.name, c.signup_by, r.name AS roster, r.game FROM competitions c JOIN rosters r ON r.id = c.roster_id
@@ -159,6 +173,13 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
 
       <div class="ov-cols">
         <section class="ov-block">
+          {talents.length > 0 && (<>
+            <h2>Talents des inhouses</h2>
+            <p class="eq-note">Meilleurs Elo de la saison (10 parties au moins) sans roster dans ce jeu : à inviter en essai ?</p>
+            <ul class="ov-talents">
+              {talents.map((t) => <li><b>{t.label}</b>{t.list.map((e) => <span>{e.name ?? 'Membre'} · {e.rating} ({e.wins}V {e.losses}D)</span>)}</li>)}
+            </ul>
+          </>)}
           {recruits.length > 0 && (<>
             <h2>Nouvelles recrues</h2>
             <ul class="ov-list">
@@ -203,6 +224,9 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
 </Qg>
 
 <style>
+  .ov-talents { display: grid; gap: .4rem; margin: 0 0 1.5rem; padding: 0; list-style: none; font-size: .85rem; }
+  .ov-talents li { display: flex; flex-wrap: wrap; gap: .3rem .9rem; padding: .5rem .7rem; border-left: 3px solid #2fbf71; background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .ov-talents b { min-width: 5.5rem; }
   .eq-mini { padding-block: 2.5rem 1.5rem; }
   .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
   .ov { display: grid; gap: 2.5rem; }
