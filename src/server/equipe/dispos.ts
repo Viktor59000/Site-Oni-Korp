@@ -7,9 +7,6 @@ import { currentSession, sameOrigin } from '../session';
 import { exec, rows } from '../db';
 import { access, canSee, canLead } from './access';
 
-/** Ancien format (après-midi / soir), gardé pour la compatibilité. */
-export const SLOTS = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].flatMap((d) => [`${d}-aprem`, `${d}-soir`]);
-
 export const HOURS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
 /** Choix d'un jour, dans l'ordre du menu : vide, dispo (toute la soirée), dispo dès telle heure, pas sûr, pas dispo. */
 export const CHOICES: [string, string][] = [
