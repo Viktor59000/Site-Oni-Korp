@@ -1,29 +1,17 @@
 ---
+// Mise en page d'Inside : même <head>, mais seulement la base CSS (pas les styles du site public)
 import '../styles/fonts.css';
 import '@fontsource/zen-kaku-gothic-new/latin-400.css';
 import '@fontsource/zen-kaku-gothic-new/latin-500.css';
 import '@fontsource/zen-kaku-gothic-new/latin-700.css';
 import '../styles/base.css';
-import '../styles/global.css';
 import Head from '../components/Head.astro';
-import Nav from '../components/Nav.astro';
-import Footer from '../components/Footer.astro';
-const { qg = false } = Astro.props;
 ---
 <!doctype html>
 <html lang="fr">
-  <Head {...Astro.props} />
-
-  <body class:list={{ qg }}>
+  <Head {...Astro.props} qg />
+  <body class="qg">
     <a class="skip" href="#contenu">Aller au contenu</a>
-    {qg ? <slot /> : (
-      <>
-        <Nav />
-        <main id="contenu">
-          <slot />
-        </main>
-        <Footer />
-      </>
-    )}
+    <slot />
   </body>
 </html>

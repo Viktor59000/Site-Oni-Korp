@@ -1,96 +1,4 @@
-/* ==========================================================
-   Oni Korp — système visuel
-   Laque rouge du logo, encre noire, os clair.
-   ========================================================== */
-
-:root {
-  color-scheme: light;
-  --black: #000;
-  --lacquer: #e5251f;      /* vermillon Oni : couleur de marque */
-  --lacquer-hi: #ff4a3d;   /* survols sur fond noir */
-  --ember: #4a1210;        /* haut du dégradé du logo */
-  --bone: #edebe7;
-  --ash: #9a948e;
-  --ash-dark: #5d5853;
-  --line-dark: rgb(0 0 0 / 0.16);
-
-  /* Rôles de couleur — thème clair par défaut */
-  --surface: #f3f1ec;
-  --paper: #ffffff;
-  --ink: #0e0e0e;
-  --muted: #5a5550;
-  --line: rgb(0 0 0 / 0.14);
-  --red-text: #b3241e;   /* rouge foncé pour le texte sur papier (contraste) */
-  --shadow: rgb(0 0 0 / .22);
-  --shadow-hi: rgb(0 0 0 / .28);
-
-  --font-display: "Dela Gothic One", system-ui, sans-serif;
-  --font-body: "Zen Kaku Gothic New", system-ui, sans-serif;
-
-  /* Échelle typographique (quarte augmentée ~1.414) */
-  --step--1: 0.875rem;
-  --step-0: 1.0625rem;
-  --step-1: 1.5rem;
-  --step-2: clamp(1.75rem, 1.3rem + 2vw, 2.25rem);
-  --step-3: clamp(2.25rem, 1.4rem + 3.6vw, 3.5rem);
-  --step-4: clamp(3rem, 1.2rem + 7.5vw, 7rem);
-
-  --gutter: clamp(1rem, 4vw, 3rem);
-  --max: 1280px;
-  --slant: 14%;
-}
-
-*, *::before, *::after { box-sizing: border-box; }
-html {
-  -webkit-text-size-adjust: 100%;
-  /* La barre de navigation collante ne doit pas masquer l'élément ciblé ou focalisé */
-  scroll-padding-top: 84px;
-}
-@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
-a, button { touch-action: manipulation; -webkit-tap-highlight-color: rgb(229 37 31 / .25); }
-body {
-  margin: 0;
-  background: var(--surface);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: var(--step-0);
-  line-height: 1.6;
-  font-weight: 400;
-  overflow-x: hidden;
-}
-img { display: block; max-width: 100%; height: auto; }
-a { color: inherit; }
-h1, h2, h3 { font-family: var(--font-display); font-weight: 400; line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-p { margin: 0 0 1em; max-width: 62ch; }
-ul, ol { margin: 0; padding: 0; list-style: none; }
-
-:focus-visible { outline: 3px solid var(--lacquer-hi); outline-offset: 3px; }
-.skip { position: absolute; left: -999px; top: 0; background: var(--bone); color: var(--black); padding: .5rem 1rem; z-index: 100; }
-.skip:focus { left: 1rem; top: 1rem; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
-.wrap {
-  width: 100%; max-width: var(--max); margin-inline: auto;
-  padding-inline: max(var(--gutter), env(safe-area-inset-left)) max(var(--gutter), env(safe-area-inset-right));
-}
-
-/* ---------- Boutons : parallélogramme hérité des anciennes bannières ---------- */
-.btn {
-  --bg: var(--lacquer); --fg: #fff;
-  display: inline-flex; align-items: center; gap: .6em;
-  padding: .85em 1.6em;
-  background: var(--bg); color: var(--fg);
-  font-weight: 700; text-decoration: none; font-size: var(--step-0);
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  transition: background-color .15s ease;
-}
-.btn:hover { --bg: var(--lacquer-hi); }
-.btn--ghost { --bg: transparent; --fg: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); clip-path: none; }
-.btn--ghost:hover { --bg: var(--ink); --fg: var(--surface); }
-.btn--ink { --bg: var(--black); --fg: var(--bone); }
-.btn--ink:hover { --bg: #222; }
-.btn svg { width: 1.15em; height: 1.15em; fill: currentColor; flex: none; }
-
+/* Styles du site public (Inside ne charge que base.css). */
 /* ---------- Navigation ---------- */
 .nav {
   position: sticky; top: 0; z-index: 50;
@@ -589,11 +497,6 @@ a.game:hover .game__fan .sticker { translate: 0 -4px; }
 .topo::before { background-image: url(/img/topo-sombre.svg); opacity: .09; }
 
 /* ---------- Thème sombre : choix du visiteur (bouton) ou réglage du système ---------- */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --surface: #0a0a0a; --paper: #141414; --ink: #edebe7; --muted: #9a948e; --line: rgb(255 255 255 / .14);
-  --red-text: var(--lacquer-hi); --shadow: rgb(0 0 0 / .6); --shadow-hi: rgb(0 0 0 / .7);
-}
 :root[data-theme="dark"] .topo::before { background-image: url(/img/topo.svg); opacity: .07; }
 :root[data-theme="dark"] .roster[data-equipe="bleue"] .roster__lettre { color: #6f98ff; }
 :root[data-theme="dark"] .roster[data-equipe="orange"] .roster__lettre { color: #ff9a4a; }
@@ -885,7 +788,6 @@ main { counter-reset: page; }
   background: url(/img/hanko-oni.webp) center / contain no-repeat; rotate: -12deg; pointer-events: none;
   filter: drop-shadow(0 1px 1px rgb(0 0 0 / .4));
 }
-[hidden] { display: none !important; }
 
 /* ---------- Séries spéciales ---------- */
 .sticker--special { --c1: #141414; --c2: #2a2a2a; --accent: #e8e4dc; }
@@ -1062,9 +964,6 @@ main { counter-reset: page; }
 .socials a { transition: background-color .2s, border-color .2s, color .2s, translate .2s cubic-bezier(.2, 0, 0, 1); }
 .socials a:is(:hover, :focus-visible) { translate: 0 -3px; }
 /* Boutons : léger décalage au survol, enfoncement au clic */
-.btn { transition: background-color .2s, color .2s, translate .2s cubic-bezier(.2, 0, 0, 1); }
-.btn:hover { translate: 0 -2px; }
-.btn:active { translate: 0 0; }
 /* Apparition douce des sections au défilement (seulement si le navigateur sait le faire sans JS) */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
