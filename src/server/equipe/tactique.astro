@@ -116,6 +116,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         <div class="wb-main">
           <div class="wb-stage" data-stage data-game={current?.game ?? ''}>
             <div class="wb-bg" data-bg></div>
+            <img class="wb-bush" data-bush alt="" hidden />
             <svg class="wb-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg>
               <defs>{COLORS.map((c) => <marker id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={c} /></marker>)}</defs>
               <g data-layer></g>
@@ -149,10 +150,11 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             <details><summary>Fond</summary>
               <select data-bg-select aria-label="Fond"></select>
               <label class="wb-check" data-look-wrap hidden><input type="checkbox" data-look /> Carte réaliste</label>
+              <label class="wb-check" data-bush-wrap hidden><input type="checkbox" data-bush-show checked /> Buissons</label>
               <label class="wb-baron" data-baron-wrap hidden>Fosse du Nashor<select data-baron><option value="1">Forme 1</option><option value="2">Forme 2</option><option value="3">Forme 3</option></select></label>
               <p class="eq-note">Change le fond pour tout le monde. « Image » : colle le lien d'une capture ou d'un schéma.</p>
             </details>
-            <p class="eq-note wb-help">Sélection : glisser pour déplacer, double-clic sur un post-it ou un texte pour le modifier, Suppr pour retirer. Ctrl+Z / Ctrl+Y.</p>
+            <p class="eq-note wb-help">Sélection : glisser pour déplacer, double-clic sur un post-it ou un texte pour le modifier, Suppr pour retirer. Ctrl+Z / Ctrl+Y.{current?.game === 'lol' && <> Buissons : <a href="https://map.riftkit.net/" rel="noopener" target="_blank">RiftKit</a> (Coach Kirei), merci à lui.</>}</p>
           </aside>
         </div>
 
@@ -174,6 +176,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   const LOL_MAP = riftUrl('Faille');
   // Rendu réaliste (vue du dessus du jeu) ; les murs pour la vision restent lus sur la minicarte vectorielle
   const RIFT_IMG = '/img/lol/faille-image.webp';
+  // Buissons : tracés vectoriels de RiftKit (map.riftkit.net, Coach Kirei), repris avec son accord. Ils changent avec les âmes Océan et Montagne.
+  const bushUrl = (bg: string) => { const t = riftParts(bg).t; return `/img/lol/bush-${t === 'ocean' ? 'ocean' : t === 'mountain' ? 'mountain' : 'normal'}.svg`; };
   // Tours et inhibiteurs : positions relevées dans les données de partie de Riot (unités du jeu, carte de 14 870)
   const STRUCT: [string, number, number, number, 'tour' | 'inhib'][] = [
     ['b-top-1', 100, 981, 10441, 'tour'], ['b-top-2', 100, 1512, 6699, 'tour'], ['b-top-3', 100, 1169, 4287, 'tour'], ['b-top-i', 100, 1172, 3583, 'inhib'],
@@ -201,14 +205,37 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     im.src = url;
     return null;
   }
-  function visionPoly(m: { w: number; h: number; d: Uint8ClampedArray }, x: number, y: number, r: number): [number, number][] {
+  const bushMasks = new Map<string, Uint8Array | null>();
+  function bushMask(url: string, w: number, h: number, onReady: () => void) {
+    if (bushMasks.has(url)) return bushMasks.get(url);
+    bushMasks.set(url, null);
+    const im = new Image();
+    im.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d', { willReadFrequently: true })!; cx.drawImage(im, 0, 0, w, h);
+      const d = cx.getImageData(0, 0, w, h).data, m = new Uint8Array(w * h);
+      for (let i = 0; i < m.length; i++) m[i] = d[i * 4 + 3] > 60 ? 1 : 0;
+      bushMasks.set(url, m); onReady();
+    };
+    im.src = url;
+    return null;
+  }
+  // Une balise voit à travers le buisson où elle est posée, pas à travers les autres
+  function visionPoly(m: { w: number; h: number; d: Uint8ClampedArray; bush?: Uint8Array | null }, x: number, y: number, r: number): [number, number][] {
     const pts: [number, number][] = [], N = 240, step = .5 / m.w;
     const wall = (u: number, v: number) => { const i = (Math.floor(v * m.h) * m.w + Math.floor(u * m.w)) * 4; return m.d[i] + m.d[i + 1] + m.d[i + 2] < 75; };
+    const bush = (u: number, v: number) => !!m.bush && m.bush[Math.floor(v * m.h) * m.w + Math.floor(u * m.w)] === 1;
+    const startBush = bush(x, y);
     for (let k = 0; k < N; k++) {
       const a = (k / N) * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
       // Une balise posée contre un mur (bord de buisson, mur fin) voit d'abord à travers le mur où elle est posée
-      let d = 0, started = !wall(x, y);
-      while (d < r) { const u = x + dx * (d + step), v = y + dy * (d + step); if (u < 0 || v < 0 || u >= 1 || v >= 1) break; const w = wall(u, v); if (w && started) break; if (!w) started = true; d += step; }
+      let d = 0, started = !wall(x, y), inOwn = startBush;
+      while (d < r) {
+        const u = x + dx * (d + step), v = y + dy * (d + step); if (u < 0 || v < 0 || u >= 1 || v >= 1) break;
+        const w = wall(u, v); if (w && started) break; if (!w) started = true;
+        const b = bush(u, v); if (!b) inOwn = false; else if (!inOwn) { d += step; break; }
+        d += step;
+      }
       pts.push([x + dx * d, y + dy * d]);
     }
     return pts;
@@ -253,7 +280,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
     type Item = { id: string; type: 'tok' | 'ping' | 'note' | 'text' | 'arrow' | 'line' | 'rect' | 'circle' | 'zone'; x: number; y: number; x2?: number; y2?: number; color?: string; w?: number; label?: string; ref?: string; kind?: string };
     type Stroke = { id: string; color: string; w: number; pts: [number, number][] };
     type Frame = { name: string; items: Item[]; strokes: Stroke[]; down?: string[] };
-    type State = { bg: string; notes: string; frames: Frame[]; towers?: boolean; look?: string };
+    type State = { bg: string; notes: string; frames: Frame[]; towers?: boolean; look?: string; bush?: boolean };
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
     const id = Number(root.dataset.board), game = root.dataset.game ?? '';
     let state: State = { bg: root.dataset.map ?? 'blanc', notes: '', frames: [{ name: 'Étape 1', items: [], strokes: [] }] };
@@ -269,7 +296,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
     // Ancien format (tokens / strokes) → étapes
     const upgrade = (s: any): State => s?.frames
-      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', towers: s.towers !== false, look: s.look ?? 'vec', frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
+      ? { bg: s.bg ?? state.bg, notes: s.notes ?? '', towers: s.towers !== false, look: s.look ?? 'vec', bush: s.bush !== false, frames: s.frames.length ? s.frames : [{ name: 'Étape 1', items: [], strokes: [] }] }
       : { bg: s?.bg ?? state.bg, notes: '', frames: [{ name: 'Étape 1', items: (s?.tokens ?? []).map((t: any) => ({ id: t.id, type: 'tok', kind: t.kind, ref: t.ref, label: t.label, x: t.x, y: t.y })), strokes: (s?.strokes ?? []).map((k: any) => ({ ...k, w: 6 })) }] };
 
     try { const s0 = JSON.parse(root.dataset.state || '{}'); if (s0 && (s0.frames || s0.tokens)) state = upgrade(s0); at = Number(root.dataset.at) || 0; } catch {}
@@ -311,7 +338,10 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         ...(opts_keep(bg)), ['url', 'Image (lien)…']];
       if (/^https?:\/\//.test(bg)) opts.unshift([bg, 'Image actuelle']);
       const baseVal = isRift(bg) ? (riftParts(bg).t === 'base' ? 'Faille' : `Faille:${riftParts(bg).t}`) : bg;
-      $('[data-look-wrap]').hidden = !isRift(bg); $<HTMLInputElement>('[data-look]').checked = state.look === 'img';
+      $('[data-look-wrap]').hidden = !isRift(bg);
+      $('[data-bush-wrap]').hidden = !isRift(bg); $<HTMLInputElement>('[data-bush-show]').checked = state.bush !== false;
+      const bushImg = $<HTMLImageElement>('[data-bush]'); bushImg.hidden = !isRift(bg) || state.bush === false || state.look === 'img';
+      if (isRift(bg) && bushImg.getAttribute('src') !== bushUrl(bg)) bushImg.src = bushUrl(bg); $<HTMLInputElement>('[data-look]').checked = state.look === 'img';
       $('[data-baron-wrap]').hidden = !isRift(bg) || riftParts(bg).t === 'infernal' || state.look === 'img';
       $<HTMLSelectElement>('[data-baron]').value = isRift(bg) ? riftParts(bg).n : '1';
       if (document.activeElement !== s) s.innerHTML = opts.filter(([v], i) => opts.findIndex(([w]) => w === v) === i).map(([v, l]) => `<option value="${esc(v)}" ${v === baseVal ? 'selected' : ''}>${esc(l)}</option>`).join('');
@@ -333,7 +363,8 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         + `<button type="button" data-frame-add title="Nouvelle étape (copie de l'étape actuelle)">+ Étape</button>`
         + `<button type="button" data-frame-rename>Renommer</button>`
         + (state.frames.length > 1 ? `<button type="button" data-frame-del>Supprimer l'étape</button>` : '');
-      const mask = isRift(state.bg) ? wallMask(riftUrl(state.bg), render) : null;
+      const wm = isRift(state.bg) ? wallMask(riftUrl(state.bg), render) : null;
+      const mask = wm ? { ...wm, bush: state.bush === false ? null : bushMask(bushUrl(state.bg), wm.w, wm.h, render) } : null;
       const visionSvg = mask ? f.items.filter((it) => it.type === 'ping' && WARD_RANGE[it.ref ?? '']).map((it) =>
         `<polygon class="wb-vision is-${esc(it.ref)}" points="${visionPoly(mask, it.x, it.y, WARD_RANGE[it.ref ?? '']).map(([a, b]) => `${P(a)},${P(b)}`).join(' ')}" />`).join('') : '';
       $('[data-layer]').innerHTML = visionSvg + f.strokes.map((s) => `<polyline data-stroke="${esc(s.id)}" points="${s.pts.map(([x, y]) => `${P(x)},${P(y)}`).join(' ')}" stroke="${esc(s.color)}" stroke-width="${Number(s.w) || 6}" />`).join('')
@@ -464,6 +495,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
       if (isRift(v)) { const n = $<HTMLSelectElement>('[data-baron]').value; const t = riftParts(v).t; v = t === 'base' && n === '1' ? 'Faille' : `Faille:${t}:${n}`; }
       snapshot(); state.bg = v; (e.target as HTMLSelectElement).blur(); changed();
     });
+    $('[data-bush-show]').addEventListener('change', (e) => { snapshot(); state.bush = (e.target as HTMLInputElement).checked; changed(); });
     $('[data-look]').addEventListener('change', (e) => { snapshot(); state.look = (e.target as HTMLInputElement).checked ? 'img' : 'vec'; changed(); });
     $('[data-towers-show]').addEventListener('change', (e) => { snapshot(); state.towers = (e.target as HTMLInputElement).checked; changed(); });
     root.querySelectorAll<HTMLElement>('[data-towers]').forEach((b) => b.addEventListener('click', () => {
@@ -562,13 +594,15 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         c.lineWidth = 1.5 * k; c.strokeStyle = '#fff'; c.strokeRect(-r, -r, r * 2, r * 2); c.restore();
         if (down) { c.strokeStyle = '#fff'; c.lineWidth = 2 * k; c.beginPath(); c.moveTo(sx - r, sy - r); c.lineTo(sx + r, sy + r); c.moveTo(sx + r, sy - r); c.lineTo(sx - r, sy + r); c.stroke(); }
       }
+      if (isRift(state.bg) && state.bush !== false && state.look !== 'img') { const bi = await loadImg(bushUrl(state.bg)); if (bi) c.drawImage(bi, 0, 0, W, H); }
       const R = 17 * k;
       for (const it of f.items) {
         const x = X(it.x), y = Y(it.y);
         if (it.type === 'tok' || it.type === 'ping') {
           const r = it.type === 'ping' ? R * .82 : R;
           c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
-          const vm = it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && isRift(state.bg) ? wallMasks.get(riftUrl(state.bg)) : null;
+          const wv = it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && isRift(state.bg) ? wallMasks.get(riftUrl(state.bg)) : null;
+          const vm = wv ? { ...wv, bush: state.bush === false ? null : bushMasks.get(bushUrl(state.bg)) } : null;
           if (vm) { const poly = visionPoly(vm, it.x, it.y, WARD_RANGE[it.ref ?? '']); c.beginPath(); poly.forEach(([a, b], i) => (i ? c.lineTo(X(a), Y(b)) : c.moveTo(X(a), Y(b)))); c.closePath(); c.globalAlpha = .22; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 1.5 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.stroke(); c.globalAlpha = 1; }
           else if (it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && isRift(state.bg)) { const rr = X(WARD_RANGE[it.ref ?? '']); c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.globalAlpha = .18; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 2 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.setLineDash([6 * k, 5 * k]); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
           c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
@@ -668,6 +702,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-bg.is-blank { background-color: #fbfaf7; }
   .wb-bg.is-grid { background-color: #fbfaf7; background-image: linear-gradient(#e3e0d8 1px, transparent 1px), linear-gradient(90deg, #e3e0d8 1px, transparent 1px); background-size: 5% 5%; }
   .wb-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .wb-bush { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .wb-svg :global(polyline) { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .wb-svg :global(.wb-shape) { vector-effect: non-scaling-stroke; stroke-linecap: round; }
   .wb-svg :global(.wb-shape.is-sel) { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 3px #000); }
