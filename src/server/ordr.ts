@@ -24,7 +24,13 @@ async function render(code: string) {
 export const GET: APIRoute = async ({ params, request, url }) => {
   const code = String(params.code ?? '');
   if (!CODE.test(code)) return new Response('Lien invalide.', { status: 400 });
-  const { r, video } = await render(code);
+  const got = await render(code);
+  const r = got.r;
+  // Adresse du mp4 donnée par Oni Bot (?v=cdn-video-1/Fichier) : la page link.issou.best ne répond pas toujours au site
+  const v = url.searchParams.get('v') ?? '';
+  const m = v.match(/^(cdn-video-\d{1,2})\/([A-Za-z0-9_-]{8,64})$/);
+  const video = got.video ?? (m ? `https://${m[1]}.issou.best/ordr/${m[2]}.mp4` : null);
+  const qv = m ? `?v=${encodeURIComponent(v)}` : '';
   if (!r || r.removed) return new Response('Replay introuvable.', { status: 404 });
 
   if (params.kind === 'video' || params.kind === 'thumb') {
@@ -50,11 +56,11 @@ export const GET: APIRoute = async ({ params, request, url }) => {
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:type" content="video.other">
-<meta property="og:url" content="${base}/replay/${code}">
+<meta property="og:url" content="${base}/replay/${code}${qv}">
 <meta property="og:image" content="${base}/api/ordr/thumb/${code}">
 <meta property="og:image:width" content="1280"><meta property="og:image:height" content="720">
-${video ? `<meta property="og:video" content="${base}/api/ordr/video/${code}">
-<meta property="og:video:secure_url" content="${base}/api/ordr/video/${code}">
+${video ? `<meta property="og:video" content="${base}/api/ordr/video/${code}${qv}">
+<meta property="og:video:secure_url" content="${base}/api/ordr/video/${code}${qv}">
 <meta property="og:video:type" content="video/mp4">
 <meta property="og:video:width" content="${w || 1920}"><meta property="og:video:height" content="${hgt || 1080}">` : ''}
 <meta name="twitter:card" content="player">
