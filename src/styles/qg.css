@@ -394,3 +394,5 @@ body.qg .qg-icon.qg-fold svg { fill: none; stroke: currentColor; stroke-width: 2
   body.qg.qg-folded .qg-nav { display: none; }
 }
 @media (max-width: 900px) { body.qg .qg-fold { display: none; } }
+/* Bouton « Un avis ? » au-dessus de la barre d'onglets mobile d'Inside */
+@media (max-width: 900px) { .qg-app ~ .avis-btn, body:has(.qg-tabs) .avis-btn { bottom: 76px; } }

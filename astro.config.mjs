@@ -24,6 +24,7 @@ const api = {
       route('/api/sante', './src/server/sante.ts');
       route('/api/inhouse', './src/server/inhouse.ts');
       route('/api/contact', './src/server/contact.ts');
+      route('/api/avis', './src/server/avis.ts');
       route('/agenda.ics', './src/server/ics.ts');
       route('/api/equipe/agenda.ics', './src/server/equipe/ics.ts');
       route('/api/auth/login', './src/server/auth/login.ts');

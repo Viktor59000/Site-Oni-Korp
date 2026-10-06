@@ -1,0 +1,66 @@
+---
+// Bouton « Un avis ? » : idée, bug ou remarque, envoyée au staff (POST /api/avis, relayé par Oni Bot dans #staff).
+// Présent sur tout le site public et dans Inside. Anonyme possible.
+---
+<button type="button" class="avis-btn" data-avis-open aria-haspopup="dialog">Un avis ?</button>
+<dialog class="avis" data-avis aria-labelledby="avis-title">
+  <form class="avis__form" data-avis-form>
+    <h2 id="avis-title">Un avis sur le club ?</h2>
+    <p class="avis__lead">Une idée, un bug, une remarque : tout est lu par le staff.</p>
+    <div class="avis__kinds" role="radiogroup" aria-label="Type">
+      <label><input type="radio" name="kind" value="idee" checked /> Idée</label>
+      <label><input type="radio" name="kind" value="bug" /> Bug</label>
+      <label><input type="radio" name="kind" value="remarque" /> Remarque</label>
+    </div>
+    <label class="avis__msg">Ton message<textarea name="message" rows="4" maxlength="1500" required minlength="5" placeholder="Ce qui manque, ce qui ne marche pas, ce qu'on pourrait faire mieux"></textarea></label>
+    <label class="avis__anon"><input type="checkbox" name="anonyme" value="1" /> Envoyer anonymement</label>
+    <input type="text" name="site" tabindex="-1" autocomplete="off" class="avis__trap" aria-hidden="true" />
+    <p class="avis__status" data-avis-status role="status"></p>
+    <div class="avis__actions">
+      <button type="button" class="avis__ghost" data-avis-close>Fermer</button>
+      <button type="submit" class="avis__send">Envoyer</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const dlg = document.querySelector<HTMLDialogElement>('[data-avis]');
+  const form = document.querySelector<HTMLFormElement>('[data-avis-form]');
+  const status = document.querySelector<HTMLElement>('[data-avis-status]');
+  document.querySelector('[data-avis-open]')?.addEventListener('click', () => { status!.textContent = ''; dlg?.showModal(); });
+  document.querySelector('[data-avis-close]')?.addEventListener('click', () => dlg?.close());
+  dlg?.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form); data.set('page', location.pathname + location.search);
+    const send = form.querySelector<HTMLButtonElement>('.avis__send')!; send.disabled = true; status!.textContent = 'Envoi…';
+    const r = await fetch('/api/avis', { method: 'POST', body: data }).then((x) => x.json()).catch(() => ({ ok: false, error: 'Envoi impossible, réessaie plus tard.' }));
+    send.disabled = false;
+    if (r.ok) { form.reset(); status!.textContent = 'Merci, c’est envoyé au staff.'; setTimeout(() => dlg?.close(), 1600); }
+    else status!.textContent = r.error ?? 'Envoi impossible.';
+  });
+</script>
+
+<style>
+  .avis-btn { position: fixed; right: 16px; bottom: 16px; z-index: 60; padding: .55rem .9rem; border: 1px solid var(--line, #3a3632); background: var(--paper, #141210); color: var(--ink, #f3f1ec); font: 700 .8rem var(--font-body, sans-serif); cursor: pointer; box-shadow: 0 6px 18px rgb(0 0 0 / .35); transition: border-color .15s, transform .15s; }
+  .avis-btn:hover { border-color: var(--lacquer, #e5251f); transform: translateY(-2px); }
+  .avis { width: min(32rem, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line, #3a3632); background: var(--paper, #141210); color: var(--ink, #f3f1ec); }
+  .avis::backdrop { background: rgb(0 0 0 / .6); }
+  .avis__form { display: grid; gap: .8rem; padding: 1.4rem; }
+  .avis h2 { margin: 0; font-size: 1.25rem; }
+  .avis__lead { margin: 0; color: var(--muted, #a29a90); font-size: .9rem; }
+  .avis__kinds { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .avis__kinds label { display: flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border: 1px solid var(--line, #3a3632); cursor: pointer; font-size: .9rem; }
+  .avis__kinds label:has(input:checked) { border-color: var(--lacquer, #e5251f); }
+  .avis__msg { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .avis textarea { width: 100%; box-sizing: border-box; padding: .6rem .7rem; border: 1px solid var(--line, #3a3632); background: transparent; color: inherit; font: inherit; }
+  .avis__anon { display: flex; align-items: center; gap: .45rem; font-size: .85rem; color: var(--muted, #a29a90); }
+  .avis__trap { position: absolute; left: -9999px; width: 1px; height: 1px; }
+  .avis__status { min-height: 1.2em; margin: 0; font-size: .85rem; color: var(--muted, #a29a90); }
+  .avis__actions { display: flex; justify-content: flex-end; gap: .6rem; }
+  .avis__actions button { padding: .5rem 1rem; font: 700 .85rem var(--font-body, sans-serif); cursor: pointer; }
+  .avis__ghost { border: 1px solid var(--line, #3a3632); background: none; color: inherit; }
+  .avis__send { border: 0; background: var(--lacquer, #e5251f); color: #fff; }
+  .avis__send:disabled { opacity: .6; }
+  @media print { .avis-btn { display: none; } }
+</style>
