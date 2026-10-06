@@ -235,7 +235,7 @@ body.qg .dr-bottom { border-color: var(--qg-rule-strong) !important; }
 /* Bloc d'un roster dans le planning : filet du jeu au-dessus, pas de carte */
 body.qg .eq { gap: var(--space-6); }
 body.qg .eq-roster { background: transparent; border: 0; border-top: var(--mark) solid var(--team, var(--game)); border-radius: 0; padding: var(--space-4) 0 0; }
-body.qg .eq-roster__head > img { width: 48px; height: 48px; border-radius: 0; }
+body.qg .eq-roster__code { width: 48px; height: 48px; }
 body.qg .eq-roster__head h2 { font: 600 1.5rem / 1 var(--qg-title); }
 body.qg .eq-roster h3 { margin-top: var(--space-5); font-size: var(--text-md); }
 body.qg .eq-roster__head.is-single { display: none; }

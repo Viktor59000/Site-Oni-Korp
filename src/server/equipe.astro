@@ -16,9 +16,9 @@ const user = await currentSession(Astro.cookies);
 const erreur = Astro.url.searchParams.get('erreur');
 const me = user ? await access(user.id) : null;
 
-const GAME: Record<string, { label: string; color: string; img: string }> = {
-  rl: { label: 'Rocket League', color: '#2f6bff', img: 'pole-rocket-league-600' }, lol: { label: 'League of Legends', color: '#0f8a9b', img: 'pole-lol-600' },
-  valo: { label: 'Valorant', color: '#ff4655', img: 'pole-valorant-600' }, osu: { label: 'osu!', color: '#ff66aa', img: 'pole-osu-600' },
+const GAME: Record<string, { label: string; color: string; code: string }> = {
+  rl: { label: 'Rocket League', color: '#2f6bff', code: 'RL' }, lol: { label: 'League of Legends', color: '#0f8a9b', code: 'LoL' },
+  valo: { label: 'Valorant', color: '#ff4655', code: 'VAL' }, osu: { label: 'osu!', color: '#ff66aa', code: 'osu!' },
 };
 const DAYS: [string, string][] = [['lun', 'Lun'], ['mar', 'Mar'], ['mer', 'Mer'], ['jeu', 'Jeu'], ['ven', 'Ven'], ['sam', 'Sam'], ['dim', 'Dim']];
 const tz = { timeZone: 'Europe/Paris' } as const;
@@ -64,7 +64,7 @@ const spaces = me ? await Promise.all(sc.list.map(async (r) => {
     }).sort((x, y) => y.rate - x.rate);
   }
   return {
-    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f', img: '' }, members, past, bilan, dispos, total: members.length || 1, games,
+    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f', code: r.game.toUpperCase() }, members, past, bilan, dispos, total: members.length || 1, games,
     trainings: trainings.map((t) => {
       const list = answers.filter((a) => a.training_id === t.id);
       const who = (s: string) => list.filter((a) => a.status === s).map((a) => ({ ...(byId.get(a.user_id) ?? { id: a.user_id, name: 'Membre', avatar: '' }), reason: a.reason }));
@@ -143,7 +143,7 @@ const date = (ms: number) => new Date(Number(ms));
       {spaces.map((s) => (
         <article class="eq-roster" style={`--team:${s.g.color}`} id={`roster-${s.r.slug}`}>
           <header class:list={["eq-roster__head", { "is-single": spaces.length === 1 }]}>
-            {s.g.img && <img src={`/img/${s.g.img}.webp`} alt="" width="72" height="72" loading="lazy" />}
+            <b class="eq-roster__code" aria-hidden="true" translate="no">{s.g.code}</b>
             <div>
               <h2>{s.r.name}</h2>
               <p>{s.g.label} · {s.members.length} joueur{s.members.length > 1 ? 's' : ''}</p>
@@ -327,7 +327,7 @@ const date = (ms: number) => new Date(Number(ms));
 
   .eq-roster { border-top: 4px solid var(--team); padding-top: 1.5rem; scroll-margin-top: 90px; }
   .eq-roster__head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-  .eq-roster__head > img { width: 72px; height: 72px; object-fit: cover; border-radius: 0; }
+  .eq-roster__code { display: grid; place-items: center; width: 56px; height: 56px; background: var(--team); color: #fff; font: 600 .8rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .06em; }
   .eq-roster__head h2 { font-size: var(--step-2); line-height: 1; }
   .eq-roster__head p { color: var(--muted); font-size: var(--step--1); padding-top: .3rem; }
   .eq-faces { display: flex; margin-left: auto; }

@@ -5,7 +5,6 @@
 import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
 import { rows, weekKey } from '../db';
-import { srcset } from '../../lib/img.js';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
@@ -15,11 +14,12 @@ const sc = scope(me.rosters, Astro.url);
 // Un joueur d'un seul roster arrive directement dessus ; sinon on choisit
 const roster = sc.active ? sc.list[0] : me.rosters.length === 1 && !me.staff ? me.rosters[0] : null;
 
-const GAME: Record<string, { label: string; img: string; tool?: [string, string] }> = {
-  rl: { label: 'Rocket League', img: 'pole-rocket-league' },
-  lol: { label: 'League of Legends', img: 'pole-lol', tool: ['/equipe/lol/', 'Drafter'] },
-  valo: { label: 'Valorant', img: 'pole-valorant', tool: ['/equipe/valo/', 'Lineups'] },
-  osu: { label: 'osu!', img: 'pole-osu', tool: ['/equipe/osu/', 'Défis et maps'] },
+// Pas d'illustration dans Inside : chaque pôle se reconnaît à sa couleur et à son sigle
+const GAME: Record<string, { label: string; code: string; color: string; tool?: [string, string] }> = {
+  rl: { label: 'Rocket League', code: 'RL', color: '#2f6bff' },
+  lol: { label: 'League of Legends', code: 'LoL', color: '#0f8a9b', tool: ['/equipe/lol/', 'Drafter'] },
+  valo: { label: 'Valorant', code: 'VAL', color: '#ff4655', tool: ['/equipe/valo/', 'Lineups'] },
+  osu: { label: 'osu!', code: 'osu!', color: '#ff66aa', tool: ['/equipe/osu/', 'Défis et maps'] },
 };
 const tz = { timeZone: 'Europe/Paris' } as const;
 const fWhen = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', ...tz });
@@ -79,7 +79,7 @@ if (roster) {
     ].sort((a, b) => b.at - a.at).slice(0, 4),
   };
 }
-const g = roster ? GAME[roster.game] ?? { label: roster.game, img: '' } : null;
+const g = roster ? GAME[roster.game] ?? { label: roster.game, code: roster.game.toUpperCase(), color: '#e5251f' } : null;
 // Bien démarrer : ce qu'un nouveau joueur doit faire une fois (disparaît quand tout est fait)
 const ACC: Record<string, [string, string]> = { lol: ['riot', 'ton Riot ID'], valo: ['riot', 'ton Riot ID'], rl: ['rl', 'ton pseudo Rocket League'], osu: ['osu', 'ton pseudo osu!'] };
 const onboarding = roster && data ? await (async () => {
@@ -100,7 +100,7 @@ const onboarding = roster && data ? await (async () => {
 const q = roster ? `?r=${roster.slug}` : '';
 const next = data?.events[0] ?? null;
 const maxForm = Math.max(1, ...(data?.form.map((f) => f.n) ?? [1]));
-const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, img: '' } }));
+const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, code: r.game.toUpperCase(), color: '#e5251f' } }));
 ---
 <Qg title={roster ? `${roster.name} · Inside` : 'Inside'} heading={roster ? roster.name : 'Choisis ton roster'}
   lead={roster ? undefined : me.staff ? 'Ouvre un roster pour voir son accueil, ou passe par la vue d’ensemble de l’encadrement.' : 'Tu fais partie de plusieurs rosters : choisis celui sur lequel tu travailles.'}
@@ -113,8 +113,8 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
       )}
       {choices.map(({ r, g }, i) => (
         <li>
-          <a class="ac-pick__card" href={`/equipe/?r=${r.slug}`} style={`--g:var(--game-${r.game}, #e5251f)`}>
-            {g.img && <img src={`/img/${g.img}.webp`} srcset={srcset(`/img/${g.img}.webp`)} sizes="(max-width: 700px) 90vw, 320px" alt="" width="1200" height="800" loading={i < 2 ? undefined : 'lazy'} />}
+          <a class="ac-pick__card" href={`/equipe/?r=${r.slug}`} style={`--g:${g.color}`}>
+            <b class="ac-pick__code" aria-hidden="true" translate="no">{g.code}</b>
             <span>{r.name}</span><small>{g.label}</small>
           </a>
         </li>
@@ -124,8 +124,8 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
 
   {roster && data && g && (
     <div class="ac">
-      <section class="ac-hero">
-        {g.img && <img class="ac-hero__bg" src={`/img/${g.img}.webp`} srcset={srcset(`/img/${g.img}.webp`)} sizes="(max-width: 900px) 100vw, 900px" alt="" width="1200" height="800" fetchpriority="high" />}
+      <section class="ac-hero" style={`--g:${g.color}`}>
+        <b class="ac-hero__code" aria-hidden="true" translate="no">{g.code}</b>
         <div class="ac-hero__body">
           {next ? (
             <>
@@ -244,8 +244,8 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
 <style>
   .ac { display: grid; gap: var(--space-5, 1.5rem); }
   .ac-hero { position: relative; overflow: hidden; border-radius: 0; background: #0b0c0f; color: #fff; min-height: 18rem; display: grid; align-items: end; isolation: isolate; }
-  .ac-hero__bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
-  .ac-hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(8 9 12 / .92) 0%, rgb(8 9 12 / .75) 55%, rgb(8 9 12 / .35) 100%); }
+  .ac-hero { border-top: 6px solid var(--g); }
+  .ac-hero__code { position: absolute; top: clamp(1.25rem, 4vw, 2.25rem); right: clamp(1.25rem, 4vw, 2.25rem); font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--g); }
   .ac-hero__body { padding: clamp(1.25rem, 4vw, 2.25rem); display: grid; gap: .35rem; max-width: 40rem; }
   .ac-hero__label { margin: 0; font-weight: 700; color: rgb(255 255 255 / .8); }
   .ac-hero__title { margin: 0; font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.05; }
@@ -309,9 +309,9 @@ const choices = me.rosters.map((r) => ({ r, g: GAME[r.game] ?? { label: r.game, 
 
   .ac-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-4, 1rem); margin: 0; padding: 0; list-style: none; }
   .ac-pick__card { position: relative; display: grid; align-content: end; gap: .15rem; min-height: 10rem; padding: 1rem; border-radius: 0; overflow: hidden; isolation: isolate; color: #fff; text-decoration: none; background: #15181c; }
-  .ac-pick__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: scale .3s; }
-  .ac-pick__card::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, rgb(8 9 12 / .9), rgb(8 9 12 / .2)); }
-  .ac-pick__card:hover img { scale: 1.04; }
+  .ac-pick__card:not(.ac-pick__card--vue) { background: #0b0c0f; border-top: 6px solid var(--g); transition: background .2s; }
+  .ac-pick__card:not(.ac-pick__card--vue):is(:hover, :focus-visible) { background: color-mix(in srgb, var(--g) 22%, #0b0c0f); }
+  .ac-pick__code { position: absolute; top: 1rem; left: 1rem; font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--g); }
   .ac-pick__card span { font-family: var(--font-display); font-size: 1.5rem; line-height: 1.1; }
   .ac-pick__card small { color: rgb(255 255 255 / .8); }
   .ac-pick__card--vue { background: var(--game, #e5251f); }
