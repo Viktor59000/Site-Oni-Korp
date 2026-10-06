@@ -18,6 +18,8 @@ const target = uid === user.id ? me : await access(uid);
 const shared = target.rosterIds.some((id) => me.rosterIds.includes(id));
 if (!target.member || !(uid === user.id || me.staff || shared)) return Astro.redirect('/equipe/profil/');
 const [m] = await rows<{ name: string; avatar: string }>('SELECT name, avatar FROM guild_members WHERE id = ?', uid);
+// Poste dans chaque roster (Jungle, Mid…) : « Jungle · Lion Blanc »
+const postes = new Map((await rows<{ roster_id: number; poste: string }>('SELECT roster_id, poste FROM roster_postes WHERE user_id = ?', uid).catch(() => [])).map((x) => [Number(x.roster_id), x.poste]));
 const DAY = 86400_000;
 const accounts = await rows<{ game: string; ident: string; region: string | null }>('SELECT game, ident, region FROM accounts WHERE user_id = ?', uid);
 const acc = (g: string) => accounts.find((a) => a.game === g);
@@ -90,7 +92,8 @@ const debriefs = (await rows<{ data: string; opponent: string; at: number }>(`SE
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 ---
-<Qg title={`${m?.name ?? 'Profil'} · Inside`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => r.name).join(' · ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title={`${m?.name ?? 'Profil'} · Inside`} heading={m?.name ?? 'Profil'} lead={target.rosters.filter((r) => target.rosterIds.includes(Number(r.id))).map((r) => (postes.get(Number(r.id)) ? `${postes.get(Number(r.id))} · ${r.name}` : r.name)).join('  /  ') || (target.staff ? 'Encadrement' : 'Membre')} current="profil" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+    {m?.avatar && <img class="pf-avatar" slot="actions" src={m.avatar} alt="" width="72" height="72" crossorigin="anonymous" referrerpolicy="no-referrer" />}
     <div class="pf">
       <ul class="pf-kpis">
         <li><b>{presence === null ? '—' : `${presence} %`}</b><span>Présence aux séances (90 j)</span></li>

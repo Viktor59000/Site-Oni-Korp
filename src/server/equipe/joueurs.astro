@@ -18,12 +18,13 @@ const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League o
 const sc = scope(me.rosters, Astro.url);
 const rosters = await Promise.all(sc.list.map(async (r) => {
   const members = await rows<{ id: string; name: string; avatar: string }>(`SELECT id, name, avatar FROM guild_members WHERE roles LIKE ? ORDER BY name`, `%"${r.role_id}"%`);
+  const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
   const accs = members.length ? await rows<Acc>(`SELECT * FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [];
   const people = await Promise.all(members.map(async (m) => {
     const a = (g: string) => accs.find((x) => x.user_id === m.id && x.game === g);
     const riot = a('riot'), rl = a('rl'), osu = a('osu');
     return {
-      ...m, riot, rl, osu,
+      ...m, riot, rl, osu, poste: postes.get(m.id) ?? null,
       lol: riot && r.game === 'lol' ? await lolRank(riot.ident, riot.region ?? 'euw') : null,
       osuS: osu && r.game === 'osu' ? await osuStats(osu.ident) : null,
     };
@@ -90,18 +91,20 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
             <ul class="jo-list">
               {people.map((p) => (
                 <li>
-                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar && <img src={p.avatar} alt="" width="36" height="36" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<strong>{p.name}</strong></a>
+                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar ? <img src={p.avatar} alt="" width="44" height="44" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="jo-ini" aria-hidden="true">{p.name.slice(0, 1)}</span>}<span><strong>{p.name}</strong><small>{p.poste ?? 'Poste à définir'}</small></span></a>
                   <span class="jo-stat">
+                    {p.lol && p.lol.tier !== 'UNRANKED' && <img class="jo-emblem" src={`/img/rangs/lol/${p.lol.tier.toLowerCase()}.webp`} alt="" width="32" height="32" loading="lazy" />}
                     {p.lol && (p.lol.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.lol.tier] ?? p.lol.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.lol.tier) ? '' : p.lol.rank} · ${p.lol.lp} LP · ${p.lol.wins}V ${p.lol.losses}D`)}
                     {p.osuS && `#${p.osuS.rank?.toLocaleString('fr-FR') ?? '—'} · ${p.osuS.pp} pp · ${p.osuS.acc} %`}
                   </span>
                   <span class="jo-links">
-                    {p.riot && <a href={links.opgg(p.riot.ident, p.riot.region ?? 'euw')} rel="noopener">op.gg</a>}
-                    {p.riot && <a href={links.valo(p.riot.ident)} rel="noopener">tracker Valorant</a>}
-                    {p.rl && <a href={links.rl(p.rl.ident)} rel="noopener">tracker RL</a>}
-                    {p.osu && <a href={links.osu(p.osu.ident)} rel="noopener">osu!</a>}
-                    {p.osu && <a href={links.osutrack(p.osu.ident)} rel="noopener">osu!track</a>}
-                    {!p.riot && !p.rl && !p.osu && <em>pas encore de compte relié</em>}
+                    {/* Seulement les profils du jeu de ce roster */}
+                    {r.game === 'lol' && p.riot && <a href={links.opgg(p.riot.ident, p.riot.region ?? 'euw')} rel="noopener">op.gg</a>}
+                    {r.game === 'valo' && p.riot && <a href={links.valo(p.riot.ident)} rel="noopener">tracker</a>}
+                    {r.game === 'rl' && p.rl && <a href={links.rl(p.rl.ident)} rel="noopener">tracker</a>}
+                    {r.game === 'osu' && p.osu && <a href={links.osu(p.osu.ident)} rel="noopener">osu!</a>}
+                    {r.game === 'osu' && p.osu && <a href={links.osutrack(p.osu.ident)} rel="noopener">osu!track</a>}
+                    {!({ lol: p.riot, valo: p.riot, rl: p.rl, osu: p.osu } as Record<string, unknown>)[r.game] && <em>compte {GAME_LABEL[r.game] ?? ''} pas encore relié</em>}
                   </span>
                 </li>
               ))}
@@ -129,13 +132,20 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
   .jo-fields :is(input, select) { width: 100%; box-sizing: border-box; min-height: 44px; padding: .5rem .7rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
   .jo-me .btn { justify-self: start; }
   .jo-roster__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; padding-bottom: .6rem; border-bottom: 2px solid var(--ink); }
-  .jo-list li { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 1.2fr) auto; gap: .5rem 1.5rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid var(--line); }
+  .jo-list li { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 1.2fr) auto; gap: .5rem 1.5rem; align-items: center; padding: .9rem 0; border-bottom: 1px solid var(--line); transition: background-color .15s; }
+  .jo-list li:hover { background: var(--qg-surface, transparent); }
+  .jo-who > span { display: grid; gap: .1rem; }
+  .jo-who small { color: var(--muted); font-size: .85rem; }
+  .jo-ini { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--line); font-weight: 700; }
+  .jo-stat { display: flex; align-items: center; gap: .6rem; }
+  .jo-emblem { width: 32px; height: 32px; object-fit: contain; flex: none; }
   .jo-who { display: flex; align-items: center; gap: .6rem; }
   .jo-who { color: inherit; text-decoration: none; } .jo-who:hover strong { text-decoration: underline; }
   .jo-who img { border-radius: 50%; background: var(--line); }
   .jo-stat { color: var(--ink); font-size: .92rem; }
   .jo-links { display: flex; flex-wrap: wrap; gap: .4rem .9rem; justify-content: flex-end; font-size: .9rem; }
-  .jo-links a { font-weight: 700; color: var(--red-text); }
+  .jo-links a { font: 500 .8rem/1.3 var(--qg-mono, monospace); color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .jo-links a:hover { color: var(--ink); border-bottom-color: var(--ink); }
   .jo-links em { color: var(--muted); font-size: var(--step--1); }
   .jo-keys { max-width: 60ch; }
   .eq-note { color: var(--muted); font-size: var(--step--1); }

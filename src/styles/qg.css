@@ -379,3 +379,9 @@ body.qg .qg-main input[type="range"] { max-width: 28rem; }
   body.qg .qg-nav:not([data-shown]) { display: none; }
 }
 @media (max-width: 900px) { body.qg .qg-nav[data-shown] summary { display: none; } }
+/* Un seul filet par titre de bloc : celui sous le titre. La carte ne trace plus le sien au-dessus */
+body.qg .qg-card:has(> h2:first-child) { border-top: 0 !important; padding-top: 0 !important; }
+body.qg .jo-roster__head { justify-content: space-between !important; }
+body.qg .pf-avatar { width: 72px; height: 72px; border-radius: 50%; border: 3px solid var(--game); object-fit: cover; }
+/* États vides : des phrases, donc en police de texte */
+body.qg :is(.eq-empty, .nt-empty, .ag-empty) { font-family: inherit !important; font-size: var(--text-sm) !important; line-height: 1.5; }
