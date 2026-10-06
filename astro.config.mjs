@@ -48,8 +48,6 @@ const api = {
       route('/equipe/stats', './src/server/equipe/mesures.astro');
       route('/equipe/osu', './src/server/equipe/osu.astro');
       route('/equipe/rl', './src/server/equipe/rl.astro');
-      route('/replay/[code]', './src/server/ordr.ts');
-      route('/api/ordr/[kind]/[code]', './src/server/ordr.ts');
       route('/api/rl/oni-sync', './src/server/equipe/rl-sync.ts');
       route('/api/rl/sync', './src/server/equipe/rl-sync.ts');
       route('/equipe/setup', './src/server/equipe/setup.astro');
