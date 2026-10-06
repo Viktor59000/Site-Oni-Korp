@@ -12,7 +12,8 @@ import Base from '../../layouts/Base.astro';
     </div>
   </header>
 
-  <section class="section" aria-label="Les membres du staff">
+  <section class="section" aria-labelledby="membres-title">
+    <h2 id="membres-title" class="sr-only">Les membres du staff</h2>
     <div class="wrap">
       <div class="st-poles" data-staff><p class="st-empty">Chargement…</p></div>
     </div>
@@ -56,7 +57,7 @@ import Base from '../../layouts/Base.astro';
   .st-poles :global(.st-list li:hover) { border-color: var(--lacquer); transform: translateY(-2px); }
   .st-poles :global(.st-list img) { flex: none; border-radius: 50%; background: var(--line); }
   .st-poles :global(.st-list div) { display: grid; gap: .2rem; }
-  .st-poles :global(.st-list span) { color: var(--lacquer); font-size: var(--step--1); font-weight: 700; }
+  .st-poles :global(.st-list span) { color: var(--red-text); font-size: var(--step--1); font-weight: 700; }
   .st-poles :global(.st-list p) { margin: .2rem 0 0; font-size: var(--step--1); }
   .st-poles :global(.st-list small) { color: var(--muted); font-size: .8rem; }
   .st-poles :global(.st-empty) { color: var(--muted); }

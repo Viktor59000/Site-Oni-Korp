@@ -4,6 +4,8 @@ import type { APIRoute } from 'astro';
 import { rows } from './db';
 
 const twitchImg = (u: unknown) => (typeof u === 'string' && /^https:\/\/static-cdn\.jtvnw\.net\//.test(u) ? u : null);
+// Twitch sert ses images en plusieurs tailles : avatar affiché en 72 px, bannière en carte (≈ 400 px) → versions réduites
+const smaller = (u: string | null) => u?.replace(/profile_image-\d+x\d+\./, 'profile_image-150x150.').replace(/channel_offline_image-\d+x\d+\./, 'channel_offline_image-640x360.') ?? null;
 
 export const GET: APIRoute = async () => {
   const list = await rows<any>(`SELECT c.user_id, c.twitch, c.youtube, c.twitch_profile, g.name, g.avatar FROM creators c LEFT JOIN guild_members g ON g.id = c.user_id`).catch(() => []);
@@ -17,8 +19,8 @@ export const GET: APIRoute = async () => {
     let p: any = {}; try { p = JSON.parse(c.twitch_profile ?? '{}') ?? {}; } catch {}
     return {
       nom: p.nom ?? c.name ?? c.twitch ?? 'Créateur',
-      avatar: twitchImg(p.avatar) ?? (c.avatar ? `/api/avatar?id=${c.user_id}` : null),
-      banniere: twitchImg(p.banniere),
+      avatar: smaller(twitchImg(p.avatar)) ?? (c.avatar ? `/api/avatar?id=${c.user_id}` : null),
+      banniere: smaller(twitchImg(p.banniere)),
       bio: typeof p.bio === 'string' ? p.bio.slice(0, 200) : null,
       twitch: c.twitch ? `https://www.twitch.tv/${c.twitch}` : null,
       youtube: c.youtube ? `https://www.youtube.com/channel/${c.youtube}` : null,
