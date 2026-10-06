@@ -1,27 +1,32 @@
 ---
 // Bouton « Un avis ? » : idée, bug ou remarque, envoyée au staff (POST /api/avis, relayé par Oni Bot dans #staff).
-// Présent sur tout le site public et dans Inside. Anonyme possible.
+// Deux styles : « site » (vitrine : vermillon en biais, Dela Gothic, fond sombre) et « inside » (outil : washi, filets encre, IBM Plex).
+interface Props { variant?: 'site' | 'inside' }
+const { variant = 'site' } = Astro.props;
 ---
-<button type="button" class="avis-btn" data-avis-open aria-haspopup="dialog">Un avis ?</button>
-<dialog class="avis" data-avis aria-labelledby="avis-title">
-  <form class="avis__form" data-avis-form>
-    <h2 id="avis-title">Un avis sur le club ?</h2>
-    <p class="avis__lead">Une idée, un bug, une remarque : tout est lu par le staff.</p>
-    <div class="avis__kinds" role="radiogroup" aria-label="Type">
-      <label><input type="radio" name="kind" value="idee" checked /> Idée</label>
-      <label><input type="radio" name="kind" value="bug" /> Bug</label>
-      <label><input type="radio" name="kind" value="remarque" /> Remarque</label>
-    </div>
-    <label class="avis__msg">Ton message<textarea name="message" rows="4" maxlength="1500" required minlength="5" placeholder="Ce qui manque, ce qui ne marche pas, ce qu'on pourrait faire mieux"></textarea></label>
-    <label class="avis__anon"><input type="checkbox" name="anonyme" value="1" /> Envoyer anonymement</label>
-    <input type="text" name="site" tabindex="-1" autocomplete="off" class="avis__trap" aria-hidden="true" />
-    <p class="avis__status" data-avis-status role="status"></p>
-    <div class="avis__actions">
-      <button type="button" class="avis__ghost" data-avis-close>Fermer</button>
-      <button type="submit" class="avis__send">Envoyer</button>
-    </div>
-  </form>
-</dialog>
+<div class:list={['avis-root', `avis--${variant}`]}>
+  <button type="button" class="avis-btn" data-avis-open aria-haspopup="dialog">{variant === 'inside' ? 'Avis' : 'Un avis ?'}</button>
+  <dialog class="avis" data-avis aria-labelledby="avis-title">
+    <form class="avis__form" data-avis-form>
+      <p class="avis__kicker">{variant === 'inside' ? 'Inside · retour' : 'Oni Korp'}</p>
+      <h2 id="avis-title">{variant === 'inside' ? 'Un retour sur Inside ?' : 'Un avis sur le club ?'}</h2>
+      <p class="avis__lead">Une idée, un bug, une remarque : tout est lu par le staff.</p>
+      <div class="avis__kinds" role="radiogroup" aria-label="Type">
+        <label><input type="radio" name="kind" value="idee" checked /><span>Idée</span></label>
+        <label><input type="radio" name="kind" value="bug" /><span>Bug</span></label>
+        <label><input type="radio" name="kind" value="remarque" /><span>Remarque</span></label>
+      </div>
+      <label class="avis__msg"><span>Ton message</span><textarea name="message" rows="4" maxlength="1500" required minlength="5" placeholder="Ce qui manque, ce qui ne marche pas, ce qu'on pourrait faire mieux"></textarea></label>
+      <label class="avis__anon"><input type="checkbox" name="anonyme" value="1" /> Envoyer anonymement</label>
+      <input type="text" name="site" tabindex="-1" autocomplete="off" class="avis__trap" aria-hidden="true" />
+      <p class="avis__status" data-avis-status role="status"></p>
+      <div class="avis__actions">
+        <button type="button" class="avis__ghost" data-avis-close>Fermer</button>
+        <button type="submit" class="avis__send">Envoyer</button>
+      </div>
+    </form>
+  </dialog>
+</div>
 
 <script>
   const dlg = document.querySelector<HTMLDialogElement>('[data-avis]');
@@ -42,25 +47,66 @@
 </script>
 
 <style>
-  .avis-btn { position: fixed; right: 16px; bottom: 16px; z-index: 60; padding: .55rem .9rem; border: 1px solid var(--line, #3a3632); background: var(--paper, #141210); color: var(--ink, #f3f1ec); font: 700 .8rem var(--font-body, sans-serif); cursor: pointer; box-shadow: 0 6px 18px rgb(0 0 0 / .35); transition: border-color .15s, transform .15s; }
-  .avis-btn:hover { border-color: var(--lacquer, #e5251f); transform: translateY(-2px); }
-  .avis { width: min(32rem, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line, #3a3632); background: var(--paper, #141210); color: var(--ink, #f3f1ec); }
-  .avis::backdrop { background: rgb(0 0 0 / .6); }
-  .avis__form { display: grid; gap: .8rem; padding: 1.4rem; }
-  .avis h2 { margin: 0; font-size: 1.25rem; }
-  .avis__lead { margin: 0; color: var(--muted, #a29a90); font-size: .9rem; }
+  /* ---------- Commun ---------- */
+  .avis-btn { position: fixed; right: 16px; bottom: 16px; z-index: 60; cursor: pointer; }
+  .avis { width: min(32rem, calc(100vw - 32px)); padding: 0; }
+  .avis__form { display: grid; gap: .85rem; padding: 1.5rem; }
+  .avis h2, .avis p { margin: 0; }
   .avis__kinds { display: flex; flex-wrap: wrap; gap: .5rem; }
-  .avis__kinds label { display: flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border: 1px solid var(--line, #3a3632); cursor: pointer; font-size: .9rem; }
-  .avis__kinds label:has(input:checked) { border-color: var(--lacquer, #e5251f); }
-  .avis__msg { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
-  .avis textarea { width: 100%; box-sizing: border-box; padding: .6rem .7rem; border: 1px solid var(--line, #3a3632); background: transparent; color: inherit; font: inherit; }
-  .avis__anon { display: flex; align-items: center; gap: .45rem; font-size: .85rem; color: var(--muted, #a29a90); }
+  .avis__kinds label { position: relative; cursor: pointer; }
+  .avis__kinds input { position: absolute; opacity: 0; }
+  .avis__kinds span { display: block; padding: .4rem .8rem; }
+  .avis__msg { display: grid; gap: .35rem; }
+  .avis textarea { width: 100%; box-sizing: border-box; padding: .65rem .75rem; font: inherit; resize: vertical; }
+  .avis__anon { display: flex; align-items: center; gap: .45rem; }
   .avis__trap { position: absolute; left: -9999px; width: 1px; height: 1px; }
-  .avis__status { min-height: 1.2em; margin: 0; font-size: .85rem; color: var(--muted, #a29a90); }
+  .avis__status { min-height: 1.2em; }
   .avis__actions { display: flex; justify-content: flex-end; gap: .6rem; }
-  .avis__actions button { padding: .5rem 1rem; font: 700 .85rem var(--font-body, sans-serif); cursor: pointer; }
-  .avis__ghost { border: 1px solid var(--line, #3a3632); background: none; color: inherit; }
-  .avis__send { border: 0; background: var(--lacquer, #e5251f); color: #fff; }
+  .avis__actions button { cursor: pointer; }
   .avis__send:disabled { opacity: .6; }
   @media print { .avis-btn { display: none; } }
+
+  /* ---------- Site public : la DA de la vitrine ---------- */
+  .avis--site .avis-btn {
+    padding: .7em 1.4em; border: 0; background: var(--lacquer, #e5251f); color: #fff;
+    font: 700 .85rem var(--font-body, sans-serif); letter-spacing: .02em;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    box-shadow: 0 8px 24px rgb(0 0 0 / .45); transition: translate .2s cubic-bezier(.2, 0, 0, 1), background-color .15s;
+  }
+  .avis--site .avis-btn:hover { translate: 0 -2px; background: var(--lacquer-hi, #ff3b33); }
+  .avis--site .avis { border: 0; border-top: 4px solid var(--lacquer, #e5251f); background: var(--surface, #141210); color: var(--ink, #f3f1ec); }
+  .avis--site .avis::backdrop { background: rgb(0 0 0 / .7); }
+  .avis--site .avis__kicker { color: var(--lacquer, #e5251f); font: 700 .75rem var(--font-body, sans-serif); letter-spacing: .25em; text-transform: uppercase; }
+  .avis--site h2 { font: 400 1.6rem/1.1 var(--font-display, sans-serif); }
+  .avis--site .avis__lead, .avis--site .avis__anon, .avis--site .avis__status { color: var(--muted, #a29a90); font-size: .9rem; }
+  .avis--site .avis__kinds span { border: 1px solid var(--line, #3a3632); font-weight: 700; font-size: .9rem; clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); transition: background-color .15s, border-color .15s; }
+  .avis--site .avis__kinds input:checked + span { background: var(--lacquer, #e5251f); border-color: var(--lacquer, #e5251f); color: #fff; }
+  .avis--site .avis__kinds input:focus-visible + span { outline: 2px solid var(--ink, #f3f1ec); outline-offset: 2px; }
+  .avis--site .avis__msg span { font-weight: 700; font-size: .85rem; }
+  .avis--site textarea { border: 1px solid var(--line, #3a3632); background: rgb(255 255 255 / .03); color: inherit; }
+  .avis--site textarea:focus { outline: none; border-color: var(--lacquer, #e5251f); }
+  .avis--site .avis__ghost { padding: .7em 1.2em; border: 0; background: none; color: var(--ink, #f3f1ec); box-shadow: inset 0 0 0 2px var(--ink, #f3f1ec); font: 700 .85rem var(--font-body, sans-serif); }
+  .avis--site .avis__send { padding: .7em 1.4em; border: 0; background: var(--lacquer, #e5251f); color: #fff; font: 700 .85rem var(--font-body, sans-serif); clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+
+  /* ---------- Inside : la DA de l'outil ---------- */
+  .avis--inside .avis-btn {
+    padding: .45rem .8rem; border: var(--rule, 2px) solid var(--qg-ink, #141210); background: var(--qg-raised, #fbfaf7); color: var(--qg-ink, #141210);
+    font: 500 .75rem var(--qg-mono, monospace); letter-spacing: .08em; text-transform: uppercase;
+    box-shadow: var(--qg-shadow-overlay, 0 10px 24px -10px rgb(0 0 0 / .3)); transition: background-color .15s, color .15s;
+  }
+  .avis--inside .avis-btn:hover { background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); }
+  .avis--inside .avis-btn:focus-visible { outline: 2px solid var(--qg-focus, #156b85); outline-offset: 2px; }
+  .avis--inside .avis { border: var(--rule, 2px) solid var(--qg-ink, #141210); background: var(--qg-raised, #fbfaf7); color: var(--qg-ink, #141210); font-family: var(--qg-sans, sans-serif); }
+  .avis--inside .avis::backdrop { background: rgb(20 18 16 / .45); }
+  .avis--inside .avis__kicker { color: var(--qg-accent-text, #b3241e); font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; }
+  .avis--inside h2 { font: 600 1.375rem/1.2 var(--qg-title, sans-serif); }
+  .avis--inside .avis__lead, .avis--inside .avis__anon, .avis--inside .avis__status { color: var(--qg-muted, #514c46); font-size: .875rem; }
+  .avis--inside .avis__kinds span { border: 1px solid var(--qg-rule-strong, #7d776f); font: 500 .75rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; }
+  .avis--inside .avis__kinds input:checked + span { background: var(--qg-ink, #141210); border-color: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); }
+  .avis--inside .avis__kinds input:focus-visible + span { outline: 2px solid var(--qg-focus, #156b85); outline-offset: 2px; }
+  .avis--inside .avis__msg span { font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--qg-muted, #514c46); }
+  .avis--inside textarea { border: 1px solid var(--qg-rule-strong, #7d776f); background: var(--qg-paper, #f3f1ec); color: inherit; }
+  .avis--inside textarea:focus { outline: 2px solid var(--qg-focus, #156b85); outline-offset: 1px; }
+  .avis--inside .avis__ghost { padding: .5rem 1rem; border: 1px solid var(--qg-rule-strong, #7d776f); background: none; color: inherit; font: 500 .8rem var(--qg-sans, sans-serif); }
+  .avis--inside .avis__send { padding: .5rem 1.1rem; border: 0; background: var(--qg-accent, #e5251f); color: var(--qg-accent-ink, #fff); font: 600 .8rem var(--qg-sans, sans-serif); }
 </style>
