@@ -320,34 +320,59 @@ async function lvOne(id: number) {
   };
 }
 
-// Matchups lolalytics (Émeraude+, patch en cours ; réutilisation autorisée) : la page « counters » d'un champion, dans son poste principal.
-// Renvoie le taux de victoire du champion contre chaque adversaire du même poste (au moins 100 parties), en cache 12 h.
-const llCache = new Map<string, { at: number; v: unknown }>();
-const llSlug = (id: string) => ({ MonkeyKing: 'wukong', Nunu: 'nunu' } as Record<string, string>)[id] ?? id.toLowerCase();
-async function llCounters(id: string) {
-  const c = llCache.get(id); if (c && Date.now() - c.at < 12 * 3600_000) return c.v;
-  const slug = llSlug(id);
-  const html = await fetch(`https://lolalytics.com/lol/${slug}/counters/`, { headers: { 'User-Agent': 'Mozilla/5.0 (OniKorp Inside)' } }).then((r) => (r.ok ? r.text() : ''));
-  const lane = html.split(`<a href="/lol/${slug}/vs/`).slice(1).map((b) => b.match(/^[^"]*vslane=(\w+)/)?.[1]).find(Boolean) ?? null;
-  const rows: { vs: string; wr: number; games: number }[] = [];
-  for (const b of html.split(`<a href="/lol/${slug}/vs/`).slice(1)) {
-    const wr = b.match(/-->([\d.]+)<!---->%/)?.[1], g = b.match(/>([\d,]+) Games</)?.[1];
-    if (!wr || !g) continue;
-    const vs = b.split('/')[0];
-    if (!rows.some((x) => x.vs === vs)) rows.push({ vs, wr: Number(wr), games: Number(g.replace(/,/g, '')) });
-  }
-  const v = { lane, rows };
-  llCache.set(id, { at: Date.now(), v });
+// Données lolalytics (Émeraude+, patch en cours, Ranked Solo/Duo ; réutilisation autorisée) via leur API JSON, en cache 12 h.
+// - meta : pour chaque poste, tier / victoire / pick / ban / PBI / part de ses parties dans ce poste, par champion (clé Riot)
+// - champ : pour un champion dans un poste, son taux contre chaque champion de chaque poste adverse, et avec chaque coéquipier
+const LL_API = 'https://a1.lolalytics.com/mega/?v=1&tier=emerald_plus&queue=ranked&region=all';
+const LL_LANES = ['top', 'jungle', 'middle', 'bottom', 'support'] as const;
+const llCache = new Map<string, { at: number; v: Promise<any> }>();
+const llMemo = <T,>(key: string, fn: () => Promise<T>): Promise<T> => {
+  const c = llCache.get(key); if (c && Date.now() - c.at < 12 * 3600_000) return c.v;
+  const v = fn(); llCache.set(key, { at: Date.now(), v }); v.catch(() => llCache.delete(key));
   return v;
+};
+// Quelques requêtes à la fois, pour rester léger chez eux
+let llBusy = 0; const llQueue: (() => void)[] = [];
+async function llFetch(q: string) {
+  if (llBusy >= 4) await new Promise<void>((r) => llQueue.push(r));
+  llBusy++;
+  try {
+    const patch = await llMemo('patch', async () => ((await fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json())) as string[])[0].split('.').slice(0, 2).join('.'));
+    const r = await fetch(`${LL_API}&patch=${patch}&${q}`, { headers: { 'User-Agent': 'Mozilla/5.0 (OniKorp Inside)', Referer: 'https://lolalytics.com/' } });
+    if (!r.ok) throw new Error(String(r.status));
+    return { patch, d: await r.json() as any };
+  } finally { llBusy--; llQueue.shift()?.(); }
 }
+const llMeta = () => llMemo('meta', async () => {
+  const lanes: Record<string, Record<string, number[]>> = {}; let patch = '', avgWr = 50;
+  await Promise.all(LL_LANES.map(async (lane) => {
+    const { patch: p, d } = await llFetch(`ep=list&lane=${lane}`); patch = p; avgWr = d.avgWr ?? avgWr;
+    // [tier (1 = S+ … 15 = D-, 0 = pas classé), victoire, pick, ban, PBI, parties, % de ses parties dans ce poste]
+    lanes[lane] = Object.fromEntries(Object.entries<any>(d.cid ?? {}).map(([cid, c]) => [cid, [c.tier, c.wr, c.pr, c.br, c.pbi, c.games, c.pctLane]]));
+  }));
+  return { patch, avgWr, lanes };
+});
+const llChamp = (slug: string, lane: string) => llMemo(`c2:${slug}:${lane}`, async () => {
+  const vs: Record<string, Record<string, number[]>> = {}; let wr = 0;
+  await Promise.all(LL_LANES.map(async (vl) => {
+    const { d } = await llFetch(`ep=counter&c=${slug}&lane=${lane}&vslane=${vl}`);
+    wr = Number(d.stats?.wr ?? 0);
+    // [notre victoire contre lui, parties, delta 2 : écart au taux attendu d'après les deux champions, centré sur 0]
+    vs[vl] = Object.fromEntries((d.counters ?? []).map((c: any) => [c.cid, [c.vsWr, c.n, c.d2]]));
+  }));
+  const { d } = await llFetch(`ep=build-team&c=${slug}&lane=${lane}`);
+  // [victoire ensemble, parties, delta 2 normalisé]
+  const team = Object.fromEntries(Object.entries<any[]>(d.team ?? {}).map(([l, rows]) => [l, Object.fromEntries(rows.map((r) => [r[0], [r[1], r[5], r[3]]]))]));
+  return { wr, vs, team };
+});
 
 export const GET: APIRoute = async ({ cookies, url }) => {
   const t = await teamUser(cookies);
   if (!t) return new Response('[]', { status: 401 });
   if (url.searchParams.get('type') === 'll') {
-    const id = (url.searchParams.get('champ') ?? '').replace(/[^A-Za-z]/g, '').slice(0, 30);
-    const v = id ? await llCounters(id).catch(() => null) : null;
-    return new Response(JSON.stringify(v), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=3600' } });
+    const slug = (url.searchParams.get('c') ?? '').replace(/[^a-z]/g, '').slice(0, 30), lane = url.searchParams.get('lane') ?? '';
+    const v = await (slug ? (LL_LANES.includes(lane as any) ? llChamp(slug, lane) : Promise.resolve(null)) : llMeta()).catch(() => null);
+    return new Response(JSON.stringify(v), { headers: { 'Content-Type': 'application/json', 'Cache-Control': v ? 'private, max-age=3600' : 'no-store' } });
   }
   if (url.searchParams.get('type') === 'lv') {
     const id = Number(url.searchParams.get('id'));
