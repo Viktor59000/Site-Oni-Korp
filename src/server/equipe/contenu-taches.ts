@@ -13,6 +13,17 @@ export const TASK_KINDS: Record<string, { label: string; role: string }> = {
   post: { label: 'Post', role: 'Community manager' },
   video: { label: 'Vidéo', role: 'Monteur vidéo' },
 };
+// Indicateurs (chantier 6) : relevés par Oni Bot chaque jour, ou saisis à la main (réseaux sans API gratuite)
+export const METRICS: Record<string, { label: string; auto: boolean }> = {
+  discord_membres: { label: 'Membres Discord', auto: true },
+  discord_actifs_7j: { label: 'Actifs Discord (7 j)', auto: true },
+  inhouses_7j: { label: 'Inhouses joués (7 j)', auto: true },
+  twitch_followers: { label: 'Followers Twitch', auto: true },
+  x_abonnes: { label: 'Abonnés X', auto: false },
+  instagram_abonnes: { label: 'Abonnés Instagram', auto: false },
+  tiktok_abonnes: { label: 'Abonnés TikTok', auto: false },
+  youtube_abonnes: { label: 'Abonnés YouTube', auto: false },
+};
 export const NETWORKS = ['Discord', 'X', 'Instagram', 'TikTok', 'YouTube', 'Twitch'];
 export const STATUS: Record<string, string> = { 'a-faire': 'À faire', 'en-cours': 'En cours', 'a-valider': 'À valider', fait: 'Fait' };
 

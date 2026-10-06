@@ -4,7 +4,7 @@ import type { APIRoute, AstroCookies } from 'astro';
 import { bumpKey, clearSession, currentSession, sameOrigin } from '../session';
 import { db, exec, rows } from '../db';
 import { access, canSee, canLead } from './access';
-import { NETWORKS, ensureTasks } from './contenu-taches';
+import { METRICS, NETWORKS, ensureTasks } from './contenu-taches';
 export { canSee, canLead, rosterMembers } from './access';
 
 let ready = false;
@@ -70,6 +70,16 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // Sécurité du compte : nouveau lien d'agenda perso ; déconnexion de tous les appareils
   if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
   if (action === 'deconnexion-partout') { await bumpKey(user.id, 'session'); clearSession(cookies); return redirect('/'); }
+
+  // Indicateurs saisis à la main (chantier 6) : direction et pôle contenu
+  if (action === 'metric') {
+    if (!(me.staff || me.content.length)) return redirect(back);
+    const key = clip(f.get('key'), 30), day = clip(f.get('day'), 10), value = Number(f.get('value'));
+    if (!METRICS[key] || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(value) || value < 0) return redirect(back);
+    await exec('CREATE TABLE IF NOT EXISTS metrics (day TEXT, key TEXT, value REAL, source TEXT, PRIMARY KEY (day, key))');
+    await exec('INSERT INTO metrics (day, key, value, source) VALUES (?,?,?,?) ON CONFLICT(day, key) DO UPDATE SET value = excluded.value, source = excluded.source', day, key, value, user.id);
+    return redirect(back);
+  }
 
   // Suivi des tournois (chantier 5) : gérants du roster seulement
   if (action === 'competition') {

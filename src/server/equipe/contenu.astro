@@ -7,7 +7,9 @@
 import Qg from './Qg.astro';
 import { teamUser } from './outils';
 import { rows } from '../db';
-import { NETWORKS, TASK_KINDS, ensureMatchTasks, renderTask } from './contenu-taches';
+import { METRICS, NETWORKS, TASK_KINDS, ensureMatchTasks, renderTask } from './contenu-taches';
+import { spark } from './ui';
+import { exec } from '../db';
 import type { Task } from './contenu-taches';
 
 export const prerender = false;
@@ -66,6 +68,19 @@ const ROLE_HINT: Record<string, string> = {
 };
 const hints = me.content.map((r) => ROLE_HINT[r]).filter(Boolean);
 const err = Astro.url.searchParams.get('erreur');
+
+// Indicateurs : dernière valeur, écart sur 30 jours et courbe
+await exec('CREATE TABLE IF NOT EXISTS metrics (day TEXT, key TEXT, value REAL, source TEXT, PRIMARY KEY (day, key))').catch(() => {});
+const since = new Date(now - 90 * DAY).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+const mrows = await rows<{ day: string; key: string; value: number }>('SELECT day, key, value FROM metrics WHERE day >= ? ORDER BY day', since).catch(() => []);
+const ago30 = new Date(now - 30 * DAY).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+const indicators = Object.entries(METRICS).map(([key, m]) => {
+  const serie = mrows.filter((r) => r.key === key);
+  const last = serie.at(-1), base = [...serie].reverse().find((r) => r.day <= ago30) ?? serie[0];
+  return { key, ...m, last, delta: last && base && base !== last ? Number(last.value) - Number(base.value) : null, sp: spark(serie.map((r) => Number(r.value)), { w: 100, h: 26 }) };
+});
+const todayIso = new Date(now).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+const dshort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 
 // Contexte du rendu des tâches (personne connectée)
 const ctx = { user: user.id, staff: me.staff, roles: myRoles, back, now };
@@ -136,6 +151,29 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
       </form>
     </details>
 
+    <h2>Indicateurs <small>90 jours</small></h2>
+    <ul class="ct-kpi">
+      {indicators.map((x) => (
+        <li>
+          <span>{x.label}{!x.auto && <em title="Saisi à la main"> · manuel</em>}</span>
+          <b>{x.last ? Number(x.last.value).toLocaleString('fr-FR') : '—'}</b>
+          <small>{x.delta !== null ? `${x.delta >= 0 ? '+' : '−'}${Math.abs(x.delta).toLocaleString('fr-FR')} sur 30 j` : x.last ? `relevé le ${dshort.format(new Date(x.last.day))}` : x.auto ? 'premier relevé demain (Oni Bot)' : 'à saisir'}</small>
+          <Fragment set:html={x.sp} />
+        </li>
+      ))}
+    </ul>
+    <details class="ct-add">
+      <summary>Saisir un chiffre (X, Instagram, TikTok, YouTube)</summary>
+      <form method="post" action="/api/equipe/outils">
+        <input type="hidden" name="action" value="metric" /><input type="hidden" name="back" value={back} />
+        <label>Indicateur<select name="key">{Object.entries(METRICS).filter(([, m]) => !m.auto).map(([k, m]) => <option value={k}>{m.label}</option>)}</select></label>
+        <label>Jour<input type="date" name="day" value={todayIso} required /></label>
+        <label>Valeur<input type="number" name="value" min="0" step="1" required /></label>
+        <button class="btn">Enregistrer</button>
+      </form>
+      <p class="eq-note">Une fois par semaine suffit (le lundi par exemple). Ces chiffres servent au bilan de saison et aux partenaires : seulement des chiffres réels.</p>
+    </details>
+
     <p class="eq-note ct-foot">Charte éditoriale et kit de marque : <a href="/marque/">page Marque</a>. Les textes suivent la charte : 0 à 2 emojis, pas de tics d'IA.</p>
   </section>
 </Qg>
@@ -192,6 +230,14 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
   .ct-add .ct-chk { display: flex; align-items: center; gap: .3rem; font-weight: 400; }
   .ct-err { color: #ff6a5c; margin: .5rem 0 0; }
   .ct-foot { margin-top: 1rem; }
+  .ct-kpi { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+  .ct-kpi li { display: grid; gap: .15rem; padding: .7rem .9rem; background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .ct-kpi span { color: var(--muted); font-size: .8rem; } .ct-kpi em { font-style: normal; font-size: .7rem; }
+  .ct-kpi b { font: 700 1.5rem var(--font-display); font-variant-numeric: tabular-nums; }
+  .ct-kpi small { color: var(--muted); font-size: .72rem; }
+  .ct-kpi :global(.spark) { margin-top: .2rem; overflow: visible; }
+  .ct-kpi :global(.spark polyline) { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .ct-kpi :global(.spark.is-up polyline) { stroke: #1f8f55; } .ct-kpi :global(.spark.is-down polyline) { stroke: var(--lacquer); }
   @media (max-width: 640px) { .ct-match header { grid-template-columns: 1fr; grid-template-areas: 'game' 'what' 'when' 'tags'; } .ct-tags { justify-content: flex-start; } .ct :global(.ct-task) { grid-template-columns: 1fr; } .ct :global(.ct-act) { justify-content: flex-start; } }
 </style>
 
