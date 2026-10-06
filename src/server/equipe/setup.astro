@@ -66,6 +66,22 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
               </form>
             </details>
           )}
+          {b.g === 'valo' && (
+            <details class="su-vc" data-vc>
+              <summary>Bibliothèque de viseurs <small>VCRDB, plus de 14 000 viseurs de pros et de la communauté</small></summary>
+              <div class="su-vc__bar">
+                <input type="search" placeholder="Chercher un viseur ou un pro (TenZ, Demon1…)" aria-label="Chercher un viseur" data-vc-q />
+                <div class="su-vc__seg" role="group" aria-label="Filtre">
+                  <button type="button" data-vc-tag="" aria-pressed="true">Tous</button><button type="button" data-vc-tag="team" aria-pressed="false">Pros</button><button type="button" data-vc-tag="fun" aria-pressed="false">Fun</button>
+                </div>
+                <div class="su-vc__seg" role="group" aria-label="Tri">
+                  <button type="button" data-vc-sort="semaine" aria-pressed="true">Cette semaine</button><button type="button" data-vc-sort="total" aria-pressed="false">De tous les temps</button>
+                </div>
+              </div>
+              <ul class="su-vc__grid" data-vc-grid><li class="eq-note">Chargement…</li></ul>
+              <p class="eq-note">Viseurs de <a href="https://www.vcrdb.net/" rel="noopener" target="_blank">VCRDB</a> (Valorant Crosshair Database), avec leur accord. « Mettre dans mon setup » remplit le champ, il reste à enregistrer.</p>
+            </details>
+          )}
           <div class="su-grid">
             {b.members.map((m) => {
               const d = b.of(m.id);
@@ -100,6 +116,38 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
   import { parseCrosshair, drawCrosshair } from '../../lib/crosshair';
   // Aperçu de chaque viseur Valorant, sur un fond de carte
   document.querySelectorAll<HTMLCanvasElement>('[data-xh]').forEach((cv) => { const x = parseCrosshair(cv.dataset.xh ?? ''); if (x) drawCrosshair(cv, x, 2.5); else cv.hidden = true; });
+  // Bibliothèque VCRDB : recherche, filtres, aperçu, copier ou mettre dans mon setup
+  const vc = document.querySelector<HTMLDetailsElement>('[data-vc]');
+  if (vc) {
+    const grid = vc.querySelector<HTMLElement>('[data-vc-grid]')!;
+    const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+    let tag = '', sort = 'semaine', tok = 0, timer = 0;
+    const load = async () => {
+      const t = ++tok, q = vc.querySelector<HTMLInputElement>('[data-vc-q]')!.value.trim();
+      const d = await fetch(`/api/equipe/outils?type=vc&q=${encodeURIComponent(q)}&tag=${tag}&sort=${sort}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (t !== tok) return;
+      if (!d) { grid.innerHTML = '<li class="eq-note">VCRDB ne répond pas pour le moment.</li>'; return; }
+      grid.innerHTML = d.list.length ? d.list.map((x: { id: number; name: string; code: string; team: boolean; copied: number; weekly: number }) => `<li>
+        <canvas width="192" height="108" data-vc-xh="${esc(x.code)}" aria-label="Aperçu du viseur ${esc(x.name)}"></canvas>
+        <strong>${esc(x.name)}${x.team ? ' <em>pro</em>' : ''}</strong>
+        <small>${x.weekly.toLocaleString('fr-FR')} copies cette semaine · ${x.copied.toLocaleString('fr-FR')} au total</small>
+        <span><button type="button" class="su-copy" data-copy="${esc(x.code)}">Copier</button><button type="button" class="su-copy" data-vc-use="${esc(x.code)}">Mettre dans mon setup</button><a href="https://www.vcrdb.net/crosshair/${x.id}" rel="noopener" target="_blank">VCRDB</a></span>
+      </li>`).join('') : '<li class="eq-note">Aucun viseur trouvé.</li>';
+      grid.querySelectorAll<HTMLCanvasElement>('[data-vc-xh]').forEach((cv) => { const x = parseCrosshair(cv.dataset.vcXh ?? ''); if (x) drawCrosshair(cv, x, 2.5); });
+    };
+    vc.addEventListener('toggle', () => { if (vc.open && grid.querySelector('.eq-note')) load(); });
+    vc.querySelector('[data-vc-q]')!.addEventListener('input', () => { clearTimeout(timer); timer = window.setTimeout(load, 300); });
+    vc.addEventListener('click', (e) => {
+      const el = e.target as HTMLElement;
+      const tb = el.closest<HTMLElement>('[data-vc-tag]'), sb = el.closest<HTMLElement>('[data-vc-sort]'), use = el.closest<HTMLElement>('[data-vc-use]');
+      if (tb) { tag = tb.dataset.vcTag!; vc.querySelectorAll('[data-vc-tag]').forEach((b) => b.setAttribute('aria-pressed', String(b === tb))); load(); }
+      if (sb) { sort = sb.dataset.vcSort!; vc.querySelectorAll('[data-vc-sort]').forEach((b) => b.setAttribute('aria-pressed', String(b === sb))); load(); }
+      if (use) {
+        const form = vc.closest('section')?.querySelector<HTMLDetailsElement>('.su-edit'); const input = form?.querySelector<HTMLInputElement>('input[name="viseur"]');
+        if (form && input) { form.open = true; input.value = use.dataset.vcUse!; input.focus(); input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      }
+    });
+  }
   document.addEventListener('click', async (e) => {
     const b = (e.target as Element).closest<HTMLButtonElement>('[data-copy]'); if (!b) return;
     try { await navigator.clipboard.writeText(b.dataset.copy!); b.textContent = 'Copié !'; setTimeout(() => (b.textContent = 'Copier'), 1500); } catch {}
@@ -107,6 +155,24 @@ const edpi = (d: Record<string, string>) => (Number(d.dpi) && Number(d.sens) ? M
 </script>
 
 <style>
+  .su-vc { margin-bottom: 1.25rem; padding: .75rem 1rem; border: 1px solid var(--line); }
+  .su-vc summary { cursor: pointer; font-weight: 700; }
+  .su-vc summary small { margin-left: .4rem; font-weight: 400; color: var(--muted); }
+  .su-vc__bar { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; margin: .9rem 0; }
+  .su-vc__bar input { flex: 1 1 16rem; min-height: 38px; padding: .35rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .9rem var(--font-body); }
+  .su-vc__seg { display: flex; border: 1px solid var(--line); }
+  .su-vc__seg button { padding: .35rem .7rem; border: 0; background: none; color: var(--muted); font: 700 .8rem var(--font-body); cursor: pointer; }
+  .su-vc__seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .su-vc__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: .8rem; margin: 0 0 .8rem; padding: 0; list-style: none; }
+  .su-vc__grid :global(li) { display: grid; gap: .3rem; align-content: start; padding: .6rem; border: 1px solid var(--line); transition: border-color .15s; }
+  .su-vc__grid :global(li:hover) { border-color: var(--ink); }
+  .su-vc__grid :global(canvas) { width: 100%; aspect-ratio: 16 / 9; height: auto; background: #6d7a76 url('https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png') center / cover; }
+  .su-vc__grid :global(strong) { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .su-vc__grid :global(em) { padding: 0 .3rem; border: 1px solid #ff4655; color: #ff4655; font-style: normal; font-size: .65rem; vertical-align: middle; }
+  .su-vc__grid :global(small) { color: var(--muted); font-size: .72rem; }
+  .su-vc__grid :global(span) { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+  .su-vc__grid :global(.su-copy) { min-height: 30px; padding: 0 .6rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .75rem var(--font-body); cursor: pointer; }
+  .su-vc__grid :global(span a) { font-size: .75rem; color: var(--red-text); }
   .su-xh { display: block; width: 100%; max-width: 16rem; aspect-ratio: 16 / 9; height: auto; margin-bottom: .4rem; background: #6d7a76 url('https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png') center / cover; border: 1px solid var(--line); }
   .eq-mini { padding-block: 2.5rem 1.5rem; }
   .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }

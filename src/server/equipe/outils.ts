@@ -459,9 +459,36 @@ const llChamp = (slug: string, lane: string) => llMemo(`c2:${slug}:${lane}`, asy
   return { wr, vs, team };
 });
 
+// Viseurs VCRDB (vcrdb.net, réutilisation autorisée, source créditée) : la base complète est dans la page d'accueil
+// (id, nom, code, tags « team » ou « fun », copies au total et sur la semaine). Relue au plus une fois par jour.
+type VC = { id: number; name: string; code: string; tags: string; copied: number; weeklyCopies: number };
+let vcCache: { at: number; v: Promise<VC[]> } | null = null;
+function vcList() {
+  if (vcCache && Date.now() - vcCache.at < 24 * 3600_000) return vcCache.v;
+  const v = fetch('https://www.vcrdb.net/', { headers: { 'User-Agent': 'Mozilla/5.0 (OniKorp Inside)' } }).then((r) => r.text()).then((html) => {
+    const s = html.replace(/\\"/g, '"');
+    const k = s.indexOf('"json":[{"id":');
+    if (k < 0) return [];
+    const start = s.indexOf('[', k);
+    let depth = 0, end = start;
+    for (let n = start; n < s.length; n++) { const ch = s[n]; if (ch === '[') depth++; else if (ch === ']' && --depth === 0) { end = n + 1; break; } }
+    return (JSON.parse(s.slice(start, end)) as VC[]).filter((x) => x && x.code);
+  });
+  vcCache = { at: Date.now(), v }; v.catch(() => { vcCache = null; });
+  return v;
+}
+
 export const GET: APIRoute = async ({ cookies, url }) => {
   const t = await teamUser(cookies);
   if (!t) return new Response('[]', { status: 401 });
+  if (url.searchParams.get('type') === 'vc') {
+    const q = (url.searchParams.get('q') ?? '').toLowerCase().slice(0, 40), tag = url.searchParams.get('tag') ?? '', sort = url.searchParams.get('sort') ?? 'semaine';
+    const all = await vcList().catch(() => [] as VC[]);
+    const list = all.filter((x) => (!q || x.name.toLowerCase().includes(q)) && (!tag || (x.tags ?? '').split(',').includes(tag)))
+      .sort((a, b) => (sort === 'total' ? b.copied - a.copied : b.weeklyCopies - a.weeklyCopies || b.copied - a.copied)).slice(0, 48)
+      .map((x) => ({ id: x.id, name: x.name, code: x.code, team: (x.tags ?? '').includes('team'), copied: x.copied, weekly: x.weeklyCopies }));
+    return new Response(JSON.stringify({ total: all.length, list }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=3600' } });
+  }
   if (url.searchParams.get('type') === 'll') {
     const slug = (url.searchParams.get('c') ?? '').replace(/[^a-z]/g, '').slice(0, 30), lane = url.searchParams.get('lane') ?? '';
     const v = await (slug ? (LL_LANES.includes(lane as any) ? llChamp(slug, lane) : Promise.resolve(null)) : llMeta()).catch(() => null);
