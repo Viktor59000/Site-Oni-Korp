@@ -90,8 +90,8 @@ const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', impre
                 <input type="hidden" name="action" value="note" /><input type="hidden" name="match" value={m.id} /><input type="hidden" name="back" value={`/equipe/notes/${sc.active ? `?r=${sc.active}` : ''}`} />
                 <label>Ce qui a marché<textarea name="good" rows="3" maxlength="1000">{mine?.good}</textarea></label>
                 <label>À travailler<textarea name="work" rows="3" maxlength="1000">{mine?.work}</textarea></label>
-                <label class="nt-rating">Note de la perf de l'équipe <output>{mine?.rating ?? 5}</output>/10
-                  <input type="range" name="rating" min="1" max="10" value={mine?.rating ?? 5} oninput="this.previousElementSibling.value = this.value" />
+                <label class="nt-rating"><span>Note de la perf de l'équipe <b><output>{mine?.rating ?? 5}</output>/10</b></span>
+                  <input type="range" name="rating" min="1" max="10" value={mine?.rating ?? 5} oninput="this.parentElement.querySelector('output').value = this.value" />
                 </label>
                 <button class="btn">Enregistrer</button>
               </form>
@@ -142,6 +142,7 @@ const ICON: Record<string, string> = { brillant: '🌟', excellent: '✨', impre
   .nt-form form { display: grid; gap: .9rem; margin-top: .9rem; }
   .nt-form label { display: grid; gap: .35rem; font-weight: 700; font-size: .9rem; }
   .nt-form textarea { width: 100%; box-sizing: border-box; padding: .6rem .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 1rem var(--font-body); }
-  .nt-rating input { accent-color: var(--lacquer); }
+  .nt-rating > span { display: flex; justify-content: space-between; gap: 1rem; max-width: 28rem; }
+  .nt-rating b { font-variant-numeric: tabular-nums; }
   .nt-form .btn { justify-self: start; }
 </style>

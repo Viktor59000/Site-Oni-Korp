@@ -63,7 +63,7 @@ const canEdit = (g: G) => me.staff || g.user_id === user.id || (!g.user_id && me
                         {canEdit(o) && o.status === 'en-cours' && (
                           <form method="post" action="/api/equipe/outils" class="ob-update">
                             <input type="hidden" name="action" value="objectif-maj" /><input type="hidden" name="id" value={o.id} /><input type="hidden" name="back" value={back} />
-                            <label>Avancement <output>{o.progress}</output> %<input type="range" name="progress" min="0" max="100" step="10" value={o.progress} oninput="this.previousElementSibling.value = this.value" /></label>
+                            <label><span>Avancement <b><output>{o.progress}</output> %</b></span><input type="range" name="progress" min="0" max="100" step="10" value={o.progress} oninput="this.parentElement.querySelector('output').value = this.value" /></label>
                             <button class="ob-btn" name="status" value="en-cours">Enregistrer</button>
                             <button class="ob-btn is-ok" name="status" value="atteint">Atteint</button>
                             {me.staff && <button class="ob-btn" name="status" value="abandonne">Abandonner</button>}

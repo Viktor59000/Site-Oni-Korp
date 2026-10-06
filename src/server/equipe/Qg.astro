@@ -139,7 +139,7 @@ const currentLabel = section?.label ?? heading;
   // Onglet « Menu » (mobile) : ouvre la navigation complète
   document.querySelector('[data-qg-more]')?.addEventListener('click', () => {
     const n = document.querySelector<HTMLDetailsElement>('[data-qg-nav]');
-    if (n) { n.open = true; n.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (n) { const on = !n.hasAttribute('data-shown'); n.toggleAttribute('data-shown', on); n.open = on; if (on) n.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
   // Panneaux (formulaires) : fermeture par Échap
   document.addEventListener('keydown', (e) => {

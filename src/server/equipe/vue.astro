@@ -71,15 +71,16 @@ const cards = await Promise.all(me.rosters.map(async (r) => {
 }));
 
 // Alertes club
-const clubAlerts: [string, string | null][] = [];
-if (!botOnline) clubAlerts.push([beat ? `Oni Bot hors ligne depuis ${ago(beat)} : rappels et annonces en pause` : 'Oni Bot pas encore relié à la base', null]);
+// Deux niveaux : « urgent » (bloque le club ou une échéance proche), « à faire » (action sans urgence)
+const clubAlerts: [string, 'urgent' | 'action'][] = [];
+if (!botOnline) clubAlerts.push([beat ? `Oni Bot hors ligne depuis ${ago(beat)} : rappels et annonces en pause` : 'Oni Bot pas encore relié à la base', 'urgent']);
 for (const m of upcoming) {
-  if ((m.kind ?? 'officiel') !== 'scrim' && !m.caster) clubAlerts.push([`Pas de casteur pour vs ${m.opponent} (${fmt.format(new Date(Number(m.at)))})`, null]);
-  if (m.signup_by && Number(m.signup_by) > now && Number(m.signup_by) - now < 3 * DAY) clubAlerts.push([`Inscription à boucler pour vs ${m.opponent} avant ${fmt.format(new Date(Number(m.signup_by)))}`, null]);
+  if ((m.kind ?? 'officiel') !== 'scrim' && !m.caster) clubAlerts.push([`Pas de casteur pour vs ${m.opponent} (${fmt.format(new Date(Number(m.at)))})`, 'action']);
+  if (m.signup_by && Number(m.signup_by) > now && Number(m.signup_by) - now < 3 * DAY) clubAlerts.push([`Inscription à boucler pour vs ${m.opponent} avant ${fmt.format(new Date(Number(m.signup_by)))}`, 'urgent']);
 }
 const oldTickets = tickets.filter((x) => now - Number(x.opened_at) > 3 * DAY);
-if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouverte(s) depuis plus de 3 jours`, null]);
-if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, null]);
+if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouverte(s) depuis plus de 3 jours`, 'action']);
+if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, 'action']);
 ---
 <Qg title="Vue d'ensemble · Inside" heading="Vue d'ensemble" lead="Tout le club en un écran : ce qui va, ce qui demande une action." current="vue" rosters={me.rosters} staff={me.staff} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ov">
@@ -95,9 +96,9 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
         <h2>À traiter</h2>
         {clubAlerts.length || cards.some((c) => c.alerts.length) ? (
           <ul class="ov-alerts">
-            {clubAlerts.map(([a]) => <li>{a}</li>)}
+            {clubAlerts.sort((x, y) => (x[1] === y[1] ? 0 : x[1] === 'urgent' ? -1 : 1)).map(([a, lvl]) => <li class={`is-${lvl}`}><span class="ov-lvl">{lvl === 'urgent' ? 'Urgent' : 'À faire'}</span>{a}</li>)}
             {cards.filter((c) => c.alerts.length).map((c) => (
-              <li class="ov-group"><a href={`/equipe/?r=${c.r.slug}`} style={`--g:${c.g.color}`}>{c.r.name}</a>
+              <li class="ov-group" style={`--g:${c.g.color}`}><a href={`/equipe/?r=${c.r.slug}`}>{c.r.name}</a>
                 <ul>{c.alerts.map((a) => <li>{a}</li>)}</ul></li>
             ))}
           </ul>
@@ -185,7 +186,13 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
   .ov-block h2 { font-family: var(--font-body); font-weight: 700; font-size: 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: .9rem; }
   .ov-calm { color: var(--muted); }
   .ov-alerts { display: grid; gap: .4rem; }
-  .ov-alerts li { padding: .6rem .8rem; border-left: 4px solid var(--lacquer); background: var(--qg-surface); }
+  .ov-alerts > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .75rem; padding: .7rem .9rem; border-left: 4px solid var(--qg-rule-strong); background: var(--qg-surface); }
+  .ov-alerts > li.is-urgent { border-left-color: var(--lacquer); }
+  .ov-alerts > li.is-action { border-left-color: #f0a04b; }
+  .ov-alerts > li.ov-group { display: block; border-left-color: var(--g); background: transparent; }
+  .ov-lvl { font: 600 var(--text-2xs, .75rem) / 1.3 var(--qg-mono, monospace); letter-spacing: .07em; text-transform: uppercase; }
+  .is-urgent .ov-lvl { color: var(--lacquer); }
+  .is-action .ov-lvl { color: #f0a04b; }
   .ov-group ul { display: flex; flex-wrap: wrap; gap: .2rem .9rem; margin-top: .25rem; font-size: .9rem; }
   .ov-alerts .ov-group ul li { padding: 0; border: 0; background: none; }
   .ov-group ul li + li::before { content: '· '; color: var(--muted); }

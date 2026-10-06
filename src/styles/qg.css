@@ -371,3 +371,11 @@ body.qg input[type="range"]::-moz-range-track { height: 4px; background: var(--q
 body.qg input[type="range"]::-moz-range-progress { height: 4px; background: var(--game); }
 body.qg input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; background: var(--qg-ink); border: 2px solid var(--game); }
 body.qg input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 0; background: var(--qg-ink); border: 2px solid var(--game); }
+/* Formulaires : une colonne de lecture, pas toute la largeur de l'écran */
+body.qg .qg-main :is(textarea, input[type="text"], input[type="url"], input[type="search"]) { max-width: 46rem; }
+body.qg .qg-main input[type="range"] { max-width: 28rem; }
+/* Mobile : le menu complet ne s'affiche qu'à la demande (onglet « Menu » de la barre du bas) */
+@media (max-width: 900px) {
+  body.qg .qg-nav:not([data-shown]) { display: none; }
+}
+@media (max-width: 900px) { body.qg .qg-nav[data-shown] summary { display: none; } }
