@@ -52,14 +52,15 @@ if (roster) {
     rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM boards WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
     rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM docs WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
     rows<{ id: number; title: string; at: number }>('SELECT id, title, at FROM vods WHERE roster_id = ? ORDER BY at DESC LIMIT 3', rid).catch(() => []),
-    rows<{ user_id: string }>('SELECT user_id FROM availability WHERE roster_id = ? AND week = ? AND user_id = ?', rid, weekKey(true), user.id).catch(() => []),
+    // Disponibilités v2 (dispo_days) : au moins un jour coché pour la semaine prochaine
+    rows<{ user_id: string }>('SELECT user_id FROM dispo_days WHERE roster_id = ? AND week = ? AND user_id = ? LIMIT 1', rid, weekKey(true), user.id).catch(() => []),
   ]);
   const ids = members.map((m) => m.id);
   const [answers, perfs] = await Promise.all([
     trainings.length ? rows<{ training_id: number; status: string }>(`SELECT training_id, status FROM attendance WHERE user_id = ? AND training_id IN (${trainings.map(() => '?').join(',')})`, user.id, ...trainings.map((x) => x.id)) : [],
     ids.length ? rows<{ user_id: string; data: string }>(`SELECT user_id, data FROM perf WHERE game = ? AND at > ? AND user_id IN (${ids.map(() => '?').join(',')})`, roster.game, now - 7 * DAY, ...ids).catch(() => []) : [],
   ]);
-  const mine = new Map(answers.map((a) => [Number(a.training_id), a.status]));
+  const mine = new Map<number, string>(answers.map((a) => [Number(a.training_id), a.status] as [number, string]));
   const events: Ev[] = [
     ...trainings.map((x) => ({ type: 'seance' as const, id: Number(x.id), at: Number(x.at), title: x.kind, sub: `${x.duration} min`, mine: mine.get(Number(x.id)) ?? null })),
     ...matches.map((x) => ({ type: 'match' as const, id: Number(x.id), at: Number(x.at), title: `vs ${x.opponent}`, sub: `${x.format}${x.kind === 'scrim' ? ' · scrim' : ''}` })),

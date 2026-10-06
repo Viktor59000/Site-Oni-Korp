@@ -182,7 +182,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (action === 'draft') {
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
-    const pinned = canLead(me, roster) ? wantPin : 0;
     const data = clip(f.get('data'), 4000);
     try { const d = JSON.parse(data); if (!d || typeof d !== 'object' || Array.isArray(d)) return redirect(back); } catch { return redirect(back); }
     await exec('INSERT INTO drafts (roster_id, title, data, author, at) VALUES (?,?,?,?,?)', roster, clip(f.get('title'), 80) || 'Draft', data, user.id, Date.now());
@@ -262,6 +261,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
+    const pinned = canLead(me, roster) ? wantPin : 0;
     const [n] = await rows<{ id: number }>('INSERT INTO docs (roster_id, title, body, pinned, author, updated_at) VALUES (?,?,?,?,?,?) RETURNING id', roster, title, body, pinned, user.id, Date.now());
     return redirect(n ? `/equipe/docs/?d=${n.id}${qs}` : back);
   }

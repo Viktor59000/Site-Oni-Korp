@@ -7,7 +7,6 @@ const riftParts = (bg: string) => { const [, t = 'base', n = '1'] = bg.split(':'
 // L'âme Infernale n'existe qu'en une forme de fosse
 // Carte vectorielle de RiftKit (Coach Kirei, avec son accord) : murs selon l'âme (Montagne change les murs), fosse du Nashor en 3 formes
 const riftUrl = (bg: string) => { const { t, n } = riftParts(bg); return `/img/lol/vmap-${t === 'mountain' ? 'mountain' : 'normal'}-${({ 1: 'hunting', 2: 'seeing', 3: 'territorial' } as Record<string, string>)[t === 'infernal' ? '1' : n]}.svg`; };
-const LOL_MAP = riftUrl('Faille');
 // Rendu réaliste (vue du dessus du jeu) ; les murs pour la vision restent lus sur la minicarte vectorielle
 const RIFT_IMG = '/img/lol/faille-image.webp';
 // Buissons : tracés vectoriels de RiftKit (map.riftkit.net, Coach Kirei), repris avec son accord. Ils changent avec les âmes Océan et Montagne.
@@ -542,3 +541,5 @@ if (root) {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { pollDelay = 2000; poll().then(schedule); } });
   stage.addEventListener('pointerdown', wake);
 }
+
+export {};

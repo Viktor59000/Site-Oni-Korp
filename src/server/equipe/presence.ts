@@ -2,7 +2,7 @@
 import type { APIRoute } from 'astro';
 import { currentSession, sameOrigin } from '../session';
 import { exec, rows } from '../db';
-import { access, canSee, canLead } from './access';
+import { access, canSee } from './access';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const user = await currentSession(cookies);

@@ -47,7 +47,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
       const acc = accounts.find((a) => a.user_id === m.id && a.game === 'riot');
       const rank = acc ? JSON.parse((await cache(`lol:${acc.region ?? 'euw'}:${acc.ident.toLowerCase()}`)) ?? 'null') : null;
       const games = perfs.filter((p) => p.user_id === m.id).slice(0, 20).map((p) => ({ ...JSON.parse(p.data), at: Number(p.at) }));
-      const champs = Object.entries(games.reduce((o: Record<string, number>, g) => ({ ...o, [g.champ]: (o[g.champ] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      const champs = Object.entries(games.reduce<Record<string, number>>((o, g) => ({ ...o, [g.champ]: (o[g.champ] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 3);
       const kda = games.length ? (games.reduce((s, g) => s + g.k + g.a, 0) / Math.max(1, games.reduce((s, g) => s + g.d, 0))) : null;
       return {
         m, acc, rank, games, champs, kda,
@@ -90,7 +90,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
       const acc = accounts.find((a) => a.user_id === m.id && a.game === 'riot');
       const rank = acc ? JSON.parse((await cache(`valo:${acc.ident.toLowerCase()}`)) ?? 'null') : null;
       const kd = g.length ? g.reduce((s, x) => s + x.k, 0) / Math.max(1, g.reduce((s, x) => s + x.d, 0)) : null;
-      const agents = Object.entries(g.reduce((o: Record<string, number>, x) => ({ ...o, [x.agent]: (o[x.agent] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a);
+      const agents = Object.entries(g.reduce<Record<string, number>>((o, x) => ({ ...o, [x.agent]: (o[x.agent] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a);
       return { m, n: g.length, win: g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null, rank, agents,
         a: { acs: avg(g.map((x) => x.acs)), adr: avg(g.map((x) => x.adr)), hs: avg(g.map((x) => x.hs).filter((v) => v !== null)), fb: avg(g.map((x) => x.fb)), fd: avg(g.map((x) => x.fd ?? 0)), kd },
         trend: spark(hist.filter((h) => h.user_id === m.id && h.game === 'valo').map((h) => JSON.parse(h.value).score)), last: g.slice(0, 8) };

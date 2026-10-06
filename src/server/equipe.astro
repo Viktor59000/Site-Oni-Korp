@@ -21,7 +21,6 @@ const GAME: Record<string, { label: string; color: string; code: string }> = {
   rl: { label: 'Rocket League', color: '#2f6bff', code: 'RL' }, lol: { label: 'League of Legends', color: '#0f8a9b', code: 'LoL' },
   valo: { label: 'Valorant', color: '#ff4655', code: 'VAL' }, osu: { label: 'osu!', color: '#ff66aa', code: 'osu!' },
 };
-const DAYS: [string, string][] = [['lun', 'Lun'], ['mar', 'Mar'], ['mer', 'Mer'], ['jeu', 'Jeu'], ['ven', 'Ven'], ['sam', 'Sam'], ['dim', 'Dim']];
 const tz = { timeZone: 'Europe/Paris' } as const;
 const fDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', ...tz });
 const fMonth = new Intl.DateTimeFormat('fr-FR', { month: 'short', ...tz });

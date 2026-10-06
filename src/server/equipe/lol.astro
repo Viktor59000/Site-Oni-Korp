@@ -26,7 +26,7 @@ const faced: Record<string, [number, number]> = {};
 const pool: PoolPlayer[] = [];
 for (const r of lolRosters) {
   const members = await rosterMembers(r.role_id);
-  const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
+  const postes = new Map<string, string>((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste] as [string, string]));
   for (const m of members) {
     if (pool.some((p) => p.name === m.name)) continue;
     const perfs = await rows<{ data: string }>(`SELECT data FROM perf WHERE user_id = ? AND game = 'lol' AND at > ?`, m.id, Date.now() - 90 * 86400_000).catch(() => []);

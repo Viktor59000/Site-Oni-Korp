@@ -7,7 +7,7 @@ import SpecialCard from '../../components/SpecialCard.astro';
 
 // Rareté : plus le poids est faible, plus la vignette est rare dans les boosters
 const WEIGHT = { commune: 2.5, or: 1, argent: 1, holo: 0.8, legendaire: 0.25 };
-const pages = [
+const pages: { titre: string; note?: string; cartes: any[]; special?: boolean }[] = [
   { titre: 'Joueurs', cartes: album.games.flatMap((g) => g.rosters.flatMap((r) => r.cards)).map((c) => ({ ...c, rarete: 'commune' })) },
   { titre: 'Staff', note: 'Édition or', cartes: album.staff.map((c) => ({ ...c, rarete: 'or' })) },
   ...album.specials.map((s) => ({ titre: s.titre, note: { holo: 'Holo', argent: 'Argent', legendaire: 'Ultra-rare', commune: '' }[s.rarete], cartes: s.cartes, special: true })),

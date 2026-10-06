@@ -19,7 +19,7 @@ const shared = target.rosterIds.some((id) => me.rosterIds.includes(id));
 if (!target.member || !(uid === user.id || me.staff || shared)) return Astro.redirect('/equipe/profil/');
 const [m] = await rows<{ name: string; avatar: string }>('SELECT name, avatar FROM guild_members WHERE id = ?', uid);
 // Poste dans chaque roster (Jungle, Mid…) : « Jungle · Lion Blanc »
-const postes = new Map((await rows<{ roster_id: number; poste: string }>('SELECT roster_id, poste FROM roster_postes WHERE user_id = ?', uid).catch(() => [])).map((x) => [Number(x.roster_id), x.poste]));
+const postes = new Map<number, string>((await rows<{ roster_id: number; poste: string }>('SELECT roster_id, poste FROM roster_postes WHERE user_id = ?', uid).catch(() => [])).map((x) => [Number(x.roster_id), x.poste] as [number, string]));
 const DAY = 86400_000;
 // Page Staff du site : la case n'apparaît que sur son propre profil, pour qui a une fonction (encadrement, contenu, communauté)
 const hasFunction = uid === user.id && (me.staff || me.games.length > 0 || me.captain || me.analyst || me.content.length > 0);

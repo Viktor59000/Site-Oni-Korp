@@ -24,7 +24,7 @@ const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League o
 const sc = scope(me.rosters, Astro.url);
 const rosters = await Promise.all(sc.list.map(async (r) => {
   const members = await rosterMembers(r.role_id);
-  const postes = new Map((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste]));
+  const postes = new Map<string, string>((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', r.id).catch(() => [])).map((x) => [String(x.user_id), x.poste] as [string, string]));
   const statuts = new Map((await rows<St>('SELECT user_id, statut, essai_fin, retour FROM roster_status WHERE roster_id = ?', r.id).catch(() => [] as St[])).map((x) => [String(x.user_id), x]));
   const accs = members.length ? await rows<Acc>(`SELECT * FROM accounts WHERE user_id IN (${members.map(() => '?').join(',')})`, ...members.map((m) => m.id)) : [];
   const people = await Promise.all(members.map(async (m) => {

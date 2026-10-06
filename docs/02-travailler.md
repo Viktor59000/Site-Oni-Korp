@@ -44,6 +44,7 @@ Les matchs, l'agenda, les inhouses, les créateurs et les chiffres du serveur ne
 
 ```bash
 VERCEL=1 npm run build     # compile AUSSI les pages serveur ; doit finir par « Complete! »
+npm run check              # astro check (toutes les pages) + TypeScript strict des fichiers serveur : 0 erreur attendue
 npm test                   # non-régression : compare le HTML de 43 pages à la référence
 ```
 
@@ -101,6 +102,7 @@ Les salons, rôles et permissions se changent avec les scripts `discord/*.mjs` d
 
 | Symptôme | Cause | Parade |
 |---|---|---|
+| Une variable utilisée mais jamais définie (le site plante sur une action précise) | Ligne déplacée au mauvais endroit : le build ne vérifie pas les types | `npm run check` (deux bugs de ce genre trouvés le 06/10 : enregistrer un draft LoL, créer un doc) |
 | Le déploiement Vercel échoue alors que `npm run build` passait | Build sans `VERCEL=1` : les pages serveur n'étaient pas compilées | Toujours `VERCEL=1 npm run build` |
 | Une apostrophe casse une page serveur | `'` non échappée dans une chaîne JS en apostrophes | Écrire ’ dans les textes, ou des gabarits `` ` `` |
 | Une page déborde sur téléphone (on glisse sur les côtés) | Grille CSS dont la colonne s'élargit sur un contenu long (tableau, lien) | `grid-template-columns: minmax(0, 1fr)` sur la grille ; les tableaux larges dans un cadre `overflow-x: auto` |

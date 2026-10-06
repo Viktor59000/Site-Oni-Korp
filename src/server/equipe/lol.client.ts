@@ -371,3 +371,5 @@ root.querySelector('[data-roster-select]')?.addEventListener('change', loadSaved
   champs = Object.values<any>(data.data).map((c) => ({ id: c.id, key: c.key, name: c.name, tags: c.tags, info: c.info })).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   render(); loadSaved();
 })().catch(() => { $('[data-step]').textContent = 'Impossible de charger les champions (Data Dragon). Réessaie plus tard.'; });
+
+export {};

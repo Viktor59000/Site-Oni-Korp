@@ -7,6 +7,9 @@ import { exec, rows } from '../db';
 
 const TTL = 30 * 60_000;
 /** Lecture du cache rempli par Oni Bot (module trackers) : valable 2 h. */
+export type LolRank = { tier: string; rank?: string; lp?: number; wins?: number; losses?: number };
+export type OsuStats = { rank?: number; pp: number; acc: number };
+
 async function fromBot<T>(key: string): Promise<T | null> {
   const [c] = await rows<{ value: string; at: number }>('SELECT value, at FROM stats_cache WHERE key = ?', key);
   return c && Date.now() - Number(c.at) < 4 * TTL ? JSON.parse(c.value) : null;
@@ -37,7 +40,7 @@ export const links = {
   osutrack: (id: string) => `https://ameobea.me/osutrack/user/${encodeURIComponent(id)}/`,
 };
 
-export async function lolRank(id: string, region = 'euw') {
+export async function lolRank(id: string, region = 'euw'): Promise<LolRank | null> {
   const key = process.env.RIOT_API_KEY; const r = riotId(id); const reg = REGIONS[region] ?? REGIONS.euw;
   if (!r) return null;
   if (!key) return fromBot(`lol:${region}:${id.toLowerCase()}`);
@@ -52,7 +55,7 @@ export async function lolRank(id: string, region = 'euw') {
 }
 
 let osuToken: { v: string; until: number } | null = null;
-export async function osuStats(username: string) {
+export async function osuStats(username: string): Promise<OsuStats | null> {
   const id = process.env.OSU_CLIENT_ID, secret = process.env.OSU_CLIENT_SECRET;
   if (!id || !secret) return fromBot(`osu:${username.toLowerCase()}`);
   return cached(`osu:${username.toLowerCase()}`, async () => {
