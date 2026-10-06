@@ -91,7 +91,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
             <h2 class="ou-h">Défi de la semaine</h2>
             {challenges.length ? challenges.map(({ c, meta, board }) => (
               <article class="ou-chal">
-                {meta?.cover && <img class="ou-cover" src={meta.cover} alt="" loading="lazy" />}
+                {meta?.cover && <img class="ou-cover" src={meta.cover} alt="" fetchpriority="high" />}
                 <div class="ou-chal__body">
                   <p class="ou-tag">{c.ends ? left(Number(c.ends)) : 'en cours'}</p>
                   <h3><a href={`https://osu.ppy.sh/b/${c.beatmap_id}`} rel="noopener" target="_blank">{meta ? `${meta.title} [${meta.version}]` : `Map #${c.beatmap_id}`}</a></h3>

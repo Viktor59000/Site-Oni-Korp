@@ -3,6 +3,7 @@
 // un titre, un clip : tout le roster la retrouve. Cartes et agents : valorant-api.com (données officielles du jeu).
 import Qg from './Qg.astro';
 import { scope, teamUser } from './outils';
+import { valoMaps } from './valo-api';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
@@ -10,6 +11,8 @@ if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
 const sc = scope(me.rosters, Astro.url);
 const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.active));
+// Cartes de compétition (celles qui ont des sites et une minicarte), envoyées avec la page
+const maps = valoRosters.length ? (await valoMaps()).filter((m) => m.competitive) : [];
 ---
 <Qg title="Lineups Valorant · Inside" heading="Lineups Valorant" lead="Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une." current="valo" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   <section class="lu" data-lineups>
@@ -26,11 +29,13 @@ const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.
               <button type="button" data-side="defense" aria-pressed="false">Défense</button>
             </div>
           </div>
-          <div class="lu-maps" role="tablist" aria-label="Cartes" data-maps><span class="eq-note">Chargement des cartes…</span></div>
+          <div class="lu-maps" role="tablist" aria-label="Cartes" data-maps data-maps-json={maps.length ? JSON.stringify(maps.map((m) => ({ uuid: m.name, name: m.name, icon: m.icon }))) : undefined}>
+            {maps.length ? maps.map((m, i) => <button type="button" role="tab" data-map={m.name} aria-selected={i === 0 ? 'true' : 'false'}>{m.name}</button>) : <span class="eq-note">Chargement des cartes…</span>}
+          </div>
 
           <div class="lu-main">
             <div class="lu-mapbox" data-mapbox>
-              <img alt="" data-mapimg />
+              <img alt="" data-mapimg src={maps[0]?.icon} fetchpriority="high" width="1000" height="1000" />
               <svg class="lu-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg></svg>
               <p class="lu-hint" data-hint hidden></p>
             </div>
@@ -225,15 +230,17 @@ const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.
     $('[data-roster]').addEventListener('change', loadLineups);
 
     (async () => {
+      // Cartes envoyées par le serveur ; sinon (API lente côté serveur) le navigateur les demande lui-même
+      const sent = $('[data-maps]').dataset.mapsJson;
       const [mp, ag] = await Promise.all([
-        fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()),
+        sent ? null : fetch('https://valorant-api.com/v1/maps?language=fr-FR').then((r) => r.json()),
         fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=fr-FR').then((r) => r.json()),
       ]);
       // Cartes de compétition uniquement (celles qui ont des sites et une minicarte)
-      maps = mp.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ uuid: m.displayName, name: m.displayName, icon: m.displayIcon }))
+      maps = sent ? JSON.parse(sent) : mp.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ uuid: m.displayName, name: m.displayName, icon: m.displayIcon }))
         .sort((a: Map, b: Map) => a.name.localeCompare(b.name, 'fr'));
-      agents = ag.data.map((a: any) => ({ name: a.displayName, icon: a.displayIcon, abilities: (a.abilities ?? []).filter((x: any) => x.displayIcon && x.slot !== 'Passive').map((x: any) => ({ name: x.displayName, icon: x.displayIcon })) })).sort((a: Agent, b: Agent) => a.name.localeCompare(b.name, 'fr'));
-      $('[data-maps]').innerHTML = maps.map((m) => `<button type="button" role="tab" data-map="${esc(m.uuid)}" aria-selected="false">${esc(m.name)}</button>`).join('');
+      agents = ag.data.map((a: any) => ({ name: a.displayName, icon: a.displayIconSmall ?? a.displayIcon, abilities: (a.abilities ?? []).filter((x: any) => x.displayIcon && x.slot !== 'Passive').map((x: any) => ({ name: x.displayName, icon: x.displayIcon })) })).sort((a: Agent, b: Agent) => a.name.localeCompare(b.name, 'fr'));
+      if (!sent) $('[data-maps]').innerHTML = maps.map((m) => `<button type="button" role="tab" data-map="${esc(m.uuid)}" aria-selected="false">${esc(m.name)}</button>`).join('');
       const opts = agents.map((a) => `<option>${esc(a.name)}</option>`).join('');
       $('[data-agent-filter]').insertAdjacentHTML('beforeend', opts);
       $('[data-f-agent]').innerHTML = opts; fillAbilities();

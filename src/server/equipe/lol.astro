@@ -153,8 +153,10 @@ for (const r of lolRosters) {
   .dr-picks :global(li) { display: flex; align-items: center; gap: .6rem; min-height: 60px; padding: 2px; border: 1.5px solid var(--line); font-weight: 700; font-size: .9rem; }
   .dr-picks :global(img) { width: 56px; height: 56px; }
   .dr-picks :global(.dr-empty) { padding-left: .6rem; color: var(--muted); }
-  .dr :global(.is-active) { outline: 3px solid var(--lacquer); outline-offset: -3px; }
-  @media (prefers-reduced-motion: no-preference) { .dr :global(.is-active) { animation: dr-pulse 1.2s ease-in-out infinite; } @keyframes dr-pulse { 50% { outline-color: transparent; } } }
+  /* Case à remplir : cadre posé en surcouche. Le clignotement ne joue que sur l'opacité (sans repeindre la page) et s'arrête après 4 fois */
+  .dr :global(.is-active) { position: relative; }
+  .dr :global(.is-active::before) { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; box-shadow: inset 0 0 0 3px var(--lacquer); }
+  @media (prefers-reduced-motion: no-preference) { .dr :global(.is-active::before) {  } @keyframes dr-pulse { 50% { opacity: 0; } } }
   .dr-filters { display: grid; gap: .5rem; margin-bottom: .6rem; }
   .dr-filters input { min-height: 44px; padding: 0 .75rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; }
   .dr-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
@@ -162,10 +164,13 @@ for (const r of lolRosters) {
   .dr-tags :global(button[aria-pressed="true"]) { background: var(--ink); color: var(--surface); border-color: var(--ink); }
   .dr-locked { font-size: var(--step--1); color: var(--red-text); font-weight: 700; margin: 0 0 .5rem; }
   .dr-locked[hidden] { display: none; }
-  .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; height: 32rem; align-content: start; overflow-y: auto; padding-right: 4px; }
+  /* contain : la grille (170 champions, hauteur fixe) se dispose à part, sans recalculer toute la page à chaque choix */
+  .dr-grid { contain: strict; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; height: 32rem; align-content: start; overflow-y: auto; padding-right: 4px; }
+  /* Champions hors de vue : ni disposés ni peints tant qu'on ne fait pas défiler la grille */
+  .dr-grid :global(li) { content-visibility: auto; contain-intrinsic-size: auto 64px auto 74px; }
   .dr-grid :global(button) { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: 400 .75rem var(--font-body); }
-  .dr-grid :global(img) { width: 48px; height: 48px; border: 2px solid transparent; }
-  .dr-grid :global(button:hover img) { border-color: var(--lacquer); }
+  .dr-grid :global(.dr-spr) { display: block; width: 52px; height: 52px; box-sizing: border-box; border: 2px solid transparent; background-repeat: no-repeat; background-origin: content-box; background-clip: content-box; }
+  .dr-grid :global(button:hover .dr-spr) { border-color: var(--lacquer); }
   .dr-grid :global(button:disabled) { opacity: .25; cursor: default; }
   .dr-grid :global(span) { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dr-seg { display: inline-flex; align-items: center; border: 1.5px solid var(--line); }
@@ -294,4 +299,6 @@ for (const r of lolRosters) {
     .dr-pool { grid-column: 1 / -1; order: 3; }
     .dr-picks :global(li) { min-height: 48px; } .dr-picks :global(img) { width: 44px; height: 44px; }
   }
+  /* Blocs sous la grille : rendus seulement à l'approche (taille réservée pour ne pas faire sauter la barre de défilement) */
+  .dr-prep, .dr-read, .dr-bottom { content-visibility: auto; contain-intrinsic-size: auto 40rem; }
 </style>

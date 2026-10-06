@@ -1,9 +1,6 @@
 ---
-// Mise en page d'Inside : même <head>, mais seulement la base CSS (pas les styles du site public)
-import '../styles/fonts.css';
-import '@fontsource/zen-kaku-gothic-new/latin-400.css';
-import '@fontsource/zen-kaku-gothic-new/latin-500.css';
-import '@fontsource/zen-kaku-gothic-new/latin-700.css';
+// Mise en page d'Inside : même <head>, mais seulement la base CSS (pas les styles ni les polices du site public :
+// Inside n'utilise qu'IBM Plex, déclarée dans qg.css et préchargée par Head)
 import '../styles/base.css';
 import Head from '../components/Head.astro';
 import Avis from '../components/Avis.astro';

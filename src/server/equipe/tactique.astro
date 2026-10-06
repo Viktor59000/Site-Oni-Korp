@@ -3,6 +3,7 @@
 // des éléments (repères, agents, champions, pings), des formes, des flèches, des post-it, le crayon par-dessus,
 // des étapes pour dérouler une strat et des notes. Synchronisé en quasi direct pour tout le roster.
 import Qg from './Qg.astro';
+import { valoMaps } from './valo-api';
 import { scope, teamUser } from './outils';
 import { ensureBoards } from './tableau-api';
 import { rows } from '../db';
@@ -23,6 +24,9 @@ const list = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.
 const current = boardId ? list.find((b) => Number(b.id) === boardId) : null;
 // État du tableau envoyé avec la page : personne ne part d'un tableau vide (et ne l'écrase) avant la première synchro
 const initial = current ? (await rows<{ state: string; updated_at: number }>('SELECT state, updated_at FROM boards WHERE id = ?', current.id))[0] : null;
+// Fond d'une carte Valorant connu dès le HTML (sinon l'image n'arrive qu'après deux appels du navigateur) ; liste gardée 6 h
+const bgName = (() => { try { return JSON.parse(initial?.state ?? '{}').bg ?? current?.map; } catch { return current?.map; } })() as string | undefined;
+const bgSrc = bgName && !/^(blanc|grille|Terrain|Faille|https?:)/.test(bgName) ? (await valoMaps()).find((m) => m.name === bgName)?.icon : undefined;
 const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
 const rosterGame = new Map(me.rosters.map((r) => [Number(r.id), r.game]));
 const q = sc.active ? `&r=${sc.active}` : '';
@@ -123,7 +127,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
           </div>
           <div class="wb-viewport" data-viewport>
           <div class="wb-stage" data-stage data-game={current?.game ?? ''}>
-            <div class="wb-bg" data-bg></div>
+            <div class="wb-bg" data-bg data-bg-for={bgSrc ? bgName : undefined} data-bg-src={bgSrc} style={bgSrc ? `background-image:url("${bgSrc}")` : undefined}></div>
             <img class="wb-bush" data-bush alt="" hidden />
             <svg class="wb-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" data-svg>
               <defs>{COLORS.map((c) => <marker id={`ah${c.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={c} /></marker>)}</defs>
@@ -300,6 +304,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-pal :global(button) { padding: 0; border: 2px solid transparent; background: none; cursor: pointer; }
   .wb-pal :global(button:hover) { border-color: var(--lacquer); }
   .wb-pal :global(img) { width: 100%; height: auto; display: block; }
+  .wb-pal :global(.wb-spr) { display: block; width: 100%; aspect-ratio: 1; background-repeat: no-repeat; }
   .wb-help { margin: 0; }
   .wb-export { display: flex; flex-wrap: wrap; gap: .4rem; }
   .wb-export .btn { min-height: 38px; padding: 0 .9rem; font-size: .82rem; }

@@ -29,6 +29,15 @@ Fichiers : `src/styles/base.css` (jetons), `global.css` (composants), polices De
 
 Fichier : `src/styles/qg.css` (classe `qg` sur le `body`), polices IBM Plex Sans, Sans Condensed (titres) et Mono (étiquettes). Inspiré du kit **Agrume Design** de Yuzu : encre et papier, **filets plutôt que cartes**, rayon 0, pas d'ombre (sauf panneaux flottants), étiquettes en mono capitales, grain papier, une couleur = un sens.
 
+- **Performance (objectif 100/100, tenu à 96-100 selon les passages)**. Règles qui l'ont permis, à garder :
+  - Inside ne charge que ses polices Plex (pas celles de la vitrine) ; les deux principales sont préchargées dans `Head.astro`.
+  - Couleurs de texte via les jetons (`--ok`, `--warn`, `--danger`, `--qg-accent-text`) : les verts et rouges « à la main » ratent le contraste.
+  - Beaucoup d'icônes de champions = **planches d'icônes Data Dragon** (`img/sprite/championN.png`, 6 fichiers pour 170 champions) au lieu d'une image chacune (drafter, palette du tableau blanc).
+  - Longues listes : `content-visibility: auto` sur les éléments (grille du drafter) et `contain: strict` sur un conteneur à hauteur fixe.
+  - Pas d'animation en boucle qui repeint (couleur, bordure) : seulement `opacity` ou `transform`, et un nombre de répétitions limité.
+  - Image principale connue dès le HTML : la carte Valorant est lue côté serveur (`valo-api.ts`, gardée 6 h) pour la page Lineups et le tableau blanc.
+  - Mesure : `METHOD=devtools DEMO=1 node scripts/lighthouse-equipe.mjs "/equipe/…"` (Git Bash : préfixer `MSYS_NO_PATHCONV=1`). La simulation par défaut de Lighthouse donne 99 au lieu de 100 sur les pages simples à cause d'un artefact de capture en local.
+  - Le design d'avant ce chantier est gardé sous l'étiquette git `inside-design-v1`.
 - Jetons : `--qg-paper` (fond), `--qg-raised` (panneau), `--qg-ink` (texte, filets majeurs), `--qg-muted`, `--qg-rule` / `--qg-rule-strong` (filets), `--qg-accent` (vermillon : action), `--qg-focus` (bleu, focus clavier), `--ok`, `--warn`, `--danger`. Clair et sombre.
 - **Pas d'illustration dans Inside**, ni générée, ni décorative. L'identité d'un jeu = un filet de sa couleur + son sigle en mono.
 - Sobre et dense : c'est un outil de travail. Les noms restent simples (« Tableau blanc », pas « Salle de guerre »).

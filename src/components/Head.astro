@@ -33,11 +33,21 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
         document.documentElement.dataset.theme = t;
       })();
     </script>
-    <link rel="preload" href={delaLatin} as="font" type="font/woff2" crossorigin />
-    <!-- Police du texte et grain de papier : arrivent tout de suite, la page ne change plus d'aspect après l'affichage -->
-    <link rel="preload" href={zen400} as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href={zen700} as="font" type="font/woff2" crossorigin />
-    {!qg && <link rel="preload" href="/img/papier-washi.webp" as="image" type="image/webp" />}
+    {qg ? (
+      <>
+        <!-- Inside : seulement IBM Plex (texte et titres), préchargé pour que la page ne change plus d'aspect après l'affichage -->
+        <link rel="preload" href="/fonts/plex/ibm-plex-sans-400.woff2" as="font" type="font/woff2" crossorigin />
+        <link rel="preload" href="/fonts/plex/ibm-plex-sans-condensed-600.woff2" as="font" type="font/woff2" crossorigin />
+      </>
+    ) : (
+      <>
+        <link rel="preload" href={delaLatin} as="font" type="font/woff2" crossorigin />
+        <!-- Police du texte et grain de papier : arrivent tout de suite, la page ne change plus d'aspect après l'affichage -->
+        <link rel="preload" href={zen400} as="font" type="font/woff2" crossorigin />
+        <link rel="preload" href={zen700} as="font" type="font/woff2" crossorigin />
+        <link rel="preload" href="/img/papier-washi.webp" as="image" type="image/webp" />
+      </>
+    )}
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />

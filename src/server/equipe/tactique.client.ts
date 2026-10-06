@@ -167,7 +167,7 @@ if (root) {
     else if (bg === 'Terrain') el.style.backgroundImage = `url("${RL_PITCH}")`;
     else if (isRift(bg)) el.style.backgroundImage = `url("${state.look === 'img' ? RIFT_IMG : riftUrl(bg)}")`;
     else if (/^https?:\/\//.test(bg)) el.style.backgroundImage = `url("${bg.replace(/["()\\]/g, '')}")`;
-    else { const m = valoMaps.find((x) => x.name === bg); if (m) el.style.backgroundImage = `url("${m.icon}")`; }
+    else { const src = valoMaps.find((x) => x.name === bg)?.icon ?? (el.dataset.bgFor === bg ? el.dataset.bgSrc : undefined); if (src) el.style.backgroundImage = `url("${src}")`; }
     const s = $<HTMLSelectElement>('[data-bg-select]');
     // Fonds proposés : neutres + ceux du jeu du tableau (un tableau osu! ne propose pas la Faille)
     const bg_game = stage.dataset.game ?? '';
@@ -437,18 +437,30 @@ if (root) {
 
   // Portraits selon le jeu du roster
   const pal = $('[data-pal]');
-  const fill = (title: string, items: { name: string; icon: string }[]) => {
+  // sprite : position dans une planche d'icônes (Data Dragon), pour charger 6 images au lieu de 170
+  type PalItem = { name: string; icon: string; sprite?: { url: string; x: number; y: number; w: number; h: number } };
+  const cell = (i: PalItem) => {
+    if (!i.sprite) return `<img src="${esc(i.icon)}" alt="${esc(i.name)}" width="36" height="36" loading="lazy" />`;
+    const { url, x, y, w, h } = i.sprite;
+    return `<span class="wb-spr" role="img" aria-label="${esc(i.name)}" style="background-image:url('${esc(url)}');background-size:${(w / 48) * 100}% ${(h / 48) * 100}%;background-position:${w > 48 ? (x / (w - 48)) * 100 : 0}% ${h > 48 ? (y / (h - 48)) * 100 : 0}%"></span>`;
+  };
+  const fill = (title: string, items: PalItem[]) => {
     items.forEach((i) => icons.set(i.name, i.icon));
     $('[data-pal-title]').textContent = title; $('[data-pal-title]').hidden = false; $('[data-pal-search]').hidden = false;
     const draw = () => {
       const q = $<HTMLInputElement>('[data-pal-search]').value.toLowerCase();
-      pal.innerHTML = items.filter((i) => !q || i.name.toLowerCase().includes(q)).map((i) => `<button type="button" data-add="pic" data-ref="${esc(i.name)}" title="${esc(i.name)}"><img src="${esc(i.icon)}" alt="${esc(i.name)}" width="36" height="36" loading="lazy" /></button>`).join('');
+      pal.innerHTML = items.filter((i) => !q || i.name.toLowerCase().includes(q)).map((i) => `<button type="button" data-add="pic" data-ref="${esc(i.name)}" title="${esc(i.name)}">${cell(i)}</button>`).join('');
     };
     $('[data-pal-search]').addEventListener('input', draw); draw(); render();
   };
   if (game === 'lol') fetch('https://ddragon.leagueoflegends.com/api/versions.json').then((r) => r.json()).then(async (v) => {
     const d = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v[0]}/data/fr_FR/champion.json`).then((r) => r.json());
-    fill('Champions', Object.values<any>(d.data).map((c) => ({ name: c.name, icon: `https://ddragon.leagueoflegends.com/cdn/${v[0]}/img/champion/${c.id}.png` })).sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+    const champs = Object.values<any>(d.data);
+    // Taille de chaque planche, déduite des positions qu'elle contient
+    const size = new Map<string, { w: number; h: number }>();
+    for (const c of champs) { const im = c.image, z = size.get(im.sprite) ?? { w: 0, h: 0 }; size.set(im.sprite, { w: Math.max(z.w, im.x + im.w), h: Math.max(z.h, im.y + im.h) }); }
+    fill('Champions', champs.map((c) => ({ name: c.name, icon: `https://ddragon.leagueoflegends.com/cdn/${v[0]}/img/champion/${c.id}.png`,
+      sprite: { url: `https://ddragon.leagueoflegends.com/cdn/${v[0]}/img/sprite/${c.image.sprite}`, x: c.image.x, y: c.image.y, ...size.get(c.image.sprite)! } })).sort((a, b) => a.name.localeCompare(b.name, 'fr')));
   }).catch(() => {});
   if (game === 'valo') fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=fr-FR').then((r) => r.json())
     .then((a) => fill('Agents', a.data.map((x: any) => ({ name: x.displayName, icon: x.displayIcon })).sort((p: any, q: any) => p.name.localeCompare(q.name, 'fr')))).catch(() => {});
@@ -493,7 +505,7 @@ if (root) {
       if (state.bg === 'grille') { c.strokeStyle = '#e3e0d8'; c.lineWidth = 1; for (let i = 1; i < 20; i++) { c.beginPath(); c.moveTo(i * W / 20, 0); c.lineTo(i * W / 20, H); c.moveTo(0, i * H / 20); c.lineTo(W, i * H / 20); c.stroke(); } }
     } else {
       c.fillStyle = '#0f1923'; c.fillRect(0, 0, W, H);
-      const src = state.bg === 'Terrain' ? RL_PITCH : isRift(state.bg) ? (state.look === 'img' ? RIFT_IMG : riftUrl(state.bg)) : /^https?:/.test(state.bg) ? state.bg : valoMaps.find((x) => x.name === state.bg)?.icon;
+      const src = state.bg === 'Terrain' ? RL_PITCH : isRift(state.bg) ? (state.look === 'img' ? RIFT_IMG : riftUrl(state.bg)) : /^https?:/.test(state.bg) ? state.bg : valoMaps.find((x) => x.name === state.bg)?.icon ?? ($('[data-bg]').dataset.bgFor === state.bg ? $('[data-bg]').dataset.bgSrc : undefined);
       const img = src ? await loadImg(src) : null;
       if (img) { const s = Math.min(W / img.width, H / img.height); c.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s); }
     }
