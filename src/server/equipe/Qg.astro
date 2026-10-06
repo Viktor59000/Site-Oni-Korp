@@ -39,7 +39,7 @@ const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = [
   { key: 'outils', label: 'Outils', pages: [['tactique', 'Tableau blanc'], ...gameTools as [string, string][]] },
   { key: 'equipe', label: 'Équipe', pages: [['joueurs', 'Joueurs'], ['setup', 'Setups'], ['docs', 'Docs']] },
 ];
-const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current));
+const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current)) ?? (GAME_TOOL[current] ? SECTIONS.find((x) => x.key === 'outils') : undefined);
 const GROUPS: [string, [string, string][]][] = SECTIONS.map((x) => [x.label, x.pages]);
 // Changer de roster en restant sur le même outil (sauf outil propre à un autre jeu)
 const switchTo = (r: RosterRow) => {
