@@ -14,7 +14,8 @@
     "demo": "node scripts/base-demo.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
     "test": "node scripts/non-regression.mjs",
-    "check": "astro check && tsc -p tsconfig.check.json"
+    "check": "astro check && tsc -p tsconfig.check.json",
+    "coherence": "node scripts/coherence.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

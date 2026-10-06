@@ -42,5 +42,5 @@
 
 ## Dette technique connue
 
-- Les noms de rôles, les jeux et leurs couleurs sont écrits à la fois dans le site (`access.ts`, `Qg.astro`) et dans le bot (`config.ts`, `util.ts`). Ce sont deux dépôts séparés : **si tu changes l'un, change l'autre**, en attendant une source commune.
+- Les noms de rôles, les postes de candidature et les couleurs des jeux sont écrits à la fois dans le site (`access.ts`, `postuler.ts`, `Qg.astro`) et dans le bot (`config.ts`, `util.ts`, `recrutement.ts`, `cards.ts`). Deux dépôts séparés, donc pas de code partagé : **si tu changes l'un, change l'autre**, puis `npm run coherence` (dans le site, avec le bot cloné à côté) vérifie que les deux listes concordent.
 - La table `availability` (ancien format des disponibilités) n'est plus utilisée ; gardée tant que l'historique peut servir.

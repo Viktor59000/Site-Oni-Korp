@@ -46,6 +46,7 @@ Les matchs, l'agenda, les inhouses, les créateurs et les chiffres du serveur ne
 VERCEL=1 npm run build     # compile AUSSI les pages serveur ; doit finir par « Complete! »
 npm run check              # astro check (toutes les pages) + TypeScript strict des fichiers serveur : 0 erreur attendue
 npm test                   # non-régression : compare le HTML de 43 pages à la référence
+npm run coherence          # si tu as touché aux rôles, postes ou couleurs : compare avec le bot (cloné dans ../oni-bot)
 ```
 
 `npm test` compare à une référence prise avant ton changement :
