@@ -233,7 +233,12 @@ body.qg :is([class$="-h"], .eq-roster h3, .ov-block h2, .nt-match, .ag-h) { font
 body.qg .nt-match { border-top: var(--hair) solid var(--qg-rule); }
 body.qg .dr-bottom { border-color: var(--qg-rule-strong) !important; }
 /* Bloc d'un roster dans le planning : filet du jeu au-dessus, pas de carte */
-body.qg .eq { gap: var(--space-6); }
+body.qg .eq { gap: var(--space-6); grid-template-columns: minmax(0, 1fr); }
+/* Téléphone : on ne glisse jamais sur les côtés, seulement de haut en bas. Les grilles ne s'élargissent plus
+   sur un contenu long (lien, code, adresse d'agenda), qui passe à la ligne ; les tableaux larges défilent dans leur cadre. */
+html:has(body.qg), body.qg { overflow-x: clip; }
+body.qg .qg-main { min-width: 0; overflow-wrap: break-word; }
+body.qg .qg-main :is(table) { overflow-wrap: normal; }
 body.qg .eq-roster { background: transparent; border: 0; border-top: var(--mark) solid var(--team, var(--game)); border-radius: 0; padding: var(--space-4) 0 0; }
 body.qg .eq-roster__code { width: 48px; height: 48px; }
 body.qg .eq-roster__head h2 { font: 600 1.5rem / 1 var(--qg-title); }
