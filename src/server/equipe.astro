@@ -9,6 +9,7 @@ import { CHOICES, encode, loadDispos } from './equipe/dispos';
 import { kindLabel } from './ics';
 import Qg from './equipe/Qg.astro';
 import { scope } from './equipe/outils';
+import InsideIntro from './equipe/InsideIntro.astro';
 
 export const prerender = false;
 
@@ -82,10 +83,12 @@ const spaces = me ? await Promise.all(sc.list.map(async (r) => {
   };
 })) : [];
 const date = (ms: number) => new Date(Number(ms));
+// Pas d'accès (non connecté, ou membre sans roster, sans staff ni contenu) : présentation d'Inside
+const noAccess = !user || !!(me?.member && !me.staff && !me.rosters.length && !me.content.length) || (import.meta.env.DEV && Astro.url.searchParams.has('intro')); // ?intro : aperçu en local
 
 ---
-<Qg title={user ? 'Planning · Inside' : 'Espace équipe'} heading={user ? 'Planning' : 'Espace équipe'}
-  lead={user ? 'Séances à venir, disponibilités de la semaine et présence.' : 'Séances, présences et disponibilités de ton roster, reliées au Discord du club.'}
+<Qg title={noAccess ? 'Oni Inside' : 'Planning · Inside'} heading={noAccess ? 'Oni Inside' : 'Planning'}
+  lead={noAccess ? 'Ce que les joueurs et le staff du club ont sous la main, et comment y entrer.' : 'Séances à venir, disponibilités de la semaine et présence.'}
   current="planning" rosters={me?.rosters ?? []} staff={!!me?.staff} active={sc.active} bare={!(me?.member && (me.staff || me.rosters.length > 0))}
   user={user ? { name: me?.member?.name ?? user.name, avatar: me?.member?.avatar ?? user.avatar } : null}>
   {icsPath && me?.rosters.length ? (
@@ -108,15 +111,7 @@ const date = (ms: number) => new Date(Number(ms));
     </details>
   ) : null}
     <div class="eq">
-      {!user && (
-        <div class="eq-login">
-          {erreur === 'membre' && <p class="eq-alert">Ce compte Discord n'est pas membre du serveur Oni Korp.</p>}
-          {erreur === 'connexion' && <p class="eq-alert">La connexion a échoué, réessaie.</p>}
-          <p>Connecte-toi avec ton compte Discord : tes rosters sont reconnus automatiquement grâce à tes rôles sur le serveur.</p>
-          <a class="btn" href="/api/auth/login">Se connecter avec Discord</a>
-          <p class="eq-note">Aucun mot de passe. Le site ne lit que ton pseudo, ton avatar et tes rôles sur le serveur Oni Korp.</p>
-        </div>
-      )}
+      {noAccess && <InsideIntro connected={!!user} erreur={erreur} />}
 
       {user && me && !me.member && (
         <div class="eq-login">
@@ -128,12 +123,6 @@ const date = (ms: number) => new Date(Number(ms));
         <div class="eq-login">
           <p>Aucun roster n'existe encore.</p>
           <p class="eq-note">Crée-les sur Discord avec <code>/roster creer</code>, puis ajoute les joueurs avec <code>/roster ajouter</code> : ils apparaîtront ici.</p>
-        </div>
-      )}
-      {user && me?.member && !me.staff && !me.rosters.length && (
-        <div class="eq-login">
-          <p>Cet espace est réservé aux joueurs des rosters et au staff du club.</p>
-          <a class="btn" href="/recrutement/">Rejoindre un roster</a>
         </div>
       )}
 

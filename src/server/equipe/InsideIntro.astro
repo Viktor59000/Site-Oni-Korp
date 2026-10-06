@@ -1,0 +1,85 @@
+---
+// Présentation d'Oni Inside pour qui n'y a pas accès (pas connecté, ou membre du Discord sans roster ni rôle staff) :
+// à quoi sert l'espace, les outils en captures (données de démonstration), et comment y entrer.
+// Remplace l'ancien message « Cet espace est réservé… » (demande de Viktor du 06/10).
+interface Props { connected: boolean; erreur?: string | null }
+const { connected, erreur = null } = Astro.props;
+
+const TOOLS = [
+  { img: 'accueil-roster', tag: 'Accueil', title: 'Ce qui compte, dès l’ouverture', text: 'La prochaine échéance avec réponse en un clic, ta semaine, la forme de chacun et les premiers pas pour les nouveaux. Chaque roster a sa page.' },
+  { img: 'tableau-lol', tag: 'Tableau blanc', title: 'La strat se construit à plusieurs, en direct', text: 'Cartes de League of Legends, Valorant et Rocket League, pions, champions, flèches, zones et post-it. Les étapes s’enchaînent en mode présentation pour la revue d’avant-match.' },
+  { img: 'drafter-lol', tag: 'Drafter LoL', title: 'Des drafts prêtes avant d’entrer en jeu', text: 'L’ordre de tournoi, le fearless, les forces et faiblesses de chaque pick, les contres et les synergies, gardés pour tout le roster.' },
+  { img: 'stats', tag: 'Stats', title: 'La progression, sans rien saisir', text: 'Rang, tendance et chiffres des 20 dernières parties classées de chaque joueur, relevés automatiquement une fois les comptes reliés.' },
+  { img: 'avant-match', tag: 'Avant-match', title: 'Tout le match au même endroit', text: 'Compo, adversaire, fiche de scouting, checklist, puis notes de match et VOD pour le débrief.' },
+  { img: 'contenu', tag: 'Contenu', title: 'Le pôle contenu suit le rythme des matchs', text: 'Annonces, visuels de résultat et clips se créent tout seuls autour de chaque match. Chacun prend sa tâche, le staff valide.' },
+];
+---
+<div class="ii">
+  {erreur === 'membre' && <p class="eq-alert">Ce compte Discord n’est pas membre du serveur Oni Korp.</p>}
+  {erreur === 'connexion' && <p class="eq-alert">La connexion a échoué, réessaie.</p>}
+
+  <section class="ii-hero">
+    <h2>L’espace de travail des rosters et du staff</h2>
+    <p class="ii-lead">Planning, préparation des matchs et progression de chacun, relié au Discord du club. Une réponse ici se retrouve sur Discord dans la minute, et inversement.</p>
+    {connected ? (
+      <p class="ii-note">Ton compte Discord est bien reconnu, mais tu n’es dans aucun roster pour l’instant. Inside s’ouvre dès que tu rejoins un roster ou le staff.</p>
+    ) : (
+      <p class="ii-note">Déjà dans un roster ou le staff ? Connecte-toi : tes accès sont reconnus grâce à tes rôles sur le serveur.</p>
+    )}
+    <div class="ii-actions">
+      {!connected && <a class="btn" href="/api/auth/login">Se connecter avec Discord</a>}
+      <a class:list={['btn', { 'btn--ghost': !connected }]} href="/recrutement/">Rejoindre un roster</a>
+      <a class="btn btn--ghost" href="/postuler/?type=staff">Rejoindre le staff</a>
+    </div>
+  </section>
+
+  <section class="ii-tools" aria-label="Les outils">
+    {TOOLS.map((t, k) => (
+      <article class:list={['ii-tool', { 'is-flip': k % 2 }]}>
+        <figure><img src={`/img/inside/${t.img}.webp`} width="1200" height="750" alt={`Capture d’Inside : ${t.tag}`} loading={k ? 'lazy' : 'eager'} decoding="async" /></figure>
+        <div>
+          <p class="ii-tag">{t.tag}</p>
+          <h3>{t.title}</h3>
+          <p>{t.text}</p>
+        </div>
+      </article>
+    ))}
+  </section>
+
+  <section class="ii-steps" aria-labelledby="ii-acces">
+    <h2 id="ii-acces">Comment y entrer</h2>
+    <ol>
+      <li><span><b>Rejoins le Discord du club.</b> C’est là que tout se passe au quotidien.</span></li>
+      <li><span><b>Entre dans un roster ou le staff.</b> Candidature depuis le site ou le salon #postuler, réponse du responsable du jeu.</span></li>
+      <li><span><b>Connecte-toi avec Discord.</b> Aucun mot de passe : le site lit seulement ton pseudo, ton avatar et tes rôles sur le serveur.</span></li>
+    </ol>
+    <p class="ii-note">Les captures montrent des rosters de démonstration.</p>
+  </section>
+</div>
+
+<style>
+  .ii { display: grid; gap: clamp(2.5rem, 6vw, 4.5rem); }
+  .ii-hero { display: grid; gap: .9rem; max-width: 46rem; }
+  .ii-tag { margin: 0; font: 500 .75rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-accent-text, #b3241e); }
+  .ii h2 { margin: 0; font: 600 clamp(1.6rem, 4vw, 2.4rem)/1.1 var(--qg-title, sans-serif); }
+  .ii h3 { margin: .35rem 0 .5rem; font: 600 1.35rem/1.2 var(--qg-title, sans-serif); }
+  .ii p { margin: 0; }
+  .ii-lead { font-size: 1.1rem; line-height: 1.5; }
+  .ii-note { color: var(--qg-muted, #514c46); font-size: .95rem; }
+  .ii-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .4rem; }
+  .ii-tools { display: grid; gap: clamp(2rem, 5vw, 3.5rem); }
+  .ii-tool { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: clamp(1.25rem, 3vw, 2.5rem); align-items: center; }
+  .ii-tool.is-flip { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
+  .ii-tool.is-flip figure { order: 2; }
+  .ii-tool figure { margin: 0; border: var(--rule, 2px) solid var(--qg-ink, #141210); box-shadow: 0 18px 40px -24px rgb(0 0 0 / .55); }
+  .ii-tool img { display: block; width: 100%; height: auto; }
+  .ii-tool p:last-child { color: var(--qg-muted, #514c46); line-height: 1.55; }
+  .ii-steps { display: grid; gap: 1rem; max-width: 46rem; border-top: var(--rule, 2px) solid var(--qg-ink, #141210); padding-top: 1.5rem; }
+  .ii-steps ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: .9rem; }
+  .ii-steps li { counter-increment: s; display: grid; grid-template-columns: 2.25rem 1fr; gap: .75rem; line-height: 1.5; }
+  .ii-steps li::before { content: counter(s); display: grid; place-items: center; width: 2.25rem; height: 2.25rem; background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); font: 600 1rem var(--qg-mono, monospace); }
+  @media (max-width: 760px) {
+    .ii-tool, .ii-tool.is-flip { grid-template-columns: minmax(0, 1fr); }
+    .ii-tool.is-flip figure { order: 0; }
+  }
+</style>
