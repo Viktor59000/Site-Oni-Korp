@@ -63,6 +63,13 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
             </aside>
           </div>
           <ul class="lu-list" data-list></ul>
+
+          <section class="lu-com" aria-labelledby="lu-com-title">
+            <h2 id="lu-com-title">Bibliothèque de la communauté <small>LineupsValorant · carte et agent en cours</small></h2>
+            <p class="eq-note">Les lineups publiées sur <a href="https://lineupsvalorant.com/" rel="noopener" target="_blank">LineupsValorant</a> (réutilisation autorisée par leur équipe). Importe celles qui te servent : tu les places sur notre carte en deux clics, la source reste créditée.</p>
+            <ul class="lu-com__grid" data-com></ul>
+            <div class="lu-com__detail" data-com-detail hidden></div>
+          </section>
         </>
       )}
     </div>
@@ -144,7 +151,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       const pin = (e.target as Element).closest<SVGGElement>('.lu-pin');
       if (pin && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showDetail(Number(pin.dataset.id)); }
     });
-    $('[data-add]').addEventListener('click', () => { draft = null; sel = null; setMode('from'); draw(); });
+    $('[data-add]').addEventListener('click', () => { $<HTMLFormElement>('[data-form]').reset(); fillAbilities(); draft = null; sel = null; setMode('from'); draw(); });
     $('[data-cancel]').addEventListener('click', () => { draft = null; $('[data-form]').hidden = true; $('[data-detail]').hidden = false; setMode('idle'); draw(); });
     $('[data-list]').addEventListener('click', (e) => { const b = (e.target as Element).closest<HTMLElement>('[data-id]'); if (b) showDetail(Number(b.dataset.id)); });
     root.querySelectorAll<HTMLElement>('[data-side]').forEach((b) => b.addEventListener('click', () => {
@@ -152,7 +159,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
     }));
     // Lien vers LineupsValorant filtré sur la carte et l'agent en cours (leur base reste chez eux)
     const ext = () => { const q = new URLSearchParams(); if (map) q.set('map', map); if (agent) q.set('agent', agent.replace(/\W/g, '')); $<HTMLAnchorElement>('[data-ext]').href = `https://lineupsvalorant.com/?${q}`; };
-    $('[data-agent-filter]').addEventListener('change', (e) => { agent = (e.target as HTMLSelectElement).value; draw(); ext(); });
+    $('[data-agent-filter]').addEventListener('change', (e) => { agent = (e.target as HTMLSelectElement).value; draw(); ext(); loadCom(); });
     $('[data-kind-filter]').addEventListener('change', (e) => { kind = (e.target as HTMLSelectElement).value; draw(); });
     // Compétences de l'agent choisi dans le formulaire
     const fillAbilities = () => { const a = agents.find((x) => x.name === $<HTMLSelectElement>('[data-f-agent]').value); $('[data-f-ability]').innerHTML = '<option value="">—</option>' + (a?.abilities ?? []).map((x) => `<option>${esc(x.name)}</option>`).join(''); };
@@ -164,9 +171,49 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       $<HTMLImageElement>('[data-mapimg]').src = m.icon;
       root.querySelectorAll('[data-map]').forEach((b) => b.setAttribute('aria-selected', String((b as HTMLElement).dataset.map === uuid)));
       $('[data-detail]').innerHTML = '<p class="eq-note">Clique sur un point pour voir la lineup.</p>';
-      draw(); ext();
+      draw(); ext(); loadCom();
     }
     $('[data-maps]').addEventListener('click', (e) => { const b = (e.target as Element).closest<HTMLElement>('[data-map]'); if (b) selectMap(b.dataset.map!); });
+
+    // ---------- Bibliothèque de la communauté (LineupsValorant) ----------
+    type Com = { id: number; title: string; agent: string; abilities: string[]; thumb: string | null; from: string; to: string };
+    type ComFull = { id: number; map: string; title: string; from: string; to: string; abilities: string[]; steps: string[]; images: string[]; author: string; likes: number; views: number; url: string };
+    const lvAgent = (a: string) => a.replace(/\W/g, '');
+    let comToken = 0;
+    async function loadCom() {
+      const tok = ++comToken, box = $('[data-com]');
+      box.innerHTML = '<li class="eq-note">Chargement…</li>'; $('[data-com-detail]').hidden = true;
+      const list: Com[] | null = await fetch(`/api/equipe/outils?type=lv&map=${encodeURIComponent(map)}&agent=${encodeURIComponent(lvAgent(agent))}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (tok !== comToken) return;
+      box.innerHTML = list?.length ? list.slice(0, 24).map((c) => `<li><button type="button" data-com-id="${c.id}">
+        ${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" />` : ''}
+        <span><strong>${esc(c.title)}</strong><small>${esc(c.agent)}${c.abilities.length ? ` · ${esc(c.abilities.join(', '))}` : ''}</small><small>${esc(c.from)} → ${esc(c.to)}</small></span></button></li>`).join('')
+        : '<li class="eq-note">Rien sur LineupsValorant pour cette carte et cet agent.</li>';
+    }
+    $('[data-com]').addEventListener('click', async (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('[data-com-id]'); if (!b) return;
+      const d: ComFull | null = await fetch(`/api/equipe/outils?type=lv&id=${b.dataset.comId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const box = $('[data-com-detail]'); if (!d) return;
+      box.hidden = false;
+      box.innerHTML = `<h3>${esc(d.title)}</h3><p class="lu-meta">${esc(d.abilities.join(', '))} · ${esc(d.from)} → ${esc(d.to)} · ${d.likes} j'aime</p>
+        ${d.steps.length ? `<ol class="lu-steps">${d.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+        <div class="lu-shots">${d.images.map((u, k) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Étape ${k + 1}" loading="lazy" /><span>${k + 1}</span></a>`).join('')}</div>
+        <p class="lu-com__actions"><button type="button" class="btn" data-com-import="${d.id}">Importer dans notre bibliothèque</button> <a href="${esc(d.url)}" target="_blank" rel="noopener">Voir sur LineupsValorant ↗</a></p>
+        <p class="eq-note">Par ${esc(d.author)} sur LineupsValorant.</p>`;
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      box.querySelector<HTMLElement>('[data-com-import]')!.onclick = () => {
+        // Préremplit notre formulaire, puis deux clics sur la carte pour placer le lanceur et l'impact
+        const f = $<HTMLFormElement>('[data-form]');
+        (f.elements.namedItem('title') as HTMLInputElement).value = d.title.slice(0, 80);
+        (f.elements.namedItem('note') as HTMLTextAreaElement).value = d.steps.join(NL).slice(0, 500);
+        (f.elements.namedItem('url') as HTMLInputElement).value = d.url;
+        d.images.slice(0, 3).forEach((u, k) => { (f.elements.namedItem(`img${k + 1}`) as HTMLInputElement).value = u; });
+        const ag = agents.find((a) => lvAgent(a.name).toLowerCase() === lvAgent(agent || '').toLowerCase());
+        if (ag) { $<HTMLSelectElement>('[data-f-agent]').value = ag.name; fillAbilities(); }
+        draft = null; sel = null; setMode('from'); draw();
+        $('[data-mapbox]').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+    });
 
     async function loadLineups() {
       const d = await fetch(`/api/equipe/outils?type=lineups&roster=${$<HTMLSelectElement>('[data-roster]').value}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
@@ -234,6 +281,20 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   .lu-form[hidden] { display: none; }
   .lu-form h2 { font-size: 1.1rem; }
   .lu-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .lu-com { margin-top: 2rem; }
+  .lu-com h2 small { font-size: .8rem; font-weight: 400; color: var(--muted); margin-left: .4rem; }
+  .lu-com__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: .75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .lu-com__grid :global(button) { display: grid; width: 100%; height: 100%; padding: 0; border: 1px solid var(--line); background: var(--qg-surface, var(--paper)); color: var(--ink); text-align: left; font: inherit; cursor: pointer; transition: translate .2s, border-color .2s; }
+  .lu-com__grid :global(button:hover) { translate: 0 -3px; border-color: #ff4655; }
+  .lu-com__grid :global(img) { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+  .lu-com__grid :global(button > span) { display: grid; gap: .15rem; padding: .55rem .65rem .7rem; }
+  .lu-com__grid :global(small) { color: var(--muted); font-size: .78rem; }
+  .lu-com__detail { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid #ff4655; }
+  .lu-com__detail :global(.lu-shots) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); gap: .5rem; margin: .75rem 0; }
+  .lu-com__detail :global(.lu-shots a) { display: grid; gap: .2rem; color: inherit; text-decoration: none; font-size: .75rem; }
+  .lu-com__detail :global(.lu-shots img) { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+  .lu-com__detail :global(.lu-steps) { display: grid; gap: .3rem; padding-left: 1.3rem; list-style: decimal; }
+  .lu-com__detail :global(.lu-com__actions) { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
   .lu-ext { display: block; margin: .5rem 0 1rem; font-size: .85rem; color: var(--muted); }
   .lu-ext:hover { color: var(--ink); }
   .lu-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }

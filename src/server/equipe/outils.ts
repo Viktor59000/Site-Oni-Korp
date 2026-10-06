@@ -289,9 +289,46 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   return redirect(back);
 };
 
+// Bibliothèque communautaire LineupsValorant (lineupsvalorant.com, réutilisation autorisée par leur équipe) : liste et fiches, en cache 1 h
+const lvCache = new Map<string, { at: number; v: unknown }>();
+const lvBase = 'https://lineupsvalorant.com';
+const decode = (x: string) => x.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+async function lv(key: string, load: () => Promise<unknown>) {
+  const c = lvCache.get(key); if (c && Date.now() - c.at < 3600_000) return c.v;
+  const v = await load(); lvCache.set(key, { at: Date.now(), v }); return v;
+}
+async function lvList(map: string, agent: string) {
+  const q = new URLSearchParams(); if (map) q.set('map', map); if (agent) q.set('agent', agent);
+  const html = await fetch(`${lvBase}/?${q}`).then((r) => (r.ok ? r.text() : ''));
+  return html.split('<div class="lineup-box"').slice(1).map((b) => ({
+    id: Number(b.match(/data-id="(\d+)"/)?.[1]),
+    title: decode(b.match(/lineup-box-title">([^<]*)</)?.[1] ?? ''),
+    agent: b.match(/class="lineup-box-agent" alt="([^"]*)"/)?.[1] ?? '',
+    abilities: [...b.matchAll(/<img alt="([^"]+)" src="\/static\/abilities\//g)].map((m) => m[1]),
+    thumb: b.match(/class="lineup-box-image" src="([^"]+)"/)?.[1] ?? null,
+    from: decode(b.match(/start=[^"]*"[^>]*>([^<]*)</)?.[1] ?? ''), to: decode(b.match(/end=[^"]*"[^>]*>([^<]*)</)?.[1] ?? ''),
+  })).filter((x) => x.id);
+}
+async function lvOne(id: number) {
+  const d = await fetch(`${lvBase}/get_lineup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, user_token: null }) }).then((r) => (r.ok ? r.json() : null)) as any;
+  if (!d || d.error !== 'none') return null;
+  return {
+    id, map: d.map, title: d.title, from: d.start, to: d.end, abilities: String(d.abilities ?? '').split(',').map((x: string) => x.trim()).filter(Boolean),
+    steps: String(d.description ?? '').split(/<br\s*\/?>/i).map((x: string) => decode(x.replace(/<[^>]+>/g, '')).replace(/^\d+[.)]\s*/, '')).filter(Boolean),
+    images: Array.from({ length: Number(d.num_images) || 0 }, (_, k) => `https://lineupsvalorant.b-cdn.net/static/lineup_images/${id}/${k + 1}.webp`),
+    author: d.username, likes: d.like_count, views: d.views, url: `${lvBase}/?id=${id}`,
+  };
+}
+
 export const GET: APIRoute = async ({ cookies, url }) => {
   const t = await teamUser(cookies);
   if (!t) return new Response('[]', { status: 401 });
+  if (url.searchParams.get('type') === 'lv') {
+    const id = Number(url.searchParams.get('id'));
+    const map = (url.searchParams.get('map') ?? '').slice(0, 30), agent = (url.searchParams.get('agent') ?? '').replace(/\W/g, '').slice(0, 30);
+    const v = await lv(id ? `one:${id}` : `list:${map}:${agent}`, () => (id ? lvOne(id) : lvList(map, agent))).catch(() => null);
+    return new Response(JSON.stringify(v), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=600' } });
+  }
   const roster = Number(url.searchParams.get('roster'));
   if (!(t.me.staff || t.me.rosterIds.includes(roster))) return new Response('[]', { status: 403 });
   const type = url.searchParams.get('type');
