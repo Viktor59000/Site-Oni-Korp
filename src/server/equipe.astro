@@ -5,7 +5,7 @@
 import { currentSession, icsKey, userKeys } from './session';
 import { rows, weekKey } from './db';
 import { access } from './equipe/access';
-import { SLOTS } from './equipe/dispos';
+import { CHOICES, encode, loadDispos } from './equipe/dispos';
 import { kindLabel } from './ics';
 import Qg from './equipe/Qg.astro';
 import { scope } from './equipe/outils';
@@ -25,8 +25,12 @@ const tz = { timeZone: 'Europe/Paris' } as const;
 const fDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', ...tz });
 const fMonth = new Intl.DateTimeFormat('fr-FR', { month: 'short', ...tz });
 const fWhen = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit', ...tz });
-const week = weekKey(true);
+// Disponibilités : semaine prochaine par défaut (on prépare), cette semaine sur demande
+const sem = Astro.url.searchParams.get('sem') === 'cur' ? 'cur' : 'next';
+const week = weekKey(sem === 'next');
 const weekLabel = week.split('-').reverse().join('/');
+const weekDays = Array.from({ length: 7 }, (_, d) => { const x = new Date(`${week}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + d); return x; });
+const fDayShort = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
 
 // Agenda perso : lien secret à ajouter une fois dans Google / Apple / Outlook
 const host = Astro.url.host;
@@ -45,9 +49,7 @@ const spaces = me ? await Promise.all(sc.list.map(async (r) => {
   const games = await rows<{ id: number; opponent: string; format: string; at: number; kind: string | null; link: string | null }>(
     'SELECT id, opponent, format, at, kind, link FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 6', r.id, Date.now() - 3 * 3600_000);
   const answers = trainings.length ? await rows<A>(`SELECT * FROM attendance WHERE training_id IN (${trainings.map(() => '?').join(',')})`, ...trainings.map((t) => t.id)) : [];
-  const dispo = await rows<{ user_id: string; slots: string }>('SELECT user_id, slots FROM availability WHERE roster_id = ? AND week = ?', r.id, week);
-  const mySlots: string[] = JSON.parse(dispo.find((d) => d.user_id === user!.id)?.slots ?? '[]');
-  const counts = new Map(SLOTS.map((s) => [s, dispo.filter((d) => (JSON.parse(d.slots) as string[]).includes(s)).length]));
+  const dispos = await loadDispos(r.id, r.game, week, members, user!.id);
   // Bilan 30 jours (encadrement)
   let bilan: { name: string; avatar: string; rate: number; p: number; a: number; m: number; n: number }[] = [];
   let past = 0;
@@ -62,7 +64,7 @@ const spaces = me ? await Promise.all(sc.list.map(async (r) => {
     }).sort((x, y) => y.rate - x.rate);
   }
   return {
-    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f', img: '' }, members, past, bilan, mySlots, counts, total: members.length || 1, games,
+    r, g: GAME[r.game] ?? { label: r.game, color: '#e5251f', img: '' }, members, past, bilan, dispos, total: members.length || 1, games,
     trainings: trainings.map((t) => {
       const list = answers.filter((a) => a.training_id === t.id);
       const who = (s: string) => list.filter((a) => a.status === s).map((a) => ({ ...(byId.get(a.user_id) ?? { id: a.user_id, name: 'Membre', avatar: '' }), reason: a.reason }));
@@ -205,36 +207,68 @@ const date = (ms: number) => new Date(Number(ms));
             </ol>
           ) : <p class="eq-empty">Aucune séance prévue. L'encadrement les planifie avec <code>/entrainement</code> sur Discord.</p>}
 
-          <h3 id={`dispos-${s.r.id}`}>Mes disponibilités · semaine du {weekLabel}</h3>
-          <form method="post" action="/api/equipe/dispos" class="eq-dispos">
-            <input type="hidden" name="roster" value={s.r.id} />
-            <input type="hidden" name="week" value={week} />
-            <table>
-              <thead><tr><th></th>{DAYS.map(([, l]) => <th scope="col">{l}</th>)}</tr></thead>
+          <h3 id={`dispos-${s.r.id}`}>Disponibilités · semaine du {weekLabel}</h3>
+          <nav class="dp-weeks" aria-label="Semaine">
+            <a href={`?r=${s.r.slug}&sem=cur#dispos-${s.r.id}`} aria-current={sem === 'cur' ? 'page' : undefined}>Cette semaine</a>
+            <a href={`?r=${s.r.slug}&sem=next#dispos-${s.r.id}`} aria-current={sem === 'next' ? 'page' : undefined}>Semaine prochaine</a>
+          </nav>
+
+          {/* Ma semaine : un menu par jour, comme dans un Sheet, plus le poste et la semaine type */}
+          {s.dispos.mine && (
+            <form method="post" action="/api/equipe/dispos" class="dp-mine">
+              <input type="hidden" name="roster" value={s.r.id} />
+              <input type="hidden" name="week" value={week} />
+              <input type="hidden" name="slug" value={s.r.slug} />
+              <input type="hidden" name="sem" value={sem} />
+              <p class="dp-label">Ma semaine</p>
+              <div class="dp-days">
+                {weekDays.map((day, d) => (
+                  <label class:list={['dp-day', `is-${s.dispos.mine![d].state || 'vide'}`]}>
+                    <span>{fDayShort.format(day)}</span>
+                    <select name={`d${d}`}>
+                      {CHOICES.map(([v, l]) => <option value={v} selected={encode(s.dispos.mine![d].state ? s.dispos.mine![d] : undefined) === v}>{l}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <div class="dp-actions">
+                <label class="dp-poste">Mon poste
+                  <select name="poste">
+                    <option value="">À choisir</option>
+                    {s.dispos.postes.map((po) => <option value={po} selected={s.dispos.myPoste === po}>{po}</option>)}
+                  </select>
+                </label>
+                <button class="btn" name="action" value="save">Enregistrer</button>
+                <button class="btn btn--ghost" name="action" value="save-type" title="Enregistre aussi ces jours comme tes dispos habituelles">Enregistrer comme semaine type</button>
+                {s.dispos.hasType && <button class="btn btn--ghost" name="action" value="apply-type" title="Remplit la semaine avec tes dispos habituelles">Remplir avec ma semaine type</button>}
+              </div>
+            </form>
+          )}
+
+          {/* L'équipe, par poste, et le verdict de chaque jour */}
+          <div class="dp-team-wrap">
+            <table class="dp-team">
+              <thead><tr><th scope="col">Poste</th><th scope="col">Joueur</th>{weekDays.map((day) => <th scope="col">{fDayShort.format(day)}</th>)}</tr></thead>
               <tbody>
-                {[['aprem', 'Après-midi'], ['soir', 'Soir']].map(([k, label]) => (
-                  <tr>
-                    <th scope="row">{label}</th>
-                    {DAYS.map(([d, dl]) => {
-                      const slot = `${d}-${k}`;
-                      const n = s.counts.get(slot) ?? 0;
-                      return (
-                        <td>
-                          <label class="eq-slot" style={`--fill:${n / s.total}`}>
-                            <input type="checkbox" name="slot" value={slot} checked={s.mySlots.includes(slot)} aria-label={`${dl} ${label.toLowerCase()} · ${n} dispo`} />
-                            <span class="eq-slot__mark" aria-hidden="true">✓</span>
-                            <span class="eq-slot__n">{n}/{s.members.length}</span>
-                          </label>
-                        </td>
-                      );
-                    })}
+                {s.dispos.people.map((p) => (
+                  <tr class:list={{ 'is-me': p.id === user!.id, 'is-coach': p.poste === 'Coach' }}>
+                    <th scope="row" class="dp-poste-cell">{p.poste ?? '—'}</th>
+                    <td class="dp-name">{p.name}</td>
+                    {p.days.map((d) => (
+                      <td class:list={['dp-cell', `is-${d.state || 'vide'}`]}>{d.state === 'oui' ? (d.start ? d.start.replace(':', 'h') : 'Dispo') : d.state === 'peut' ? 'Pas sûr' : d.state === 'non' ? 'Pas dispo' : ''}</td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row" colspan="2">Jouable ?</th>
+                  {s.dispos.verdicts.map((v) => <td class:list={['dp-verdict', { 'is-ok': v.ok }]}><strong>{v.ok ? `✓ ${v.label}` : v.label}</strong>{v.detail && <small>{v.detail}</small>}</td>)}
+                </tr>
+              </tfoot>
             </table>
-            <p class="eq-note">Coche tes créneaux. Plus la case est colorée, plus il y a de joueurs disponibles.</p>
-            <button class="btn">Enregistrer mes dispos</button>
-          </form>
+          </div>
+          <p class="eq-note">Un jour est jouable quand assez de joueurs sont dispo et que chaque poste titulaire renseigné est couvert. L'heure indiquée est celle où le dernier joueur nécessaire arrive.</p>
 
           {me!.staff && (
             <>
@@ -343,20 +377,7 @@ const date = (ms: number) => new Date(Number(ms));
   .eq-chips.is-ko li { border-color: var(--lacquer); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); }
   .eq-chips.is-wait li { border-style: dashed; opacity: .65; }
 
-  .eq-dispos table { border-collapse: separate; border-spacing: 4px; width: 100%; max-width: 44rem; }
-  .eq-dispos th { font-size: var(--step--1); font-weight: 700; padding: .2rem; }
-  .eq-dispos th[scope="row"] { text-align: left; font-weight: 400; color: var(--muted); }
-  .eq-dispos td { padding: 0; }
-  .eq-slot { display: grid; place-items: center; position: relative; min-height: 48px; border: 1.5px solid var(--line); cursor: pointer;
     background: color-mix(in srgb, var(--team) calc(var(--fill) * 55%), transparent); }
-  .eq-slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
-  .eq-slot__mark { display: none; font-weight: 700; font-size: 1.1rem; line-height: 1; }
-  .eq-slot__n { font-size: .72rem; color: inherit; font-weight: 700; }
-  .eq-slot:has(input:checked) { border-color: var(--ink); border-width: 2.5px; }
-  .eq-slot:has(input:checked) .eq-slot__mark { display: block; }
-  .eq-slot:has(input:focus-visible) { outline: 3px solid var(--lacquer-hi); }
-  .eq-slot:hover { border-color: var(--ink); }
-  .eq-dispos .btn { margin-top: 1rem; }
 
   .eq-bilan { display: grid; gap: .1rem; max-width: 52rem; }
   .eq-bilan li { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr 3.5rem; gap: .2rem 1rem; align-items: center; padding: .6rem 0; border-bottom: 1px solid var(--line); }
@@ -371,6 +392,40 @@ const date = (ms: number) => new Date(Number(ms));
     .eq-seance { grid-template-columns: 2.5rem 1fr; gap: .75rem; padding: 1rem .9rem; }
     .eq-date b { font-size: 1.5rem; }
     .eq-seg { width: 100%; } .eq-seg button { flex: 1; padding: 0 .5rem; }
-    .eq-dispos table { border-spacing: 2px; } .eq-slot__n { font-size: .68rem; }
   }
+
+  .dp-weeks { display: flex; gap: 0; margin: 0 0 var(--space-4, 1rem); }
+  .dp-weeks a { padding: .4rem .9rem; border: 1px solid var(--qg-rule-strong, var(--line)); color: var(--ink); text-decoration: none; font-size: .8125rem; font-weight: 600; }
+  .dp-weeks a + a { border-left: 0; }
+  .dp-weeks a[aria-current] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .dp-mine { display: grid; gap: .75rem; margin-bottom: 1.5rem; }
+  .dp-label { margin: 0; font: 500 .6875rem/1.35 var(--qg-mono, monospace); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .dp-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .4rem; }
+  .dp-day { display: grid; gap: .25rem; padding: .4rem; border-top: 3px solid var(--qg-rule-strong, var(--line)); }
+  .dp-day span { font: 500 .6875rem/1.3 var(--qg-mono, monospace); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .dp-day select { width: 100%; min-height: 36px; padding: .3rem .4rem; }
+  .dp-day.is-oui { border-top-color: var(--ok); } .dp-day.is-peut { border-top-color: var(--warn); } .dp-day.is-non { border-top-color: var(--danger); }
+  .dp-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem; }
+  .dp-poste { display: grid; gap: .25rem; margin-right: .5rem; font: 500 .6875rem/1.3 var(--qg-mono, monospace); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .dp-poste select { min-height: 36px; min-width: 9rem; text-transform: none; letter-spacing: 0; }
+  .dp-team-wrap { overflow-x: auto; }
+  .dp-team { width: 100%; min-width: 46rem; border-collapse: collapse; table-layout: fixed; }
+  .dp-team th, .dp-team td { padding: .45rem .5rem; text-align: left; font-size: .8125rem; }
+  .dp-team thead th { white-space: nowrap; }
+  .dp-team thead th:nth-child(1) { width: 7rem; } .dp-team thead th:nth-child(2) { width: 9rem; }
+  .dp-poste-cell { font: 600 .8125rem/1.2 var(--qg-sans, sans-serif) !important; text-transform: uppercase; letter-spacing: .04em; color: var(--ink) !important; }
+  .dp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dp-cell { font-weight: 600; border-left: 1px solid var(--surface); }
+  .dp-cell.is-oui { background: color-mix(in srgb, var(--ok) 22%, transparent); }
+  .dp-cell.is-peut { background: color-mix(in srgb, var(--warn) 24%, transparent); }
+  .dp-cell.is-non { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--muted); font-weight: 400; }
+  .dp-team tr.is-me .dp-name { font-weight: 600; }
+  .dp-team tr.is-me td.dp-name::before { content: '▸ '; color: var(--lacquer); }
+  .dp-team tr.is-coach { color: var(--muted); }
+  .dp-team tfoot th { font: 500 .6875rem/1.3 var(--qg-mono, monospace) !important; text-transform: uppercase; letter-spacing: .06em; border-top: 2px solid var(--ink); }
+  .dp-verdict { border-top: 2px solid var(--ink); vertical-align: top; }
+  .dp-verdict strong { display: block; font: 600 1rem/1.1 var(--qg-title, sans-serif); }
+  .dp-verdict small { display: block; margin-top: .15rem; font-size: .6875rem; color: var(--muted); }
+  .dp-verdict.is-ok strong { color: var(--ok); }
+  @media (max-width: 700px) { .dp-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 </style>
