@@ -5,8 +5,10 @@ import zen400 from '@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-la
 import zen700 from '@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-700-normal.woff2?url';
 import { existsSync } from 'node:fs';
 import site from '../data/site.json';
+import og from '../data/og-version.json';
 const { qg = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert." } = Astro.props;
-// Image d'aperçu propre à la page (public/og/<page>.jpg, générée par scripts/og.mjs), sinon celle du club
+// Image d'aperçu propre à la page (?v= change à chaque régénération : Discord et X ne gardent pas l'ancienne en cache)
+// (public/og/<page>.jpg, générée par scripts/og.mjs), sinon celle du club
 const section = Astro.url.pathname.split('/')[1];
 const image = Astro.props.image ?? (section && existsSync(`public/og/${section}.jpg`) ? `/og/${section}.jpg` : '/og.jpg');
 const fullTitle = title ? `${title} | Oni Korp` : "Oni Korp | Club esport, jamais à genoux";
@@ -46,7 +48,7 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <meta property="og:site_name" content="Oni Korp" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={abs(image)} />
+    <meta property="og:image" content={`${abs(image)}?v=${og.v}`} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta property="og:image:alt" content={`${fullTitle} : aperçu`} />
     <script type="application/ld+json" set:html={JSON.stringify({
