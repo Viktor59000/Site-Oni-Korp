@@ -100,8 +100,9 @@
 .game h3 { font-size: var(--step-2); }
 .game__meta { color: var(--muted); margin-top: .4rem; }
 .game__pitch { margin-top: .75rem; margin-bottom: 0; color: var(--ink); }
-.game__img { aspect-ratio: 5 / 2; overflow: hidden; clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%); background: #111; }
-.game__img img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.75) brightness(.85); transition: filter .3s ease, scale .4s ease; }
+/* Bannière du jeu : rectangle au rapport exact des visuels (5:2), sans biais ni filtre : l'image s'affiche telle que livrée */
+.game__img { aspect-ratio: 5 / 2; overflow: hidden; background: #111; }
+.game__img img { width: 100%; height: 100%; object-fit: cover; transition: scale .4s ease; }
 a.game:hover .game__img img, a.game:focus-visible .game__img img { filter: none; scale: 1.04; }
 a.game:hover h3 { color: var(--red-text); }
 @media (max-width: 720px) {
