@@ -14,6 +14,7 @@ type Acc = { user_id: string; game: string; ident: string; region: string | null
 const mine = await rows<Acc>('SELECT * FROM accounts WHERE user_id = ?', user.id);
 const get = (g: string) => mine.find((a) => a.game === g);
 
+const POSTE_ICON: Record<string, string> = { Top: 'lol-top', Jungle: 'lol-jungle', Mid: 'lol-mid', ADC: 'lol-adc', Support: 'lol-support', Duelliste: 'valo-duelliste', Initiateur: 'valo-initiateur', 'Contrôleur': 'valo-controleur', Sentinelle: 'valo-sentinelle' };
 const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
 const sc = scope(me.rosters, Astro.url);
 const rosters = await Promise.all(sc.list.map(async (r) => {
@@ -91,7 +92,7 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
             <ul class="jo-list">
               {people.map((p) => (
                 <li>
-                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar ? <img src={p.avatar} alt="" width="44" height="44" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="jo-ini" aria-hidden="true">{p.name.slice(0, 1)}</span>}<span><strong>{p.name}</strong><small>{p.poste ?? 'Poste à définir'}</small></span></a>
+                  <a class="jo-who" href={`/equipe/profil/?u=${p.id}`}>{p.avatar ? <img src={p.avatar} alt="" width="44" height="44" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="jo-ini" aria-hidden="true">{p.name.slice(0, 1)}</span>}<span><strong>{p.name}</strong><small>{p.poste && POSTE_ICON[p.poste] && <img class="jo-poste" src={`/img/postes/${POSTE_ICON[p.poste]}.webp`} alt="" width="16" height="16" />}{p.poste ?? 'Poste à définir'}</small></span></a>
                   <span class="jo-stat">
                     {p.lol && p.lol.tier !== 'UNRANKED' && <img class="jo-emblem" src={`/img/rangs/lol/${p.lol.tier.toLowerCase()}.webp`} alt="" width="32" height="32" loading="lazy" />}
                     {p.lol && (p.lol.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[p.lol.tier] ?? p.lol.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(p.lol.tier) ? '' : p.lol.rank} · ${p.lol.lp} LP · ${p.lol.wins}V ${p.lol.losses}D`)}
@@ -135,7 +136,8 @@ const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 
   .jo-list li { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 1.2fr) auto; gap: .5rem 1.5rem; align-items: center; padding: .9rem 0; border-bottom: 1px solid var(--line); transition: background-color .15s; }
   .jo-list li:hover { background: var(--qg-surface, transparent); }
   .jo-who > span { display: grid; gap: .1rem; }
-  .jo-who small { color: var(--muted); font-size: .85rem; }
+  .jo-who small { display: flex; align-items: center; gap: .3rem; color: var(--muted); font-size: .85rem; }
+  .jo-poste { width: 16px; height: 16px; background: #141210; border-radius: 3px; padding: 1px; }
   .jo-ini { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--line); font-weight: 700; }
   .jo-stat { display: flex; align-items: center; gap: .6rem; }
   .jo-emblem { width: 32px; height: 32px; object-fit: contain; flex: none; }
