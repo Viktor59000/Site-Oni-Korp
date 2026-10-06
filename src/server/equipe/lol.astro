@@ -251,6 +251,12 @@ for (const r of lolRosters) {
     return x && x[1] >= N_MIN ? { wr: x[0], n: x[1], d1: x[2] } : null;
   };
   const face = (id: string) => `<img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))}`;
+  const tone = (d: number) => (d >= 1 ? 'is-good' : d <= -1 ? 'is-bad' : '');
+  // Une ligne « champion · séparateur · champion · écart (taux) », le détail au survol
+  const row = (a: Placed, sep: string, b: Placed, r: Rate, cls: string, lanes = true) => `<li class="ll-row ${cls}" title="${esc(`${name(a.id)} ${sep} ${name(b.id)} : ${num(r.wr)} % de victoires sur ${games(r.n)}, ${signed(r.d1)} pt par rapport à l'attendu`)}">
+    <span class="ll-c"><img src="${icon(a.id)}" alt="" width="28" height="28" /><span>${esc(name(a.id))}${lanes ? `<i>${LANE_FR[a.lane]}</i>` : ''}</span></span><span class="ll-sep">${sep}</span>
+    <span class="ll-c"><img src="${icon(b.id)}" alt="" width="28" height="28" /><span>${esc(name(b.id))}${lanes ? `<i>${LANE_FR[b.lane]}</i>` : ''}</span></span>
+    <span class="ll-v"><b>${signed(r.d1)}</b><small>${num(r.wr)} %</small></span></li>`;
   const pickBtn = (id: string, why: string, label: string) => `<button type="button" data-champ="${id}" title="${esc(why)}"><img src="${icon(id)}" alt="" width="36" height="36" /><span>${esc(name(id))}</span><small>${esc(label)}</small></button>`;
 
   let llTok = 0;
@@ -273,11 +279,12 @@ for (const r of lolRosters) {
     const cards: string[] = [];
 
     // Postes déduits (et champions flex, qui cachent leur poste)
-    const posts = (list: Placed[], who: string) => list.length ? `<li><b>${who}</b> ${list.map((p) => {
-      const flex = LANES.filter((l) => l !== p.lane && (laneStat(m, p.id, l)?.[6] ?? 0) >= 20).map((l) => LANE_FR[l]);
-      return `<span>${face(p.id)} <em>${LANE_FR[p.lane]}</em>${flex.length ? ` <small title="Joué aussi ${flex.join(', ')} par plus de 20 % des joueurs">flex ${flex.join('/')}</small>` : ''}</span>`;
-    }).join('')}</li>` : '';
-    if (us.length + them.length) cards.push(`<section><h4>Postes</h4><ul class="ll-posts">${posts(us, 'Nous')}${posts(them, 'Eux')}</ul><p class="eq-note">Pour nous, le rôle donné dans la préparation, sinon le poste le plus joué. Pour eux, la répartition la plus probable : un flex peut cacher son vrai poste.</p></section>`);
+    const laneRow = (list: Placed[], who: string) => `<tr><th scope="row">${who}</th>${LANES.map((l) => {
+      const p = list.find((x) => x.lane === l); if (!p) return '<td><span class="ll-empty"></span></td>';
+      const flex = LANES.filter((o) => o !== l && (laneStat(m, p.id, o)?.[6] ?? 0) >= 20).map((o) => LANE_FR[o]);
+      return `<td><img src="${icon(p.id)}" alt="" width="40" height="40" /><span>${esc(name(p.id))}</span>${flex.length ? `<small title="Joué aussi ${flex.join(', ')} par plus de 20 % des joueurs">flex ${flex.join('/')}</small>` : ''}</td>`;
+    }).join('')}</tr>`;
+    if (us.length + them.length) cards.push(`<section class="ll-wide"><h4>Postes</h4><table class="ll-lanes"><thead><tr><th></th>${LANES.map((l) => `<th scope="col">${LANE_FR[l]}</th>`).join('')}</tr></thead><tbody>${laneRow(us, 'Nous')}${laneRow(them, 'Eux')}</tbody></table><p class="eq-note">Pour nous, le rôle donné dans la préparation, sinon le poste le plus joué. Pour eux, la répartition la plus probable : un champion « flex » peut cacher son vrai poste.</p></section>`);
 
     // Matchups : lane contre lane, puis menaces et atouts hors lane (ganks, roams, combats)
     const lane: string[] = [], cross: { a: Placed; b: Placed; r: Rate }[] = [];
@@ -285,30 +292,28 @@ for (const r of lolRosters) {
     for (const a of us) for (const b of them) {
       const r = vsOf(a, b); if (!r) continue;
       sMatch += r.d1 / 2;
-      const cls = r.wr < 48.5 ? 'is-bad' : r.wr > 51.5 ? 'is-good' : '';
-      if (a.lane === b.lane) lane.push(`<li class="${cls}">${face(a.id)} <span>contre</span> ${face(b.id)}<b>${num(r.wr)} %</b><small>${LANE_FR[a.lane]} · ${games(r.n)} · ${signed(r.d1)} pt par rapport à l'attendu</small></li>`);
+      if (a.lane === b.lane) lane.push(row(a, 'vs', b, r, tone(r.d1), false).replace('<span class="ll-sep">vs</span>', `<span class="ll-sep">${LANE_FR[a.lane]}</span>`));
       else cross.push({ a, b, r });
     }
-    if (lane.length) cards.push(`<section><h4>Matchups de lane</h4><ul class="dr-ll__list">${lane.join('')}</ul></section>`);
+    if (lane.length) cards.push(`<section><h4>Matchups de lane</h4><ul class="ll-rows">${lane.join('')}</ul></section>`);
     const threats = cross.filter((x) => x.r.d1 <= -1.5).sort((x, y) => x.r.d1 - y.r.d1).slice(0, 4);
     const edges = cross.filter((x) => x.r.d1 >= 1.5).sort((x, y) => y.r.d1 - x.r.d1).slice(0, 4);
-    const crossLi = (x: (typeof cross)[0]) => `<li class="${x.r.d1 < 0 ? 'is-bad' : 'is-good'}">${face(x.a.id)} <span>(${LANE_FR[x.a.lane]}) face à</span> ${face(x.b.id)} <span>(${LANE_FR[x.b.lane]})</span><b>${num(x.r.wr)} %</b><small>${signed(x.r.d1)} pt · ${games(x.r.n)}</small></li>`;
-    if (threats.length || edges.length) cards.push(`<section><h4>Hors lane</h4><ul class="dr-ll__list">${[...threats, ...edges].map(crossLi).join('')}</ul><p class="eq-note">Quand ces deux champions se retrouvent dans la même partie à des postes différents : ganks, roams, combats d'équipe.</p></section>`);
+    if (threats.length || edges.length) cards.push(`<section><h4>Hors lane</h4><ul class="ll-rows">${[...threats, ...edges].map((x) => row(x.a, 'vs', x.b, x.r, tone(x.r.d1))).join('')}</ul><p class="eq-note">Quand ces deux champions se retrouvent dans la même partie à des postes différents : ganks, roams, combats d'équipe.</p></section>`);
 
     // Synergies des deux côtés
     const pairs = (list: Placed[]) => list.flatMap((a, i) => list.slice(i + 1).map((b) => ({ a, b, r: synOf(a, b) }))).filter((x): x is { a: Placed; b: Placed; r: Rate } => !!x.r);
     const sUs = pairs(us).sort((x, y) => y.r.d1 - x.r.d1), sThem = pairs(them);
     const sSyn = (sUs.reduce((t, x) => t + x.r.d1, 0) - sThem.reduce((t, x) => t + x.r.d1, 0)) / 2;
-    const synLi = (x: (typeof sUs)[0], good: boolean) => `<li class="${Math.abs(x.r.d1) < 1 ? '' : good ? 'is-good' : 'is-bad'}">${face(x.a.id)} <span>+</span> ${face(x.b.id)}<b>${num(x.r.wr)} %</b><small>${LANE_FR[x.a.lane]} et ${LANE_FR[x.b.lane]} · ${signed(x.r.d1)} pt ensemble · ${games(x.r.n)}</small></li>`;
     const synThem = sThem.filter((x) => x.r.d1 >= 1).sort((x, y) => y.r.d1 - x.r.d1).slice(0, 3);
-    if (sUs.length || synThem.length) cards.push(`<section><h4>Synergies</h4>${sUs.length ? `<p class="dr-sub">Nos paires</p><ul class="dr-ll__list">${sUs.map((x) => synLi(x, x.r.d1 > 0)).join('')}</ul>` : ''}${synThem.length ? `<p class="dr-sub">Leurs paires fortes</p><ul class="dr-ll__list">${synThem.map((x) => synLi(x, false)).join('')}</ul>` : ''}<p class="eq-note">Écart du taux de victoire quand les deux jouent dans la même équipe, par rapport à ce qu'on attendrait de chacun.</p></section>`);
+    const synMain = sUs.filter((x) => Math.abs(x.r.d1) >= 1), synFlat = sUs.filter((x) => Math.abs(x.r.d1) < 1);
+    if (sUs.length || synThem.length) cards.push(`<section><h4>Synergies</h4>${sUs.length ? `<p class="dr-sub">Nos paires</p>${synMain.length ? `<ul class="ll-rows">${synMain.map((x) => row(x.a, '+', x.b, x.r, tone(x.r.d1))).join('')}</ul>` : ''}${synFlat.length ? `<p class="ll-flat">Neutres (moins d'1 pt) : ${synFlat.map((x) => `${esc(name(x.a.id))} + ${esc(name(x.b.id))}`).join(' · ')}</p>` : ''}` : ''}${synThem.length ? `<p class="dr-sub">Leurs paires fortes</p><ul class="ll-rows">${synThem.map((x) => row(x.a, '+', x.b, x.r, 'is-bad')).join('')}</ul>` : ''}</section>`);
 
     // Nos picks encore contrables : leur adversaire direct n'est pas encore choisi
     const risk = us.filter((p) => themOpen.includes(p.lane)).map((p) => {
       const c = Object.entries(p.d?.vs[p.lane] ?? {}).filter(([k, r]) => r[1] >= 2 * N_MIN && r[0] < 47.5 && (m.lanes[p.lane]?.[k]?.[6] ?? 0) >= 8 && byKey(k) && !used.has(byKey(k)!.id)).sort((x, y) => x[1][0] - y[1][0]).slice(0, 4);
-      return c.length ? `<li>${face(p.id)} <span>peut encore tomber sur</span> ${c.map(([k, r]) => `<span class="ll-tag">${esc(byKey(k)!.name)} ${num(r[0])} %</span>`).join(' ')}</li>` : '';
+      return c.length ? `<li class="ll-row"><span class="ll-c">${face(p.id)}</span> <span class="ll-sep">peut tomber sur</span> ${c.map(([k, r]) => `<span class="ll-tag">${esc(byKey(k)!.name)} ${num(r[0])} %</span>`).join(' ')}</li>` : '';
     }).filter(Boolean);
-    if (risk.length) cards.push(`<section><h4>Encore contrables</h4><ul class="dr-ll__list ll-risk">${risk.join('')}</ul><p class="eq-note">Leur adversaire direct n'est pas encore choisi : candidats au ban, ou pick à garder pour plus tard dans la draft.</p></section>`);
+    if (risk.length) cards.push(`<section><h4>Encore contrables</h4><ul class="ll-rows ll-risk">${risk.join('')}</ul><p class="eq-note">Leur adversaire direct n'est pas encore choisi : candidats au ban, ou pick à garder pour plus tard dans la draft.</p></section>`);
 
     // Picks conseillés pour nos postes libres : force sur le patch, matchups contre leurs picks, synergies avec les nôtres, maîtrise du joueur
     if (us.length < 5 && steps.length < ORDER.length) {
@@ -356,7 +361,7 @@ for (const r of lolRosters) {
       const est = Math.max(30, Math.min(70, 50 + sForce + sMatch + sSyn));
       head = `<div class="ll-score ${est >= 51 ? 'is-good' : est <= 49 ? 'is-bad' : ''}"><b>${num(est)} %</b><span>estimation pour nous<small>force des champions ${signed(sForce)} · matchups ${signed(sMatch)} · synergies ${signed(sSyn)}</small></span></div>`;
     }
-    box.innerHTML = cards.length ? `<div class="ll-top"><p class="dr-sub">Analyse lolalytics · patch ${esc(m.patch)} · Émeraude+ · Solo/Duo</p>${head}</div><div class="ll-grid">${cards.join('')}</div><p class="eq-note">Données <a href="https://lolalytics.com/" rel="noopener" target="_blank">lolalytics</a>, mises à jour toutes les 12 h. Les écarts (pt) comparent au taux attendu d'après les deux champions. L'estimation additionne ces écarts (matchups et synergies comptés à moitié) : elle situe une draft, elle ne prédit pas un match, surtout entre équipes organisées.</p>` : '';
+    box.innerHTML = cards.length ? `<div class="ll-top"><div><p class="dr-sub">Analyse lolalytics · patch ${esc(m.patch)} · Émeraude+ · Solo/Duo</p><p class="ll-legend">En gros : l'écart en points par rapport au taux de victoire attendu. En dessous : le taux réel. Détail au survol.</p></div>${head}</div><div class="ll-grid">${cards.join('')}</div><p class="eq-note">Données <a href="https://lolalytics.com/" rel="noopener" target="_blank">lolalytics</a>, mises à jour toutes les 12 h. Les écarts (pt) comparent au taux attendu d'après les deux champions. L'estimation additionne ces écarts (matchups et synergies comptés à moitié) : elle situe une draft, elle ne prédit pas un match, surtout entre équipes organisées.</p>` : '';
   }
 
   // ---------- Préparation ----------
@@ -401,11 +406,12 @@ for (const r of lolRosters) {
       if (ids.length >= 4 && !p.engage) warn.push('Pas d\'engage clair : il faudra un autre moyen de lancer les combats.');
       if (p.diff >= 7) warn.push(`Compo exigeante (difficulté moyenne ${p.diff.toFixed(1)}/10).`);
       // Nos picks : qui les a joués récemment ?
-      const mineNotes = side === ours ? ids.map((id) => {
-        const who = pool.map((pl) => ({ pl, c: pl.champs[id] })).filter((x) => x.c).sort((a, b) => b.c.g - a.c.g)[0];
-        return who ? `<li><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · ${esc(who.pl.name)} : ${who.c.g} partie${who.c.g > 1 ? 's' : ''}, ${Math.round((who.c.w / who.c.g) * 100)} %</li>`
-          : `<li class="is-warn"><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · personne ne l'a joué en classé ces 90 jours</li>`;
-      }).join('') : '';
+      const best = (id: string) => pool.map((pl) => ({ pl, c: pl.champs[id] })).filter((x) => x.c).sort((a, b) => b.c.g - a.c.g)[0];
+      const unknown = side === ours ? ids.filter((id) => !best(id)) : [];
+      const mineNotes = side === ours ? ids.filter((id) => best(id)).map((id) => {
+        const who = best(id)!;
+        return `<li><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · ${esc(who.pl.name)} : ${who.c.g} partie${who.c.g > 1 ? 's' : ''}, ${Math.round((who.c.w / who.c.g) * 100)} %</li>`;
+      }).join('') + (unknown.length ? `<li class="is-warn"><span class="dr-icons">${unknown.map((id) => `<img src="${icon(id)}" alt="${esc(name(id))}" title="${esc(name(id))}" width="24" height="24" />`).join('')}</span>${unknown.length > 1 ? 'jamais joués' : 'jamais joué'} en classé par nos joueurs ces 90 jours</li>` : '') : '';
       const other = s[side === 'blue' ? 'red' : 'blue'].pick.filter(Boolean) as string[];
       const matchups = side === ours ? ids.flatMap((id) => pool.flatMap((pl) => other.filter((o) => pl.champs[id]?.vs?.[o]).map((o) => {
         const [g, w] = pl.champs[id].vs[o];
@@ -607,6 +613,35 @@ for (const r of lolRosters) {
   .dr-ll :global(:is(.ll-picks, .ll-bans) button:hover) { border-color: var(--lacquer); transform: translateY(-2px); }
   .dr-ll :global(:is(.ll-picks, .ll-bans) button span) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dr-ll :global(:is(.ll-picks, .ll-bans) button small) { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dr-read :global(.dr-icons) { display: inline-flex; gap: 2px; margin-right: .2rem; }
+  .dr-ll :global(.ll-grid .eq-note) { margin: .6rem 0 0; }
+  .dr-ll :global(.ll-legend) { margin: .2rem 0 0; color: var(--muted); font-size: .75rem; }
+  .dr-ll :global(.ll-grid > section) { padding: 1rem; border: 1px solid var(--line); background: color-mix(in srgb, var(--ink) 3%, transparent); }
+  .dr-ll :global(.ll-rows) { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; }
+  .dr-ll :global(.ll-row) { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 3.6rem; align-items: center; gap: .5rem; padding: .35rem .5rem; border-left: 3px solid var(--line); background: color-mix(in srgb, var(--ink) 4%, transparent); transition: background .15s; }
+  .dr-ll :global(.ll-row:hover) { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .dr-ll :global(.ll-c) { display: flex; align-items: center; gap: .4rem; min-width: 0; }
+  .dr-ll :global(.ll-c img) { flex: none; }
+  .dr-ll :global(.ll-c > span) { display: grid; min-width: 0; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-ll :global(.ll-c i) { font-style: normal; font-size: .7rem; color: var(--muted); }
+  .dr-ll :global(.ll-sep) { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+  .dr-ll :global(.ll-v) { display: grid; justify-items: end; line-height: 1.1; }
+  .dr-ll :global(.ll-v b) { font-size: .95rem; font-variant-numeric: tabular-nums; }
+  .dr-ll :global(.ll-v small) { color: var(--muted); font-size: .7rem; font-variant-numeric: tabular-nums; }
+  .dr-ll :global(.ll-row.is-good) { border-left-color: #2fbf71; } .dr-ll :global(.ll-row.is-good .ll-v b) { color: #2fbf71; }
+  .dr-ll :global(.ll-row.is-bad) { border-left-color: #e5251f; } .dr-ll :global(.ll-row.is-bad .ll-v b) { color: #ff6a5c; }
+  .dr-ll :global(.ll-risk .ll-row) { display: flex; flex-wrap: wrap; border-left-color: #f0a04b; }
+  .dr-ll :global(.ll-flat) { margin: .5rem 0 0; color: var(--muted); font-size: .78rem; }
+  .dr-ll :global(.ll-lanes) { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .8rem; }
+  .dr-ll :global(.ll-lanes :is(th, td)) { border: 0; background: none; }
+  .dr-ll :global(.ll-lanes th) { padding: .25rem; color: var(--muted); font-weight: 700; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; text-align: center; }
+  .dr-ll :global(.ll-lanes tbody th) { width: 3.5rem; text-align: left; color: var(--ink); }
+  .dr-ll :global(.ll-lanes td) { padding: .4rem .2rem; text-align: center; vertical-align: top; }
+  .dr-ll :global(.ll-lanes td > *) { display: block; margin-inline: auto; }
+  .dr-ll :global(.ll-lanes td span) { margin-top: .2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dr-ll :global(.ll-lanes td small) { width: fit-content; margin-top: .2rem; padding: 0 .3rem; border: 1px solid #f0a04b; color: #f0a04b; font-size: .66rem; }
+  .dr-ll :global(.ll-empty) { width: 40px; height: 40px; border: 1px dashed var(--line); }
+  .dr-ll :global(.ll-lanes tbody tr + tr) { border-top: 1px solid var(--line); }
   .dr-suggest :global(h4) { margin-top: 1.25rem; background: none !important; color: var(--ink) !important; padding: 0 !important; }
   .dr-suggest :global(ul) { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
   .dr-suggest :global(li) { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
