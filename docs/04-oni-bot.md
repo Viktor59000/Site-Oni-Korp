@@ -43,7 +43,8 @@ Le bot du club, seul bot « maison » du serveur (il a remplacé ASYLUM-BOT, Dyn
 | `indicateurs` | Relevé quotidien des indicateurs de communication (table `metrics`, lue par Inside > Contenu) |
 | `escalade` | Rappels et escalade : l'outil repère ce qui traîne, une personne décide |
 | `recap` | Le lundi à 10 h : les rendez-vous publics de la semaine dans #annonces |
-| `bilan` | `/bilan` de la saison |
+| `bilan` | `/bilan` de la saison ; `periode:` ce mois-ci ou le mois dernier (staff) |
+| `rapport` | Le 1er du mois à 10 h, bilan du mois écoulé dans #🔒・staff, avec « à regarder maintenant » |
 | `tickets` | Tickets de support (fils privés), motifs (dont réexamen d'une sanction) |
 | `extras` | Menu de rôles, giveaways, anniversaires, anti-raid, signalement des comptes récents |
 | `vocaux` | Vocaux temporaires (« ➕ Créer un vocal ») |

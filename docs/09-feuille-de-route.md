@@ -9,6 +9,8 @@
 - Inhouses : groupes « Jouer ensemble », places au classement sur les cartes, salles osu! lues automatiquement.
 - Tracker Rocket League + Oni Sync.
 - Page de présentation d'Inside pour les non-membres.
+- Bilan mensuel du staff (le 1er du mois dans #🔒・staff, `/bilan periode:`).
+- Page de confidentialité complétée (comptes de jeu, Oni Sync, inhouses, sondage, avis, page Staff, modération, sauvegardes) et purges alignées sur ses promesses.
 - Refactorisation sans changement de résultat (bot et site, dont les actions d'Inside rangées par domaine), tests de non-régression, vérification des types (`npm run check`, qui a trouvé deux actions cassées), base de démonstration, cette documentation.
 
 ## À vérifier dès que possible
@@ -21,14 +23,12 @@
 1. Accès du rôle Modérateur dans Inside.
 2. Le retour écrit de fin d'essai est-il visible par la recrue ?
 3. Soirée inhouse fixe : jour et heure (le bot l'annoncera).
-4. Page « Données personnelles » (RGPD), avec nettoyage automatique des vieilles candidatures et réponses au sondage.
 
 ## Prochains chantiers possibles
 
 | Chantier | Où | Note |
 |---|---|---|
 | Parrain pour chaque nouveau joueur de roster | Bot + Inside | quand un roster aura 3 joueurs ou plus |
-| Bilan mensuel automatique pour la direction | Bot | message privé le 1er du mois |
 | Avis publiés « Vous avez demandé, on a fait » | Site | au premier avis traité |
 | Objectif d'activité suivi dans les indicateurs | Inside > Contenu | quand le chiffre est fixé |
 | Collection de boosters liée au compte Discord | Site + base | |
