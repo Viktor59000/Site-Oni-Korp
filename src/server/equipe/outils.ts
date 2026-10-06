@@ -28,6 +28,8 @@ export async function ensureTables() {
   ];
   // Un seul aller-retour vers la base pour toutes les tables
   const c = db(); if (c) await c.batch(statements, 'write').catch(async () => { for (const sql of statements) await exec(sql).catch(() => {}); });
+  // Lineups (07/10) : compétence utilisée, type (lineup ou setup) et captures (position, visée, impact)
+  for (const col of ['ability TEXT', 'kind TEXT', 'imgs TEXT']) await exec(`ALTER TABLE lineups ADD COLUMN ${col}`).catch(() => {});
   ready = true;
 }
 
@@ -100,9 +102,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const [x, y, tx, ty] = ['x', 'y', 'tx', 'ty'].map((k) => num(f.get(k)));
     const url = clip(f.get('url'), 300);
     if (x === null || y === null || !clip(f.get('title'), 80)) return redirect(back);
-    await exec('INSERT INTO lineups (roster_id, map, agent, side, title, x, y, tx, ty, url, note, author, at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    const imgs = ['img1', 'img2', 'img3'].map((k) => clip(f.get(k), 300)).map((u) => (/^https:\/\//.test(u) ? u : ''));
+    await exec('INSERT INTO lineups (roster_id, map, agent, side, title, x, y, tx, ty, url, note, author, at, ability, kind, imgs) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       roster, clip(f.get('map'), 40), clip(f.get('agent'), 40), clip(f.get('side'), 10), clip(f.get('title'), 80), x, y, tx, ty,
-      /^https?:\/\//.test(url) ? url : null, clip(f.get('note'), 500), user.id, Date.now());
+      /^https?:\/\//.test(url) ? url : null, clip(f.get('note'), 500), user.id, Date.now(),
+      clip(f.get('ability'), 40) || null, f.get('kind') === 'setup' ? 'setup' : 'lineup', imgs.some(Boolean) ? JSON.stringify(imgs) : null);
     return redirect(back);
   }
 

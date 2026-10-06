@@ -20,6 +20,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
           <div class="lu-bar">
             <label>Roster<select data-roster>{valoRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
             <label>Agent<select data-agent-filter><option value="">Tous</option></select></label>
+            <label>Type<select data-kind-filter><option value="">Tout</option><option value="lineup">Lineups</option><option value="setup">Setups</option></select></label>
             <div class="lu-side" role="group" aria-label="Côté">
               <button type="button" data-side="" aria-pressed="true">Les deux</button>
               <button type="button" data-side="attaque" aria-pressed="false">Attaque</button>
@@ -44,9 +45,18 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
                 <input type="hidden" name="x" data-f-x /><input type="hidden" name="y" data-f-y /><input type="hidden" name="tx" data-f-tx /><input type="hidden" name="ty" data-f-ty />
                 <label>Titre<input name="title" required maxlength="80" placeholder="Ex. : molly default A depuis le spawn" /></label>
                 <label>Agent<select name="agent" data-f-agent required></select></label>
-                <label>Côté<select name="side"><option value="attaque">Attaque</option><option value="defense">Défense</option></select></label>
+                <label>Compétence<select name="ability" data-f-ability></select></label>
+                <div class="lu-row">
+                  <label>Type<select name="kind"><option value="lineup">Lineup</option><option value="setup">Setup</option></select></label>
+                  <label>Côté<select name="side"><option value="attaque">Attaque</option><option value="defense">Défense</option></select></label>
+                </div>
                 <label>Clip ou vidéo <small>(lien YouTube, Medal, Outplayed…)</small><input name="url" type="url" maxlength="300" /></label>
-                <label>Repères <small>(où viser, quel saut…)</small><textarea name="note" rows="3" maxlength="500"></textarea></label>
+                <label>Repères <small>(une étape par ligne : où se placer, où viser, quel saut…)</small><textarea name="note" rows="3" maxlength="500"></textarea></label>
+                <fieldset class="lu-imgs"><legend>Captures <small>(liens d'images, facultatif)</small></legend>
+                  <label>1 · Position<input name="img1" type="url" maxlength="300" placeholder="https://…" /></label>
+                  <label>2 · Visée<input name="img2" type="url" maxlength="300" placeholder="https://…" /></label>
+                  <label>3 · Impact<input name="img3" type="url" maxlength="300" placeholder="https://…" /></label>
+                </fieldset>
                 <div class="lu-form__actions"><button class="btn">Enregistrer</button><button type="button" class="dr-btn" data-cancel>Annuler</button></div>
               </form>
             </aside>
@@ -60,19 +70,21 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
 
 <script>
   type Map = { uuid: string; name: string; icon: string };
-  type Agent = { name: string; icon: string };
-  type L = { id: number; map: string; agent: string; side: string; title: string; x: number; y: number; tx: number | null; ty: number | null; url: string | null; note: string; author: string; author_name: string | null; at: number };
+  type Agent = { name: string; icon: string; abilities: { name: string; icon: string }[] };
+  type L = { id: number; map: string; agent: string; side: string; title: string; x: number; y: number; tx: number | null; ty: number | null; url: string | null; note: string; author: string; author_name: string | null; at: number; ability: string | null; kind: string | null; imgs: string | null };
   const root = document.querySelector<HTMLElement>('[data-lineups]');
   if (root?.querySelector('[data-roster]')) {
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
     const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
     let maps: Map[] = [], agents: Agent[] = [], items: L[] = [], meta = { me: '', staff: false };
-    let map = '', side = '', agent = '', mode: 'idle' | 'from' | 'to' = 'idle', sel: number | null = null;
+    let map = '', side = '', agent = '', kind = '', mode: 'idle' | 'from' | 'to' = 'idle', sel: number | null = null;
     let draft: { x: number; y: number; tx?: number; ty?: number } | null = null;
+    const NL = String.fromCharCode(10);
     const agentIcon = (n: string) => agents.find((a) => a.name === n)?.icon ?? '';
+    const abilityIcon = (ag: string, ab: string | null) => (ab ? agents.find((a) => a.name === ag)?.abilities.find((x) => x.name === ab)?.icon ?? '' : '');
 
     function draw() {
-      const shown = items.filter((l) => l.map === map && (!side || l.side === side) && (!agent || l.agent === agent));
+      const shown = items.filter((l) => l.map === map && (!side || l.side === side) && (!agent || l.agent === agent) && (!kind || (l.kind ?? 'lineup') === kind));
       const svg = $('[data-svg]');
       const P = (v: number) => v * 1000;
       svg.innerHTML = shown.map((l) => `
@@ -81,11 +93,12 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
         <g class="lu-pin${sel === l.id ? ' is-sel' : ''}" data-id="${l.id}" tabindex="0" role="button" aria-label="${esc(l.title)}">
           <circle cx="${P(l.x)}" cy="${P(l.y)}" r="20" />
           <image href="${esc(agentIcon(l.agent))}" x="${P(l.x) - 16}" y="${P(l.y) - 16}" width="32" height="32" />
+          ${abilityIcon(l.agent, l.ability) ? `<circle cx="${P(l.x) + 16}" cy="${P(l.y) + 16}" r="11" class="lu-ab" /><image href="${esc(abilityIcon(l.agent, l.ability))}" x="${P(l.x) + 8}" y="${P(l.y) + 8}" width="16" height="16" />` : ''}
         </g>`).join('') + (draft ? `
         ${draft.tx !== undefined ? `<line x1="${P(draft.x)}" y1="${P(draft.y)}" x2="${P(draft.tx)}" y2="${P(draft.ty!)}" class="lu-line is-draft" /><circle cx="${P(draft.tx)}" cy="${P(draft.ty!)}" r="9" class="lu-target is-draft" />` : ''}
         <circle cx="${P(draft.x)}" cy="${P(draft.y)}" r="16" class="lu-draft" />` : '');
       $('[data-list]').innerHTML = shown.length ? shown.map((l) => `<li><button type="button" data-id="${l.id}" class="${sel === l.id ? 'is-sel' : ''}">
-        <img src="${esc(agentIcon(l.agent))}" alt="" width="28" height="28" /><span><strong>${esc(l.title)}</strong><small>${esc(l.agent)} · ${l.side === 'defense' ? 'défense' : 'attaque'}</small></span></button></li>`).join('')
+        <img src="${esc(agentIcon(l.agent))}" alt="" width="28" height="28" /><span><strong>${esc(l.title)}</strong><small>${esc(l.agent)}${l.ability ? ` · ${esc(l.ability)}` : ''} · ${l.kind === 'setup' ? 'setup' : 'lineup'} · ${l.side === 'defense' ? 'défense' : 'attaque'}</small></span></button></li>`).join('')
         : `<li class="eq-note">Aucune lineup sur cette carte${agent ? ` pour ${esc(agent)}` : ''}. Sois le premier à en ajouter une.</li>`;
     }
 
@@ -93,8 +106,10 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       sel = id; const l = items.find((x) => x.id === id); if (!l) return;
       const canDel = l.author === meta.me || meta.staff;
       $('[data-detail]').innerHTML = `<h2>${esc(l.title)}</h2>
-        <p class="lu-meta"><img src="${esc(agentIcon(l.agent))}" alt="" width="24" height="24" /> ${esc(l.agent)} · ${l.side === 'defense' ? 'Défense' : 'Attaque'}</p>
-        ${l.note ? `<p>${esc(l.note)}</p>` : ''}
+        <p class="lu-meta"><img src="${esc(agentIcon(l.agent))}" alt="" width="24" height="24" /> ${esc(l.agent)}${l.ability ? ` · ${abilityIcon(l.agent, l.ability) ? `<img src="${esc(abilityIcon(l.agent, l.ability))}" alt="" width="18" height="18" class="lu-abi" /> ` : ''}${esc(l.ability)}` : ''} · ${l.kind === 'setup' ? 'Setup' : 'Lineup'} · ${l.side === 'defense' ? 'Défense' : 'Attaque'}</p>
+        ${l.note ? `<ol class="lu-steps">${l.note.split(NL).filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+        ${(() => { let im: string[] = []; try { im = JSON.parse(l.imgs ?? '[]'); } catch {} const lab = ['Position', 'Visée', 'Impact'];
+          return im.some(Boolean) ? `<div class="lu-shots">${im.map((u, k) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="${lab[k]}" loading="lazy" /><span>${k + 1} · ${lab[k]}</span></a>` : '')).join('')}</div>` : ''; })()}
         ${l.url ? `<a class="btn btn--ghost" href="${esc(l.url)}" rel="noopener" target="_blank">Voir le clip</a>` : ''}
         <p class="eq-note">Ajoutée par ${esc(l.author_name ?? 'un membre')} · ${new Date(Number(l.at)).toLocaleDateString('fr-FR')}</p>
         ${canDel ? `<form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="lineups" /><input type="hidden" name="id" value="${l.id}" /><input type="hidden" name="back" value="/equipe/valo/${location.search}" /><button class="dr-btn">Supprimer</button></form>` : ''}`;
@@ -135,6 +150,10 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       side = b.dataset.side!; root.querySelectorAll('[data-side]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw();
     }));
     $('[data-agent-filter]').addEventListener('change', (e) => { agent = (e.target as HTMLSelectElement).value; draw(); });
+    $('[data-kind-filter]').addEventListener('change', (e) => { kind = (e.target as HTMLSelectElement).value; draw(); });
+    // Compétences de l'agent choisi dans le formulaire
+    const fillAbilities = () => { const a = agents.find((x) => x.name === $<HTMLSelectElement>('[data-f-agent]').value); $('[data-f-ability]').innerHTML = '<option value="">—</option>' + (a?.abilities ?? []).map((x) => `<option>${esc(x.name)}</option>`).join(''); };
+    $('[data-f-agent]').addEventListener('change', fillAbilities);
 
     function selectMap(uuid: string) {
       map = uuid; sel = null; draft = null; setMode('idle');
@@ -162,11 +181,11 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       // Cartes de compétition uniquement (celles qui ont des sites et une minicarte)
       maps = mp.data.filter((m: any) => m.displayIcon && m.tacticalDescription).map((m: any) => ({ uuid: m.displayName, name: m.displayName, icon: m.displayIcon }))
         .sort((a: Map, b: Map) => a.name.localeCompare(b.name, 'fr'));
-      agents = ag.data.map((a: any) => ({ name: a.displayName, icon: a.displayIcon })).sort((a: Agent, b: Agent) => a.name.localeCompare(b.name, 'fr'));
+      agents = ag.data.map((a: any) => ({ name: a.displayName, icon: a.displayIcon, abilities: (a.abilities ?? []).filter((x: any) => x.displayIcon && x.slot !== 'Passive').map((x: any) => ({ name: x.displayName, icon: x.displayIcon })) })).sort((a: Agent, b: Agent) => a.name.localeCompare(b.name, 'fr'));
       $('[data-maps]').innerHTML = maps.map((m) => `<button type="button" role="tab" data-map="${esc(m.uuid)}" aria-selected="false">${esc(m.name)}</button>`).join('');
       const opts = agents.map((a) => `<option>${esc(a.name)}</option>`).join('');
       $('[data-agent-filter]').insertAdjacentHTML('beforeend', opts);
-      $('[data-f-agent]').innerHTML = opts;
+      $('[data-f-agent]').innerHTML = opts; fillAbilities();
       selectMap(maps[0].uuid);
       await loadLineups();
     })().catch(() => { $('[data-maps]').innerHTML = '<span class="eq-note">Impossible de charger les cartes (valorant-api.com). Réessaie plus tard.</span>'; });
@@ -206,12 +225,24 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   .lu-detail[hidden] { display: none; }
   .lu-detail :global(h2) { font-size: 1.2rem; }
   .lu-detail :global(p) { margin: 0; }
-  .lu-detail :global(.lu-meta) { display: flex; gap: .4rem; align-items: center; font-weight: 700; }
+  .lu-detail :global(.lu-meta) { display: flex; flex-wrap: wrap; gap: .3rem .4rem; align-items: center; font-weight: 700; }
   .lu-detail :global(.btn) { justify-self: start; }
   .lu-form { display: grid; gap: .7rem; padding: 1rem; border: 2px solid var(--lacquer); }
   .lu-form[hidden] { display: none; }
   .lu-form h2 { font-size: 1.1rem; }
   .lu-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .lu-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+  .lu-imgs { display: grid; gap: .5rem; margin: 0; padding: .75rem; border: 1px solid var(--line); }
+  .lu-imgs legend { font-weight: 700; font-size: .85rem; padding: 0 .3rem; }
+  .lu-svg :global(.lu-ab) { fill: #0f1923; stroke: #fff; stroke-width: 2; }
+  .lu-detail :global(.lu-abi) { background: #0f1923; border-radius: 50%; padding: 2px; }
+  /* Étapes numérotées et captures position / visée / impact, comme une fiche de lineup */
+  .lu-detail :global(.lu-steps) { display: grid; gap: .35rem; margin: .5rem 0; padding-left: 1.4rem; list-style: decimal; }
+  .lu-detail :global(.lu-steps li::marker) { color: var(--red-text); font-weight: 700; }
+  .lu-detail :global(.lu-shots) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; margin: .5rem 0; }
+  .lu-detail :global(.lu-shots a) { display: grid; gap: .2rem; color: inherit; text-decoration: none; font-size: .75rem; }
+  .lu-detail :global(.lu-shots img) { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border: 1px solid var(--line); transition: transform .2s; }
+  .lu-detail :global(.lu-shots a:hover img) { transform: scale(1.04); }
   .lu-form small { font-weight: 400; color: var(--muted); }
   .lu-form :is(input, select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .45rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
   .lu-form__actions { display: flex; gap: .5rem; }
