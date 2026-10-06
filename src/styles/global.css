@@ -175,6 +175,10 @@ a.game:hover h3 { color: var(--red-text); }
 .roster-game { padding-block: clamp(3rem, 6vw, 5rem); border-bottom: 1px solid var(--line); }
 .roster-game__head { display: grid; grid-template-columns: 1fr minmax(0, 42%); gap: 2rem; align-items: end; margin-bottom: 2.5rem; }
 .roster-game__head h2 { font-size: var(--step-3); }
+/* Logo officiel du jeu devant le titre : se repérer en faisant défiler */
+.roster-game__title { display: flex; flex-wrap: wrap; align-items: center; gap: 0 .9rem; }
+.roster-game__title::after { flex: 0 0 100%; max-width: 15rem; }
+.roster-game__logo { flex: none; width: clamp(40px, 5vw, 56px); height: auto; filter: drop-shadow(0 2px 6px rgb(0 0 0 / .5)); }
 .roster-game__head p { color: var(--muted); margin: .75rem 0 0; }
 .rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 2rem; }
 .roster { padding-block: 1.25rem; border-top: 2px solid var(--lacquer); }

@@ -5,7 +5,7 @@
       "id": "rocket-league",
       "name": "Rocket League",
       "since": "2021",
-      "banner": "/img/pole-rocket-league.webp",
+      "banner": "/img/legendes-rl.webp",
       "pitch": "Le jeu qui a fait naître le club. Des rosters en 3v3, du haut niveau à la formation.",
       "staff": [
         {
@@ -40,7 +40,7 @@
       "id": "league-of-legends",
       "name": "League of Legends",
       "since": "2024",
-      "banner": "/img/pole-lol.webp",
+      "banner": "/img/legendes-lol.webp",
       "pitch": "Ouvert en janvier 2024 : un cinq complet, un rôle par joueur.",
       "staff": [
         {
@@ -84,7 +84,7 @@
       "id": "valorant",
       "name": "Valorant",
       "since": "2024",
-      "banner": "/img/pole-valorant.webp",
+      "banner": "/img/legendes-valo.webp",
       "pitch": "Ouvert en janvier 2024 : un cinq complet, un rôle par joueur, un planning d’entraînement partagé chaque semaine.",
       "staff": [
         {
@@ -124,7 +124,7 @@
       "id": "osu",
       "name": "osu!",
       "since": "2024",
-      "banner": "/img/pole-osu.webp",
+      "banner": "/img/legendes-osu.webp",
       "pitch": "Le pôle rythme, porté par Yasunaii et son guide de progression.",
       "staff": [
         {
