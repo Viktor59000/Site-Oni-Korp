@@ -20,7 +20,9 @@ const ours = rosterIds.length ? await rows<{ ident: string; region: string }>(`S
   WHERE a.game = 'riot' AND (${rosterIds.map(() => 'g.roles LIKE ?').join(' OR ')})`, ...rosterIds.map((id) => `%"${id}"%`)) : [];
 const oursMulti = ours.length ? links.opggMulti(ours.map((o) => o.ident), ours[0].region ?? 'euw') : null;
 const games = [...new Set(me.rosters.map((r) => r.game))];
-type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number }> };
+type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number; vs: Record<string, [number, number]> }> };
+// Nos résultats quand tel champion est en face (toutes nos parties, tous joueurs)
+const faced: Record<string, [number, number]> = {};
 const pool: PoolPlayer[] = [];
 for (const r of lolRosters) {
   const members = await rows<{ id: string; name: string }>(`SELECT id, name FROM guild_members WHERE roles LIKE ?`, `%"${r.role_id}"%`);
@@ -29,13 +31,20 @@ for (const r of lolRosters) {
     if (pool.some((p) => p.name === m.name)) continue;
     const perfs = await rows<{ data: string }>(`SELECT data FROM perf WHERE user_id = ? AND game = 'lol' AND at > ?`, m.id, Date.now() - 90 * 86400_000).catch(() => []);
     const champs: PoolPlayer['champs'] = {};
-    for (const p of perfs) { try { const d = JSON.parse(p.data); if (!d.champ) continue; const c = (champs[d.champ] ??= { g: 0, w: 0 }); c.g++; if (d.win) c.w++; } catch {} }
+    for (const p of perfs) {
+      try {
+        const d = JSON.parse(p.data); if (!d.champ) continue;
+        const c = (champs[d.champ] ??= { g: 0, w: 0, vs: {} }); c.g++; if (d.win) c.w++;
+        if (d.vs) { const v = (c.vs[d.vs] ??= [0, 0]); v[0]++; if (d.win) v[1]++; }
+        for (const e of d.enemies ?? []) { const f = (faced[e] ??= [0, 0]); f[0]++; if (d.win) f[1]++; }
+      } catch {}
+    }
     pool.push({ name: m.name, poste: postes.get(m.id) ?? null, champs });
   }
 }
 ---
 <Qg title="Drafter LoL · Inside" heading="Drafter LoL" lead="Prépare tes drafts dans l'ordre de tournoi, garde-les pour le roster, joue en fearless." current="lol" rosters={me.rosters} staff={me.staff} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
-  <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))} data-pool={JSON.stringify(pool)}>
+  <section class="dr" data-drafter data-rosters={JSON.stringify(lolRosters.map((r) => ({ id: r.id, name: r.name })))} data-pool={JSON.stringify(pool)} data-faced={JSON.stringify(faced)}>
     <div>
       <div class="dr-top">
         <p class="dr-step" data-step aria-live="polite">Chargement des champions…</p>
@@ -89,7 +98,7 @@ for (const r of lolRosters) {
 
       <section class="dr-read" aria-labelledby="dr-read-title">
         <h3 id="dr-read-title">Lecture des compos</h3>
-        <p class="eq-note">Calculée sur les données officielles des champions (Riot) et sur les parties classées de nos joueurs relevées par Oni Bot (90 jours). Pas de taux de victoire mondiaux : seulement ce qu'on sait vraiment.</p>
+        <p class="eq-note">Calculée sur les données officielles des champions (Riot) et sur les parties classées de nos joueurs relevées par Oni Bot (90 jours) : qui maîtrise quoi, nos matchups directs, notre bilan face à chaque champion.</p>
         <div class="dr-read__grid"><div data-read="blue"></div><div data-read="red"></div></div>
         <div class="dr-suggest" data-suggest></div>
       </section>
@@ -120,7 +129,7 @@ for (const r of lolRosters) {
 
 <script>
   type Champ = { id: string; name: string; tags: string[]; info: { attack: number; defense: number; magic: number; difficulty: number } };
-  type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number }> };
+  type PoolPlayer = { name: string; poste: string | null; champs: Record<string, { g: number; w: number; vs: Record<string, [number, number]> }> };
   type Side = 'blue' | 'red';
   // Ordre de draft de tournoi : 3 bans chacun, 6 picks, 2 bans chacun, 4 picks
   const ORDER: [Side, 'ban' | 'pick', number][] = [
@@ -141,6 +150,8 @@ for (const r of lolRosters) {
   let ours: Side = 'blue', mode: 'draft' | 'plan' | 'variant' = 'draft', slot: number | null = null;
   let prep: { roles: Record<number, string>; notes: Record<number, string>; variants: Record<number, string[]>; bans: string[]; plan: string } = { roles: {}, notes: {}, variants: {}, bans: [], plan: '' };
   const pool: PoolPlayer[] = JSON.parse(root.dataset.pool || '[]');
+  const faced: Record<string, [number, number]> = JSON.parse(root.dataset.faced || '{}');
+  const pct = (w: number, g: number) => `${Math.round((w / g) * 100)} %`;
   const POSTE_ROLE: Record<string, string> = { Top: 'Top', Jungle: 'Jungle', Mid: 'Mid', ADC: 'ADC', Support: 'Support' };
   const lazyIcons = new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) { const img = e.target as HTMLImageElement; img.src = img.dataset.src!; img.removeAttribute('data-src'); lazyIcons.unobserve(img); }
@@ -235,11 +246,20 @@ for (const r of lolRosters) {
         return who ? `<li><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · ${esc(who.pl.name)} : ${who.c.g} partie${who.c.g > 1 ? 's' : ''}, ${Math.round((who.c.w / who.c.g) * 100)} %</li>`
           : `<li class="is-warn"><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} · personne ne l'a joué en classé ces 90 jours</li>`;
       }).join('') : '';
+      const other = s[side === 'blue' ? 'red' : 'blue'].pick.filter(Boolean) as string[];
+      const matchups = side === ours ? ids.flatMap((id) => pool.flatMap((pl) => other.filter((o) => pl.champs[id]?.vs?.[o]).map((o) => {
+        const [g, w] = pl.champs[id].vs[o];
+        return `<li><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} contre <img src="${icon(o)}" alt="" width="24" height="24" />${esc(name(o))} · ${esc(pl.name)} : ${g} partie${g > 1 ? 's' : ''}, ${pct(w, g)}</li>`;
+      }))).join('') : ids.filter((id) => faced[id]).map((id) => {
+        const [g, w] = faced[id];
+        return `<li class="${w / g < .45 ? 'is-warn' : ''}"><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} en face : ${g} partie${g > 1 ? 's' : ''}, ${pct(w, g)} de victoires pour nous</li>`;
+      }).join('');
       box.innerHTML = `<h4 class="is-${side}">${side === 'blue' ? 'Bleu' : 'Rouge'}${side === ours ? ' (nous)' : ''}</h4>
         <div class="dr-dmg" title="Part des dégâts magiques"><span style="width:${Math.round((1 - p.apShare) * 100)}%">Physique ${Math.round((1 - p.apShare) * 100)} %</span><span style="width:${Math.round(p.apShare * 100)}%">Magique ${Math.round(p.apShare * 100)} %</span></div>
         <ul class="dr-stats"><li><b>${p.front}</b> ligne de front</li><li><b>${p.engage}</b> engage</li><li><b>${p.picks}</b> assassin${p.picks > 1 ? 's' : ''}</li><li><b>${p.range}</b> à distance</li></ul>
         ${warn.length ? `<ul class="dr-warn">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>` : '<p class="dr-ok">Rien d\'alarmant dans l\'équilibre de la compo.</p>'}
-        ${mineNotes ? `<ul class="dr-who">${mineNotes}</ul>` : ''}`;
+        ${mineNotes ? `<ul class="dr-who">${mineNotes}</ul>` : ''}
+        ${matchups ? `<p class="dr-sub">${side === ours ? 'Nos matchups déjà joués' : 'Quand on les a eus en face'}</p><ul class="dr-who">${matchups}</ul>` : ''}`;
     }
     // Suggestions pour notre prochain pick : les champions de nos joueurs dont le rôle n'est pas encore couvert
     const cur = ORDER[steps.length], sug = $('[data-suggest]');
@@ -390,6 +410,7 @@ for (const r of lolRosters) {
   .dr-read :global(.dr-who) { display: grid; gap: .25rem; margin: .6rem 0 0; padding: 0; list-style: none; font-size: .82rem; }
   .dr-read :global(.dr-who li) { display: flex; align-items: center; gap: .4rem; }
   .dr-read :global(.dr-who .is-warn) { color: #f0a04b; }
+  .dr-read :global(.dr-sub) { margin: .8rem 0 .3rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .dr-suggest :global(h4) { margin-top: 1.25rem; background: none !important; color: var(--ink) !important; padding: 0 !important; }
   .dr-suggest :global(ul) { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
   .dr-suggest :global(li) { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
