@@ -252,7 +252,7 @@ body.qg :is(.eq-empty, .nt-empty, .ag-empty, .ou .eq-note:only-child) { padding:
 /* ---------- Mobile : barre d'onglets en bas ---------- */
 .qg-tabs { display: none; }
 @media (max-width: 900px) {
-  .qg-tabs { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+  .qg-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
     background: var(--qg-paper); border-top: var(--rule) solid var(--qg-ink); padding-bottom: env(safe-area-inset-bottom); }
   .qg-tabs a, .qg-tabs button { display: grid; justify-items: center; gap: 3px; padding: .45rem 0 .5rem; border: 0; background: none; color: var(--qg-muted); text-decoration: none;
     font: 500 .625rem / 1.2 var(--qg-mono); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
@@ -401,3 +401,10 @@ body.qg .qg-icon.qg-fold svg { fill: none; stroke: currentColor; stroke-width: 2
 @media (max-width: 900px) { body.qg .qg-fold { display: none; } }
 /* Bouton « Un avis ? » au-dessus de la barre d'onglets mobile d'Inside */
 @media (max-width: 900px) { body:has(.qg-tabs) .avis-btn { bottom: 76px !important; } }
+
+/* Navigation : « Mon espace » en tête, puis le roster de travail (sa couleur) ou la liste de mes rosters */
+body.qg .qg-nav nav > a.qg-nav__home { font-weight: 600; color: var(--qg-ink); }
+body.qg .qg-nav .qg-nav__roster { display: flex; align-items: center; gap: .5rem; margin: var(--space-4) 0 var(--space-1); padding: 0 var(--space-3); font: 600 .7rem / 1.2 var(--qg-mono, ui-monospace, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-muted); }
+body.qg .qg-nav .qg-nav__roster span { width: .6rem; height: .6rem; background: var(--g, var(--game)); flex: none; }
+body.qg .qg-nav nav > a.qg-nav__team { display: flex; align-items: center; gap: .55rem; }
+body.qg .qg-nav nav > a.qg-nav__team::before { content: ''; width: .55rem; height: .55rem; background: var(--g); flex: none; }

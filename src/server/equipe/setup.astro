@@ -8,7 +8,7 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies);
 const back = `/equipe/setup/${sc.active ? `?r=${sc.active}` : ''}`;
 
 type F = { key: string; label: string; type?: 'number' | 'url' | 'text'; wide?: boolean; hint?: string };

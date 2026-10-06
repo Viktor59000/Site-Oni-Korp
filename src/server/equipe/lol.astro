@@ -12,7 +12,7 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'lol');
 const lolRosters = sc.list.filter((r) => r.game === 'lol' || (me.staff && !sc.active));
 const rosterIds = me.rosters.filter((r) => r.game === 'lol').map((r) => r.role_id);
 // Riot ID de nos joueurs LoL → op.gg multi

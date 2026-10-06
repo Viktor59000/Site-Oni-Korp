@@ -25,11 +25,15 @@ Les rôles ne sont lus qu'une fois toutes les 5 minutes (cache) : un rôle donn�
 
 ## Les pages
 
-Le menu a six rubriques. Les pages d'une rubrique deviennent des onglets en haut de l'écran (`Qg.astro`, constante `SECTIONS`).
+Inside a deux étages (décision du 7 oct. 2026) :
+
+1. **Mon espace** (`/equipe/`, sans `?r=`) : la page perso de chacun. Prochaine échéance tous rosters confondus (avec réponse en un clic), « À faire » (réponses, dispos, comptes à relier, setup, guide), objectifs perso rangés par roster et à sa couleur, ses rosters pour y entrer, l'essai en cours, et pour l'encadrement la Vue d'ensemble. C'est la page d'arrivée de tout le monde, même avec un seul roster.
+2. **L'espace d'un roster** : six rubriques, toujours pour **un seul roster** à la fois. Les pages d'une rubrique deviennent des onglets en haut de l'écran (`Qg.astro`, constante `SECTIONS`).
 
 | Rubrique | Page | Adresse | Fichier |
 |---|---|---|---|
-| Accueil | Accueil du roster (prochaine échéance, ta semaine, forme, objectifs) ; sans roster choisi : choix du roster | `/equipe/` | `accueil.astro` |
+| Mon espace | Page perso (voir plus haut) | `/equipe/` | `accueil.astro` |
+| Accueil | Accueil du roster (prochaine échéance, ta semaine, forme, objectifs, ce qui a bougé) | `/equipe/?r=<slug>` | `accueil.astro` |
 | Semaine | Planning (séances, réponses, disponibilités, présence) | `/equipe/planning/` | `../equipe.astro` |
 | | Calendrier du mois | `/equipe/calendrier/` | `calendrier.astro` |
 | Match | Avant-match (compo, adversaire, checklist) | `/equipe/match/` | `match.astro` |
@@ -39,20 +43,20 @@ Le menu a six rubriques. Les pages d'une rubrique deviennent des onglets en haut
 | | Scouting (une fiche par adversaire) | `/equipe/scouting/` | `scouting.astro` |
 | Progrès | Stats (mesures en jeu, tendances) | `/equipe/stats/` | `mesures.astro` |
 | | Objectifs | `/equipe/objectifs/` | `objectifs.astro` |
-| Outils | Tableau blanc (tous les jeux) | `/equipe/tactique/` | `tactique.astro` + `tactique.client.ts` |
+| Préparer | Tableau blanc (tous les jeux sauf osu!) : modèles pour démarrer en un clic, aperçu de chaque tableau | `/equipe/tactique/` | `tactique.astro` + `tactique.client.ts` |
 | | Drafter LoL | `/equipe/lol/` | `lol.astro` + `lol.client.ts` |
 | | Lineups Valorant | `/equipe/valo/` | `valo.astro` |
 | | osu! (défi de la semaine, maps) | `/equipe/osu/` | `osu.astro` |
 | | Tracker Rocket League (Oni Sync) | `/equipe/rl/` | `rl.astro` + `rl-sync.ts` |
+| | Docs du roster (routines, règles, appels) | `/equipe/docs/` | `docs.astro` |
 | Équipe | Joueurs (comptes de jeu, statut titulaire/remplaçant/essai) | `/equipe/joueurs/` | `joueurs.astro` |
 | | Setups | `/equipe/setup/` | `setup.astro` |
-| | Docs du roster | `/equipe/docs/` | `docs.astro` |
 | Menu du compte | Profil d'un joueur | `/equipe/profil/` | `profil.astro` |
 | | Guide (rôles, fiches de poste, mode d'emploi) | `/equipe/guide/` | `guide.astro` |
 | Sélecteur de roster | Vue d'ensemble (encadrement) : santé des rosters, alertes | `/equipe/vue/` | `vue.astro` |
 | Pôle contenu | Contenu (tâches autour des matchs, calendrier éditorial, indicateurs) | `/equipe/contenu/` | `contenu.astro` + `contenu-taches.ts` |
 
-Le roster affiché se choisit avec `?r=<slug>` (`scope()` dans `outils.ts`). Sans `?r`, une page montre tous les rosters de la personne.
+Le roster affiché vient de `scope()` dans `outils.ts` : celui de `?r=<slug>`, sinon le dernier ouvert (cookie `oni_r`), sinon le premier. **Jamais plusieurs rosters mélangés** : les tableaux, objectifs, docs, notes d'un roster ne s'affichent que dans ce roster. Un outil de jeu ne propose que les rosters de son jeu (4e argument de `scope`). Un lien direct vers un élément (`?b=`, `?d=`, `?v=`, `?o=`, `?m=`) ouvre le roster auquel il appartient (`ownerOf()`). Ce qui traverse les rosters vit dans Mon espace (perso) ou la Vue d'ensemble (encadrement).
 
 ## Comment une page écrit
 
@@ -88,7 +92,7 @@ Les tables propres au site sont créées par `ensureTables()` (`outils.ts`) au p
 
 ## Ajouter un outil (la marche à suivre)
 
-1. **Le placer** : à quelle rubrique il appartient (Semaine, Match, Progrès, Outils, Équipe) ? S'il ne sert qu'à un jeu, c'est un outil de jeu (`GAME_TOOL` dans `Qg.astro`).
+1. **Le placer** : à quelle rubrique il appartient (Semaine, Match, Progrès, Préparer, Équipe) ? S'il ne sert qu'à un jeu, c'est un outil de jeu (`GAME_TOOL` dans `Qg.astro`).
 2. **Créer la page** `src/server/equipe/<nom>.astro` en copiant la structure d'une page voisine : `teamUser` → `scope` → données filtrées par `canSee` → `<Qg current="<nom>" …>`.
 3. **Déclarer la route** dans `astro.config.mjs` (`route('/equipe/<nom>', …)`) et l'ajouter à `PATH` et `SECTIONS` dans `Qg.astro`.
 4. **Les écritures** : une nouvelle entrée dans le bon fichier `actions/*.ts` (avec `canLead` si c'est un geste d'encadrement), et un geste de test dans `scripts/non-regression-actions.mjs`. Une nouvelle table : dans `ensureTables()`, et documentée dans [05 · Données](05-donnees.md).

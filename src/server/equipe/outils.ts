@@ -60,9 +60,25 @@ export async function teamUser(cookies: AstroCookies) {
 }
 
 /** Roster choisi dans la navigation (?r=slug) : on filtre dessus, sinon tous ceux de la personne. */
-export function scope<T extends { slug: string }>(rosters: T[], url: URL) {
-  const one = rosters.find((x) => x.slug === url.searchParams.get('r'));
-  return { active: one?.slug ?? null, list: one ? [one] : rosters };
+/**
+ * Roster de travail d'un outil d'équipe : toujours UN seul (décision du 07/10 : pas de mélange entre rosters).
+ * Celui de l'adresse (?r=), sinon le dernier ouvert (cookie oni_r), sinon le premier. `keep` limite aux rosters
+ * concernés par l'outil (ex. le drafter : rosters LoL). Le choix est retenu pour la prochaine visite.
+ */
+export function scope<T extends { id: number; slug: string; game?: string }>(rosters: T[], url: URL, cookies?: AstroCookies, keep?: (r: T) => boolean, owner?: number | null) {
+  const pool = keep ? rosters.filter(keep) : rosters;
+  // Lien direct vers un élément (tableau, doc, VOD…) sans ?r= : on ouvre le roster auquel il appartient
+  const asked = pool.find((x) => x.slug === url.searchParams.get('r')) ?? (owner ? pool.find((x) => Number(x.id) === Number(owner)) : undefined);
+  const one = asked ?? pool.find((x) => x.slug === cookies?.get('oni_r')?.value) ?? pool[0];
+  if (asked && cookies) cookies.set('oni_r', asked.slug, { path: '/', maxAge: 365 * 86400, sameSite: 'lax', secure: url.protocol === 'https:' });
+  return { active: one?.slug ?? null, list: one ? [one] : [] };
+}
+/** Roster propriétaire d'un élément ouvert par son identifiant (?b=, ?d=, ?v=…), si la page n'a pas de ?r=. */
+export async function ownerOf(url: URL, table: 'boards' | 'docs' | 'vods' | 'opponents' | 'matches' | 'drafts', param: string) {
+  const id = Number(url.searchParams.get(param));
+  if (!id || url.searchParams.get('r')) return null;
+  const [x] = await rows<{ roster_id: number }>(`SELECT roster_id FROM ${table} WHERE id = ?`, id).catch(() => []);
+  return x ? Number(x.roster_id) : null;
 }
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {

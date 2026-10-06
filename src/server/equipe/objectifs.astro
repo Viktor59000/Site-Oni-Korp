@@ -10,7 +10,7 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
 await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies);
 // Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
 const manage = sc.list.some((r) => canLead(me, r.id));
 const back = `/equipe/objectifs/${sc.active ? `?r=${sc.active}` : ''}`;

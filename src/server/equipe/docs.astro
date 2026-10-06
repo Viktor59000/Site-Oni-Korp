@@ -1,7 +1,7 @@
 ---
 // Docs du roster : routines d'entraînement, règles internes, guides, liens utiles. Mise en forme simple (# titre, - liste, **gras**, liens).
 import Qg from './Qg.astro';
-import { canLead, scope, teamUser } from './outils';
+import { canLead, ownerOf, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { md } from './ui';
 
@@ -9,7 +9,7 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, undefined, await ownerOf(Astro.url, 'docs', 'd'));
 // Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
 const manage = sc.list.some((r) => canLead(me, r.id));
 const q = sc.active ? `r=${sc.active}` : '';

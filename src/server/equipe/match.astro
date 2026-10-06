@@ -3,7 +3,7 @@
 // Infos et horaires (check-in, inscription), compo, fiche de l'adversaire, tableaux blancs, checklist,
 // puis après le match : débrief, stats, replays et VOD.
 import Qg from './Qg.astro';
-import { canLead, rosterMembers, scope, teamUser } from './outils';
+import { canLead, rosterMembers, ownerOf, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { md } from './ui';
 
@@ -11,7 +11,7 @@ export const prerender = false;
 const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me, user } = t;
-const sc = scope(me.rosters, Astro.url);
+const sc = scope(me.rosters, Astro.url, Astro.cookies, undefined, await ownerOf(Astro.url, 'matches', 'm'));
 // Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
 const manage = sc.list.some((r) => canLead(me, r.id));
 const q = sc.active ? `r=${sc.active}` : '';
