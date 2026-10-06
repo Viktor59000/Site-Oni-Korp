@@ -13,7 +13,11 @@ export function spark(values: number[], { w = 120, h = 32, invert = false } = {}
   return `<svg class="spark ${up ? 'is-up' : 'is-down'}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts.join(' ')}" /></svg>`;
 }
 
-export const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+/** Moyenne des valeurs numériques (les cases vides ou absentes sont ignorées : une partie Oni Sync n'a pas toutes les mesures de ballchasing). */
+export const avg = (xs: unknown[]) => {
+  const ok = xs.filter((x) => x !== null && x !== undefined && x !== '' && Number.isFinite(Number(x))).map(Number);
+  return ok.length ? ok.reduce((s, x) => s + x, 0) / ok.length : null;
+};
 export const r1 = (x: number | null, d = 1) => (x === null ? '—' : String(Math.round(x * 10 ** d) / 10 ** d).replace('.', ','));
 export const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x)} %`);
 

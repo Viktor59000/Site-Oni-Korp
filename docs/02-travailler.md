@@ -47,6 +47,7 @@ VERCEL=1 npm run build     # compile AUSSI les pages serveur ; doit finir par «
 npm run check              # astro check (toutes les pages) + TypeScript strict des fichiers serveur : 0 erreur attendue
 npm test                   # non-régression : compare le HTML de 43 pages à la référence
 npm run coherence          # si tu as touché aux rôles, postes ou couleurs : compare avec le bot (cloné dans ../oni-bot)
+node scripts/parcours-inside.mjs   # serveur de démo lancé : ouvre ~140 pages d'Inside et signale erreurs et « NaN % »
 ```
 
 `npm test` compare à une référence prise avant ton changement :
