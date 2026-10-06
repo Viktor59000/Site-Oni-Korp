@@ -9,7 +9,7 @@
 - Inhouses : groupes « Jouer ensemble », places au classement sur les cartes, salles osu! lues automatiquement.
 - Tracker Rocket League + Oni Sync.
 - Page de présentation d'Inside pour les non-membres.
-- Refactorisation sans changement de résultat (bot et site), tests de non-régression, base de démonstration, cette documentation.
+- Refactorisation sans changement de résultat (bot et site, dont les actions d'Inside rangées par domaine), tests de non-régression, vérification des types (`npm run check`, qui a trouvé deux actions cassées), base de démonstration, cette documentation.
 
 ## À vérifier dès que possible
 
@@ -42,6 +42,5 @@
 
 ## Dette technique connue
 
-- `src/server/equipe/outils.ts` reste une longue suite d'actions dans une seule fonction : lisible, mais à découper par domaine si elle grossit encore.
 - Les noms de rôles, les jeux et leurs couleurs sont écrits à la fois dans le site (`access.ts`, `Qg.astro`) et dans le bot (`config.ts`, `util.ts`). Ce sont deux dépôts séparés : **si tu changes l'un, change l'autre**, en attendant une source commune.
 - La table `availability` (ancien format des disponibilités) n'est plus utilisée ; gardée tant que l'historique peut servir.

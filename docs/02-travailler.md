@@ -56,6 +56,8 @@ npm test                   # non-régression : compare le HTML de 43 pages à la
 
 Un changement voulu (nouveau texte, nouveau bloc) apparaît forcément : vérifie juste que ce sont les seuls. Pour un **refactoring**, il ne doit y avoir **aucune** différence.
 
+Pour les **formulaires d'Inside** (les actions), `node scripts/non-regression-actions.mjs` rejoue un geste de chaque type sur la base de démo et compare redirections et données écrites (`--save` avant, sans option après ; `npm run demo` entre les deux pour repartir de la même base).
+
 ### Le bot
 
 ```bash

@@ -55,7 +55,19 @@ Le roster affiché se choisit avec `?r=<slug>` (`scope()` dans `outils.ts`). San
 
 ## Comment une page écrit
 
-Presque toutes les modifications passent par **un seul point d'entrée** : `POST /api/equipe/outils` (`outils.ts`), avec un champ `action` (`note`, `draft`, `setup`, `objectif`, `statut`, `tache`, `competition`…) et un champ `back` (où revenir). Chaque action :
+Presque toutes les modifications passent par **un seul point d'entrée** : `POST /api/equipe/outils` (`outils.ts`), avec un champ `action` (`note`, `draft`, `setup`, `objectif`, `statut`, `tache`, `competition`…) et un champ `back` (où revenir). `outils.ts` vérifie la personne, puis passe la main à l'action, rangée par domaine :
+
+| Fichier | Actions |
+|---|---|
+| `actions/compte.ts` | `ics-regen`, `deconnexion-partout`, `staff-public`, `comptes`, `setup` |
+| `actions/contenu.ts` | `metric`, `competition`, `tache` et `tache-*` |
+| `actions/roster.ts` | `statut`, `objectif`, `objectif-maj`, `doc`, `osu-map`, `tableau`, `suppr` |
+| `actions/match.ts` | `note`, `draft`, `lineup`, `stats`, `vod`, `vod-mark`, `replay`, `adversaire`, `compo` |
+| `actions/base.ts` | ce que reçoit chaque action (`Ctx`) et les petits outils (`clip`, `num`) |
+
+Les sources tierces (lolalytics, LineupsValorant, VCRDB) sont lues et mises en cache dans `sources.ts`, servies par `GET /api/equipe/outils?type=ll|lv|vc`.
+
+Chaque action :
 
 1. vérifie l'origine de la requête (`sameOrigin`) et l'utilisateur (`teamUser`) ;
 2. vérifie le droit sur le roster (`canSee` / `canLead`) ;
@@ -78,7 +90,7 @@ Les tables propres au site sont créées par `ensureTables()` (`outils.ts`) au p
 1. **Le placer** : à quelle rubrique il appartient (Semaine, Match, Progrès, Outils, Équipe) ? S'il ne sert qu'à un jeu, c'est un outil de jeu (`GAME_TOOL` dans `Qg.astro`).
 2. **Créer la page** `src/server/equipe/<nom>.astro` en copiant la structure d'une page voisine : `teamUser` → `scope` → données filtrées par `canSee` → `<Qg current="<nom>" …>`.
 3. **Déclarer la route** dans `astro.config.mjs` (`route('/equipe/<nom>', …)`) et l'ajouter à `PATH` et `SECTIONS` dans `Qg.astro`.
-4. **Les écritures** : une nouvelle `action` dans `outils.ts` (avec `canLead` si c'est un geste d'encadrement). Une nouvelle table : dans `ensureTables()`, et documentée dans [05 · Données](05-donnees.md).
+4. **Les écritures** : une nouvelle entrée dans le bon fichier `actions/*.ts` (avec `canLead` si c'est un geste d'encadrement), et un geste de test dans `scripts/non-regression-actions.mjs`. Une nouvelle table : dans `ensureTables()`, et documentée dans [05 · Données](05-donnees.md).
 5. **Si Discord doit réagir** (message, rappel) : le site écrit en base, le bot lit et agit (voir le module `suivi.ts` du bot).
 6. **Le style** : tokens d'Inside (`qg.css`), sans illustration ([06 · Design et ton](06-design-et-ton.md)). Vérifier sur téléphone (pas de débordement horizontal).
 7. **Le guide** : ajouter une ligne dans `guide.astro` et dans la page de présentation `InsideIntro.astro` si c'est un outil majeur.
