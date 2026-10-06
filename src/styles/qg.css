@@ -238,7 +238,7 @@ body.qg .eq-roster { background: transparent; border: 0; border-top: var(--mark)
 body.qg .eq-roster__code { width: 48px; height: 48px; }
 body.qg .eq-roster__head h2 { font: 600 1.5rem / 1 var(--qg-title); }
 body.qg .eq-roster h3 { margin-top: var(--space-5); font-size: var(--text-md); }
-body.qg .eq-roster__head.is-single { display: none; }
+body.qg .eq-roster__head.is-single { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* reste lu par les lecteurs d'écran : ordre des titres */
 body.qg .eq-roster__head.is-single + h3 { margin-top: 0; }
 
 /* ---------- États vides : une seule présentation pour tous les outils (surface calme, texte mono) ---------- */
