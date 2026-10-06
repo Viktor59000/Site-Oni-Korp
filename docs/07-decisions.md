@@ -1,0 +1,48 @@
+# 07 · Décisions (et pourquoi)
+
+Le journal des choix qui structurent le projet. Avant de défaire l'un d'eux, lire la raison. Pour en ajouter un : date, décision, raison, en trois lignes.
+
+## Organisation et outils
+
+- **Un seul bot maison, une seule base partagée** (oct. 2026). Le serveur empilait une dizaine de bots en doublon, dont certains morts. Oni Bot les remplace, et le site lit la même base : pas d'API à maintenir entre les deux.
+- **Hébergement gratuit ou presque** : Vercel Hobby, Turso Free, Echo-Host à 0,49 €/mois. Le club est bénévole, sans budget. Conséquences : dépôt du site public (Vercel Hobby ne déploie pas un dépôt privé d'organisation), quotas à ménager.
+- **Le bot est privé, le site public.** Aucune clé dans le dépôt du site ni dans sa doc.
+- **Les clés des API de jeux restent sur le bot**, jamais sur Vercel : le bot relève, le site lit. Une seule fuite possible au lieu de deux.
+- **Les changements du serveur Discord passent par des scripts lancés par Viktor** (simulation, puis `--apply`). Raison : on a perdu une fois des accès en « rangeant » (un rôle pas donné, une erreur avalée). Règle depuis : ne jamais retirer un accès avant d'avoir vérifié le nouveau, et donner l'accès aux bureaux privés personne par personne sur le salon.
+- **« L'outil repère, une personne décide »** (grille de l'audit, partie 8). Le bot signale (candidature sans réponse, tâche orpheline, roster sans remplaçant), il ne sanctionne ni ne tranche seul.
+
+## Le club
+
+- **Jeux prioritaires : RL, LoL, Valorant** ; osu! reste communautaire (6 oct. 2026).
+- **Bureau restreint de la future association : Viktor et Yuzu** ; bureau large inchangé.
+- **Agenda public = les grands rendez-vous seulement** (tournois, ligues, showmatchs). Les scrims restent internes : planning du roster, Inside, agenda perso, jamais sur `/agenda` ni dans #annonces.
+- **Recrutement joueurs à partir de 18 ans.**
+- **Inhouses classés ouverts à tous les membres**, avec garde-fous : compte Discord de plus de 30 jours, présent sur le serveur depuis 3 jours, Elo bloqué au-delà de 3 parties 1v1 en 24 h contre la même personne (anti-farm).
+- **Programme créateurs** : on dit « Créateur de contenu », pas « ambassadeur ». Le contrat : 4 lives par mois tagués Oni Korp + le club dans la bio, contre de la visibilité (alertes, page Créateurs, récap, priorité de cast).
+
+## Inside
+
+- **Nom « Inside »** (l'ancien « QG » était froid et confus). Noms d'outils sobres.
+- **Rangement par usage** (Accueil, Semaine, Match, Progrès, Outils, Équipe) et **outils filtrés selon le jeu** du roster.
+- **Accès par fonction** (6 oct. 2026) : capitaine, analyste, responsable de jeu et pôle contenu ont un accès adapté, pas seulement l'encadrement. Le diagnostic de l'audit : « l'outillage existe, il manque les gens ». Ceux qui aident devaient pouvoir utiliser les outils.
+- **Les non-membres voient une présentation d'Inside**, pas une impasse ni les données.
+- **Pas d'illustration dans Inside** : les en-têtes illustrés par jeu ont été jugés « horribles ». C'est un outil, pas une vitrine.
+- **Le tableau blanc interroge le serveur de moins en moins souvent quand rien ne bouge** : à 1,5 s fixe, un onglet ouvert faisait 2 400 appels à l'heure, de quoi épuiser les quotas gratuits.
+- **Rocket League : Oni Sync** (6 oct. 2026). Le service de rangs (RapidAPI) est hors ligne, ballchasing n'a que les replays envoyés à la main, Tracker.gg et Bakkboard n'ont pas d'API publique. Oni Sync lit l'API Stats officielle du jeu sur le PC du joueur, comme Bakkboard. Le script envoie les messages bruts pour qu'on puisse corriger le décodage côté site sans redistribuer le script.
+
+## Sources tierces
+
+Accord obtenu, à **toujours créditer** dans l'interface : RiftKit / Coach Kirei (cartes vectorielles de la Faille, buissons), lolalytics (analyse de draft), LineupsValorant, VCRDB (viseurs Valorant). **Pour toute nouvelle source, demander à Viktor s'il a l'accord avant de reprendre son contenu.** Les données officielles (Data Dragon, valorant-api, API osu!, ballchasing) sont utilisées selon leurs conditions.
+
+## Design
+
+- Marque **Oni Korp**, kanji 鬼 au cœur de la DA, logo = blason d'origine redessiné.
+- **Album de vignettes « style 1 »** (masque oni personnel, 4 encres), sans mélange de styles.
+- **Un visuel = une situation** (hors logo).
+- Vitrine et Inside ont **deux DA distinctes** (affiche / outil).
+
+## Ce qu'on a essayé et abandonné
+
+- **Réponses du bot aux liens de replays o!rdr** (6 oct. 2026) : carte puis lecteur vidéo relayé par le site. Retiré à la demande de Viktor : peu utile par rapport au lien, et la vidéo (≈ 120 Mo) ne passait que par un relais coûteux en bande passante.
+- **Bannières générées automatiquement pour les réseaux** : refusées, Viktor les fait avec ChatGPT.
+- **Lecteur musique via convertisseur YouTube** : refusé (droits) ; la radio utilise d'autres sources.
