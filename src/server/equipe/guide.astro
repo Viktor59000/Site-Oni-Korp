@@ -62,6 +62,21 @@ const FICHES: [string, string, string, string, string, string][] = [
   ['Accueil', 'Que personne n\'arrive sans qu\'on lui parle.', 'Saluer les arrivées, proposer un inhouse, orienter vers le bon salon.', 'La carte de bienvenue et le parcours d\'arrivée du bot (relances à 3 et 7 jours).', 'Accueillir les 5 prochaines arrivées.', 'Le modérateur, sinon la direction.'],
   ['Organisateur', 'Une soirée ou un tournoi communautaire par semaine.', 'Choisir le format, annoncer, lancer, annoncer le résultat.', '/tournoi, les inhouses, l\'agenda public.', 'Organiser une soirée inhouse.', 'La direction.'],
 ];
+// Médiation et sanctions (choix du 07/10 : grille progressive, avec exclusion directe pour faute grave)
+const CONFLIT: [string, string][] = [
+  ['Désamorcer', 'Le capitaine, ou un modérateur hors roster, sépare les personnes (vocaux différents) et note les faits.'],
+  ['Écouter', 'Un échange privé avec chacun, dans les 48 h.'],
+  ['Décider', 'Le coach ou le responsable du jeu pour un sujet de jeu (compo, temps de jeu), la direction pour un sujet de comportement.'],
+  ['Écrire', 'Un résumé dans le ticket : les faits, la décision, la suite.'],
+];
+const SANCTIONS: [string, string][] = [
+  ['1. Rappel', 'Un message privé qui rappelle la règle. Rien n\'est inscrit.'],
+  ['2. Avertissement', 'Écrit, gardé dans le ticket. Il compte pendant 6 mois.'],
+  ['3. Exclusion temporaire', '7 jours sans accès au serveur ni au roster.'],
+  ['4. Exclusion définitive', 'Décidée par deux personnes de la direction.'],
+  ['Faute grave', 'Harcèlement, propos discriminatoires, triche, partage de données personnelles : exclusion possible sans étape préalable, toujours à deux.'],
+  ['Réexamen', 'Un ticket dans #🎫・support (motif « Contester une sanction ») dans les 7 jours, examiné par deux personnes de la direction qui n\'ont pas pris la décision.'],
+];
 ---
 <Qg title="Guide · Inside" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="gd">
@@ -79,6 +94,12 @@ const FICHES: [string, string, string, string, string, string][] = [
         <h2 class="gd-h">Les rôles : qui voit quoi, qui gère quoi</h2>
         <dl class="gd-tools">{ROLES.map(([t2, d]) => <div><dt>{t2}</dt><dd>{d}</dd></div>)}</dl>
         <p class="eq-note">Les rôles se donnent sur Discord. Une question sur le tien : ton responsable de jeu, ou la direction.</p>
+      </section>
+      <section>
+        <h2 class="gd-h">Conflits et sanctions</h2>
+        <p class="eq-note">On parle avant de sanctionner. Une sanction grave n'est jamais décidée par une seule personne. Toute personne sanctionnée peut demander un réexamen.</p>
+        <ol class="gd-steps">{CONFLIT.map(([t2, d]) => <li><div><strong>{t2}</strong><span>{d}</span></div></li>)}</ol>
+        <dl class="gd-fiche gd-sanctions">{SANCTIONS.map(([t2, d]) => <><dt>{t2}</dt><dd>{d}</dd></>)}</dl>
       </section>
       <section class="gd-faq">
         <h2 class="gd-h">Fiches de poste</h2>

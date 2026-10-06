@@ -41,7 +41,7 @@ const recruits = (await rows<{ user_id: string; game: string | null; started_at:
    FROM recruits r LEFT JOIN guild_members g ON g.id = r.user_id WHERE r.done_at IS NULL ORDER BY r.started_at`).catch(() => [])).filter((x) => mineGame(x.game));
 const support = !me.staff ? [] : await rows<{ thread_id: string; game: string; opened_at: number; name: string | null }>(
   `SELECT t.thread_id, t.game, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind = 'support' ORDER BY t.opened_at`);
-const MOTIF: Record<string, string> = { question: 'Question', probleme: 'Problème avec un membre', partenariat: 'Partenariat', bot: 'Bot ou site', autre: 'Autre' };
+const MOTIF: Record<string, string> = { question: 'Question', probleme: 'Problème avec un membre', partenariat: 'Partenariat', bot: 'Bot ou site', autre: 'Autre', reexamen: 'Réexamen d'une sanction' };
 const [contacts] = me.staff ? await rows<{ n: number }>(`SELECT COUNT(*) AS n FROM contacts WHERE status = 'nouveau'`) : [{ n: 0 }];
 const upcoming = (await rows<{ id: number; opponent: string; at: number; kind: string | null; caster: string | null; signup_by: number | null; roster: string | null; game: string | null }>(
   `SELECT m.id, m.opponent, m.at, m.kind, m.caster, m.signup_by, r.name AS roster, r.game FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id
