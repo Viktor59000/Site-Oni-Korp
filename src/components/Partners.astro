@@ -1,0 +1,61 @@
+---
+// Partenaires du club : une vignette par partenaire, cliquable. Logos ramenés à une seule couleur (blanc sur encre)
+// pour que des identités très différentes forment une rangée cohérente ; au survol, le vermillon balaie la scène.
+import { srcset } from '../lib/img.js';
+
+interface Props { compact?: boolean }
+const { compact = false } = Astro.props;
+
+const partners = [
+  { name: 'Carl & Barl', sub: 'by LNDR · decals Rocket League', role: 'Nos decals Octane et Fennec', href: '/vestiaire/', domain: 'Voir les decals', logo: '/img/partenaires/carl-barl.webp', w: 304, h: 320, emblem: true },
+  { name: 'LoLineup.gg', sub: 'League of Legends', role: 'Outil d’équipe du pôle LoL', href: 'https://lolineup.gg/', domain: 'lolineup.gg', logo: '/img/partenaires/lolineup.webp', w: 903, h: 160 },
+  { name: 'Echo-Host', sub: 'Hébergement cloud et jeu', role: 'Hébergeur officiel d’Oni Bot', href: 'https://echo-host.net/', domain: 'echo-host.net', logo: '/img/partenaires/echo-host.webp', w: 1766, h: 252 },
+];
+---
+<ul class:list={['ptn', { 'ptn--compact': compact }]}>
+  {partners.map((p) => {
+    const ext = p.href.startsWith('http');
+    return (
+      <li>
+        <a class="ptn__card" href={p.href} {...(ext ? { rel: 'noopener', target: '_blank' } : {})}>
+          <span class="ptn__stage">
+            <img class:list={['ptn__logo', { 'ptn__logo--emblem': p.emblem }]} src={p.logo} srcset={srcset(p.logo)} sizes={p.emblem ? '96px' : '260px'} alt="" width={p.w} height={p.h} loading="lazy" />
+            <span class="ptn__arrow" aria-hidden="true">{ext ? '↗' : '→'}</span>
+          </span>
+          <span class="ptn__text">
+            <strong translate="no">{p.name}</strong>
+            <span>{compact ? p.role : p.sub}</span>
+            {!compact && <span class="ptn__role">{p.role}</span>}
+            <span class="ptn__domain">{p.domain}{ext && <span class="sr-only"> (nouvel onglet)</span>}</span>
+          </span>
+        </a>
+      </li>
+    );
+  })}
+</ul>
+
+<style>
+  .ptn { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: clamp(1rem, 2.5vw, 2rem); margin: 0; padding: 0; list-style: none; }
+  .ptn__card { display: grid; gap: 1rem; height: 100%; color: var(--ink); text-decoration: none; }
+  /* La scène : toujours sur l'encre, logos en blanc ; le vermillon balaie au survol */
+  .ptn__stage { position: relative; isolation: isolate; overflow: hidden; display: grid; place-items: center; aspect-ratio: 16 / 9; background: #0a0a0a; border-top: 3px solid var(--lacquer); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .08); }
+  .ptn__stage::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--lacquer); transform: translateX(-115%) skewX(-12deg); transition: transform .32s cubic-bezier(.2, 0, 0, 1); }
+  .ptn__logo { max-width: 68%; max-height: 34%; width: auto; height: auto; object-fit: contain; filter: brightness(0) invert(1); transition: transform .32s cubic-bezier(.2, 0, 0, 1); }
+  .ptn__logo--emblem { max-height: 52%; }
+  .ptn__arrow { position: absolute; top: .75rem; right: .9rem; color: #f3f1ec; font-size: 1.1rem; opacity: .55; transition: transform .32s cubic-bezier(.2, 0, 0, 1), opacity .2s; }
+  .ptn__card:is(:hover, :focus-visible) .ptn__stage::before { transform: scaleX(1.3) skewX(-12deg); }
+  .ptn__card:is(:hover, :focus-visible) .ptn__logo { transform: scale(1.04); }
+  .ptn__card:is(:hover, :focus-visible) .ptn__arrow { opacity: 1; transform: translate(3px, -3px); }
+  .ptn__card:focus-visible { outline: 3px solid var(--lacquer); outline-offset: 4px; }
+  /* Texte : nom, domaine en mono, rôle */
+  .ptn__text { display: grid; gap: .3rem; }
+  .ptn__text strong { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; line-height: 1.1; }
+  .ptn__text > span { color: var(--muted); font-size: var(--step--1); }
+  .ptn__role { color: var(--ink) !important; }
+  .ptn__domain { margin-top: .25rem; font: 700 .72rem/1.3 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--red-text) !important; }
+  .ptn__card:is(:hover, :focus-visible) .ptn__domain { text-decoration: underline; text-underline-offset: 3px; }
+  /* Version compacte (accueil) : scène plus basse */
+  .ptn--compact .ptn__stage { aspect-ratio: 2.2 / 1; }
+  .ptn--compact .ptn__text strong { font-size: 1.1rem; }
+  @media (prefers-reduced-motion: reduce) { .ptn__stage::before, .ptn__logo, .ptn__arrow { transition: none; } }
+</style>

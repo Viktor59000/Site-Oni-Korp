@@ -4,6 +4,7 @@ import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import site from '../data/site.json';
 import Agenda from '../components/Agenda.astro';
+import Partners from '../components/Partners.astro';
 import { album } from '../lib/album.js';
 
 ---
@@ -105,20 +106,7 @@ import { album } from '../lib/album.js';
         <h2 id="partenaires-title">À nos côtés.</h2>
         <p>Les partenaires qui accompagnent le club.</p>
       </div>
-      <ul class="partners">
-        <li>
-          <img src="/img/partenaires/carl-barl.webp" srcset={srcset("/img/partenaires/carl-barl.webp")} sizes="80px" alt="" width="304" height="320" loading="lazy" />
-          <div><strong translate="no">Carl &amp; Barl by LNDR</strong><span>Rocket League · decals Octane et Fennec</span></div>
-        </li>
-        <li>
-          <img class="partners__wordmark partners__mono" src="/img/partenaires/lolineup.webp" srcset={srcset("/img/partenaires/lolineup.webp")} sizes="220px" alt="LoLineup.gg" width="903" height="160" loading="lazy" />
-          <div><span>League of Legends · partenaire du pôle</span></div>
-        </li>
-        <li>
-          <img class="partners__wordmark partners__mono" src="/img/partenaires/echo-host.webp" srcset={srcset("/img/partenaires/echo-host.webp")} sizes="220px" alt="Echo-Host" width="1766" height="252" loading="lazy" />
-          <div><span>Hébergeur officiel d’Oni Bot</span></div>
-        </li>
-      </ul>
+      <Partners compact />
     </div>
   </section>
 
