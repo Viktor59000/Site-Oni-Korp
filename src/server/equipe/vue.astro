@@ -68,6 +68,15 @@ const cards = await Promise.all(me.rosters.map(async (r) => {
     if (rate !== null && rate < 60) alerts.push(`Présence faible sur 30 jours (${rate} %)`);
     if (last && !Number(debrief?.n ?? 0)) alerts.push(`Pas de débrief du dernier match (vs ${last.opponent})`);
     if (Number(linked.n) < members.length) alerts.push(`${members.length - Number(linked.n)} joueur(s) sans compte de jeu relié`);
+    // Remplaçant : aucun membre au statut « remplaçant » (SWOT-ROLES, partie 8)
+    const [subs] = await rows<{ n: number }>("SELECT COUNT(*) AS n FROM roster_status WHERE roster_id = ? AND statut = 'remplacant'", r.id).catch(() => [{ n: 0 }]);
+    if (!Number(subs?.n ?? 0)) alerts.push('Pas de remplaçant désigné (statut dans Joueurs)');
+    // Joueur qui décroche : moins de 50 % de présence sur au moins 3 séances en 30 jours
+    if (done.length >= 3) {
+      const per = await rows<{ user_id: string; p: number }>(`SELECT user_id, COUNT(*) AS p FROM attendance WHERE status = 'present' AND training_id IN (${done.map(() => '?').join(',')}) GROUP BY user_id`, ...done.map((d) => d.id));
+      const low = members.filter((m) => Number(per.find((x) => x.user_id === m.id)?.p ?? 0) / done.length < .5);
+      if (low.length) alerts.push(`Présence sous 50 % sur 30 jours : ${low.map((m) => m.name).join(', ')} (le capitaine en parle d'abord)`);
+    }
   }
   return { r, g: GAMES[r.game] ?? { label: r.game, color: '#e5251f' }, members, next, nextAnswers: Number(nextAnswers?.n ?? 0), week: Number(week.n), rate, last, debrief, alerts };
 }));
@@ -79,6 +88,11 @@ const clubAlerts: [string, 'urgent' | 'action'][] = [];
 const essais = await rows<{ user_id: string; essai_fin: number; retour: string | null; name: string | null; roster: string; game: string }>(
   `SELECT s.user_id, s.essai_fin, s.retour, g.name, r.name AS roster, r.game FROM roster_status s JOIN rosters r ON r.id = s.roster_id LEFT JOIN guild_members g ON g.id = s.user_id
    WHERE s.statut = 'essai' AND s.essai_fin IS NOT NULL AND r.archived = 0 AND s.essai_fin < ?`, now + 3 * DAY).catch(() => []);
+// Tâches de contenu que personne n'a prises, échéance dans moins de 24 h (ou dépassée)
+if (me.staff) {
+  const [orph] = await rows<{ n: number }>("SELECT COUNT(*) AS n FROM content_tasks WHERE assignee IS NULL AND status = 'a-faire' AND due < ?", now + DAY).catch(() => [{ n: 0 }]);
+  if (Number(orph?.n ?? 0)) clubAlerts.push([`${orph.n} tâche(s) de contenu que personne n'a prise(s), échéance sous 24 h (onglet Contenu)`, 'action']);
+}
 for (const e of essais.filter((x) => mineGame(x.game))) {
   if (Number(e.essai_fin) < now && !e.retour) clubAlerts.push([`Essai de ${e.name ?? 'un joueur'} (${e.roster}) terminé : décide de la suite et écris le retour dans Joueurs`, 'urgent']);
   else if (Number(e.essai_fin) >= now) clubAlerts.push([`Essai de ${e.name ?? 'un joueur'} (${e.roster}) jusqu'au ${fmt.format(new Date(Number(e.essai_fin)))} : prépare le retour`, 'action']);
