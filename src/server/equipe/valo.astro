@@ -37,6 +37,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
             </div>
             <aside class="lu-side-panel">
               <button type="button" class="btn" data-add>Ajouter une lineup</button>
+              <a class="lu-ext" data-ext href="https://lineupsvalorant.com/" target="_blank" rel="noopener">Chercher sur LineupsValorant ↗</a>
               <div class="lu-detail" data-detail><p class="eq-note">Clique sur un point pour voir la lineup. Les lignes vont du lanceur au point d'impact.</p></div>
               <form class="lu-form" method="post" action="/api/equipe/outils" data-form hidden>
                 <h2>Nouvelle lineup</h2>
@@ -149,7 +150,9 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
     root.querySelectorAll<HTMLElement>('[data-side]').forEach((b) => b.addEventListener('click', () => {
       side = b.dataset.side!; root.querySelectorAll('[data-side]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw();
     }));
-    $('[data-agent-filter]').addEventListener('change', (e) => { agent = (e.target as HTMLSelectElement).value; draw(); });
+    // Lien vers LineupsValorant filtré sur la carte et l'agent en cours (leur base reste chez eux)
+    const ext = () => { const q = new URLSearchParams(); if (map) q.set('map', map); if (agent) q.set('agent', agent.replace(/\W/g, '')); $<HTMLAnchorElement>('[data-ext]').href = `https://lineupsvalorant.com/?${q}`; };
+    $('[data-agent-filter]').addEventListener('change', (e) => { agent = (e.target as HTMLSelectElement).value; draw(); ext(); });
     $('[data-kind-filter]').addEventListener('change', (e) => { kind = (e.target as HTMLSelectElement).value; draw(); });
     // Compétences de l'agent choisi dans le formulaire
     const fillAbilities = () => { const a = agents.find((x) => x.name === $<HTMLSelectElement>('[data-f-agent]').value); $('[data-f-ability]').innerHTML = '<option value="">—</option>' + (a?.abilities ?? []).map((x) => `<option>${esc(x.name)}</option>`).join(''); };
@@ -161,7 +164,7 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
       $<HTMLImageElement>('[data-mapimg]').src = m.icon;
       root.querySelectorAll('[data-map]').forEach((b) => b.setAttribute('aria-selected', String((b as HTMLElement).dataset.map === uuid)));
       $('[data-detail]').innerHTML = '<p class="eq-note">Clique sur un point pour voir la lineup.</p>';
-      draw();
+      draw(); ext();
     }
     $('[data-maps]').addEventListener('click', (e) => { const b = (e.target as Element).closest<HTMLElement>('[data-map]'); if (b) selectMap(b.dataset.map!); });
 
@@ -231,6 +234,8 @@ const games = [...new Set(me.rosters.map((r) => r.game))];
   .lu-form[hidden] { display: none; }
   .lu-form h2 { font-size: 1.1rem; }
   .lu-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .lu-ext { display: block; margin: .5rem 0 1rem; font-size: .85rem; color: var(--muted); }
+  .lu-ext:hover { color: var(--ink); }
   .lu-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
   .lu-imgs { display: grid; gap: .5rem; margin: 0; padding: .75rem; border: 1px solid var(--line); }
   .lu-imgs legend { font-weight: 700; font-size: .85rem; padding: 0 .3rem; }
