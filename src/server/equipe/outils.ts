@@ -4,6 +4,7 @@ import type { APIRoute, AstroCookies } from 'astro';
 import { bumpKey, clearSession, currentSession, sameOrigin } from '../session';
 import { db, exec, rows } from '../db';
 import { access, canSee, canLead } from './access';
+import { NETWORKS, ensureTasks } from './contenu-taches';
 export { canSee, canLead, rosterMembers } from './access';
 
 let ready = false;
@@ -69,6 +70,39 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   // Sécurité du compte : nouveau lien d'agenda perso ; déconnexion de tous les appareils
   if (action === 'ics-regen') { await bumpKey(user.id, 'ics'); return redirect(back); }
   if (action === 'deconnexion-partout') { await bumpKey(user.id, 'session'); clearSession(cookies); return redirect('/'); }
+
+  // Tâches de contenu : brief des matchs, calendrier éditorial, demandes de visuels (pôle contenu, encadrement, responsables, capitaines)
+  if (action.startsWith('tache')) {
+    const may = me.staff || me.content.length > 0 || me.lead.length > 0;
+    if (!may) return redirect(back);
+    await ensureTasks();
+    if (action === 'tache') {
+      const kind = ['visuel', 'post', 'video'].includes(clip(f.get('kind'), 10)) ? clip(f.get('kind'), 10) : 'post';
+      const d = clip(f.get('jour'), 10), h = /^\d{2}:\d{2}$/.test(clip(f.get('heure'), 5)) ? clip(f.get('heure'), 5) : '18:00';
+      const due = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T${h}:00+02:00`).getTime() : NaN;
+      const title = clip(f.get('title'), 120);
+      if (!title || !Number.isFinite(due)) return redirect(`${back}${back.includes('?') ? '&' : '?'}erreur=tache`);
+      const nets = f.getAll('networks').map(String).filter((n) => NETWORKS.includes(n)).join(',');
+      await exec('INSERT INTO content_tasks (match_id, kind, title, brief, networks, due, status, created_by, at) VALUES (NULL,?,?,?,?,?,?,?,?)',
+        kind, title, clip(f.get('brief'), 1500) || null, nets || null, due, 'a-faire', user.id, Date.now());
+      return redirect(back);
+    }
+    const id = Number(f.get('id'));
+    const [task] = await rows<{ assignee: string | null; created_by: string | null; match_id: number | null }>('SELECT assignee, created_by, match_id FROM content_tasks WHERE id = ?', id);
+    if (!task) return redirect(back);
+    const op = clip(f.get('op'), 12);
+    if (op === 'prendre' && !task.assignee) await exec("UPDATE content_tasks SET assignee = ?, status = 'en-cours' WHERE id = ?", user.id, id);
+    if (op === 'lacher' && (task.assignee === user.id || me.staff)) await exec("UPDATE content_tasks SET assignee = NULL, status = 'a-faire' WHERE id = ?", id);
+    // Le livrable passe « à valider » ; seule la direction (encadrement) le marque fait : c'est elle qui publie
+    if (op === 'livrer' && (task.assignee === user.id || me.staff)) {
+      const url = clip(f.get('url'), 300);
+      await exec("UPDATE content_tasks SET url = ?, status = 'a-valider' WHERE id = ?", /^https?:\/\//.test(url) ? url : null, id);
+    }
+    if (op === 'valider' && me.staff) await exec("UPDATE content_tasks SET status = 'fait' WHERE id = ?", id);
+    if (op === 'refaire' && me.staff) await exec("UPDATE content_tasks SET status = 'en-cours' WHERE id = ?", id);
+    if (op === 'suppr' && !task.match_id && (task.created_by === user.id || me.staff)) await exec('DELETE FROM content_tasks WHERE id = ?', id);
+    return redirect(back);
+  }
 
   // Statut d'un joueur dans un roster : seulement l'encadrement, le responsable du jeu ou le capitaine
   if (action === 'statut') {
