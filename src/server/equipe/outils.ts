@@ -320,9 +320,35 @@ async function lvOne(id: number) {
   };
 }
 
+// Matchups lolalytics (Émeraude+, patch en cours ; réutilisation autorisée) : la page « counters » d'un champion, dans son poste principal.
+// Renvoie le taux de victoire du champion contre chaque adversaire du même poste (au moins 100 parties), en cache 12 h.
+const llCache = new Map<string, { at: number; v: unknown }>();
+const llSlug = (id: string) => ({ MonkeyKing: 'wukong', Nunu: 'nunu' } as Record<string, string>)[id] ?? id.toLowerCase();
+async function llCounters(id: string) {
+  const c = llCache.get(id); if (c && Date.now() - c.at < 12 * 3600_000) return c.v;
+  const slug = llSlug(id);
+  const html = await fetch(`https://lolalytics.com/lol/${slug}/counters/`, { headers: { 'User-Agent': 'Mozilla/5.0 (OniKorp Inside)' } }).then((r) => (r.ok ? r.text() : ''));
+  const lane = html.split(`<a href="/lol/${slug}/vs/`).slice(1).map((b) => b.match(/^[^"]*vslane=(\w+)/)?.[1]).find(Boolean) ?? null;
+  const rows: { vs: string; wr: number; games: number }[] = [];
+  for (const b of html.split(`<a href="/lol/${slug}/vs/`).slice(1)) {
+    const wr = b.match(/-->([\d.]+)<!---->%/)?.[1], g = b.match(/>([\d,]+) Games</)?.[1];
+    if (!wr || !g) continue;
+    const vs = b.split('/')[0];
+    if (!rows.some((x) => x.vs === vs)) rows.push({ vs, wr: Number(wr), games: Number(g.replace(/,/g, '')) });
+  }
+  const v = { lane, rows };
+  llCache.set(id, { at: Date.now(), v });
+  return v;
+}
+
 export const GET: APIRoute = async ({ cookies, url }) => {
   const t = await teamUser(cookies);
   if (!t) return new Response('[]', { status: 401 });
+  if (url.searchParams.get('type') === 'll') {
+    const id = (url.searchParams.get('champ') ?? '').replace(/[^A-Za-z]/g, '').slice(0, 30);
+    const v = id ? await llCounters(id).catch(() => null) : null;
+    return new Response(JSON.stringify(v), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=3600' } });
+  }
   if (url.searchParams.get('type') === 'lv') {
     const id = Number(url.searchParams.get('id'));
     const map = (url.searchParams.get('map') ?? '').slice(0, 30), agent = (url.searchParams.get('agent') ?? '').replace(/\W/g, '').slice(0, 30);

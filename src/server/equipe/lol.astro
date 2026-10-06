@@ -100,6 +100,7 @@ for (const r of lolRosters) {
         <h3 id="dr-read-title">Lecture des compos</h3>
         <p class="eq-note">Calculée sur les données officielles des champions (Riot) et sur les parties classées de nos joueurs relevées par Oni Bot (90 jours) : qui maîtrise quoi, nos matchups directs, notre bilan face à chaque champion.</p>
         <div class="dr-read__grid"><div data-read="blue"></div><div data-read="red"></div></div>
+        <div class="dr-ll" data-ll></div>
         <div class="dr-suggest" data-suggest></div>
       </section>
 
@@ -196,7 +197,30 @@ for (const r of lolRosters) {
     l.hidden = !locked.size;
     l.textContent = locked.size ? `Fearless : ${locked.size} champions déjà joués dans la série sont bloqués.` : '';
     $<HTMLInputElement>('[data-json]').value = JSON.stringify({ steps, locked: [...locked], v: version, ours, prep });
-    renderPrep(s); renderRead(s);
+    renderPrep(s); renderRead(s); renderLL(s);
+  }
+
+  // ---------- Matchups lolalytics (Émeraude+, patch en cours) ----------
+  const llMemo = new Map<string, Promise<{ lane: string | null; rows: { vs: string; wr: number; games: number }[] } | null>>();
+  const ll = (id: string) => { if (!llMemo.has(id)) llMemo.set(id, fetch(`/api/equipe/outils?type=ll&champ=${encodeURIComponent(id)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)); return llMemo.get(id)!; };
+  const slugOf = (id: string) => (id === 'MonkeyKing' ? 'wukong' : id.toLowerCase());
+  const LANE_FR: Record<string, string> = { top: 'top', jungle: 'jungle', middle: 'mid', bottom: 'ADC', support: 'support' };
+  let llTok = 0;
+  async function renderLL(s: ReturnType<typeof state>) {
+    const tok = ++llTok, box = $('[data-ll]');
+    const mine = s[ours].pick.filter(Boolean) as string[], theirs = s[ours === 'blue' ? 'red' : 'blue'].pick.filter(Boolean) as string[];
+    if (!mine.length || !theirs.length) { box.innerHTML = ''; return; }
+    const data = await Promise.all(mine.map(async (id) => ({ id, d: await ll(id) })));
+    // Poste principal de chaque pick adverse : on ne compare que des champions qui jouent le même poste
+    const theirLane = new Map(await Promise.all(theirs.map(async (o) => [o, (await ll(o))?.lane ?? null] as const)));
+    if (tok !== llTok) return;
+    const lines = data.flatMap(({ id, d }) => theirs.filter((o) => !d?.lane || !theirLane.get(o) || theirLane.get(o) === d.lane).map((o) => ({ id, o, r: d?.rows.find((x) => x.vs === slugOf(o)), lane: d?.lane })).filter((x) => x.r))
+      .sort((a, b) => a.r!.wr - b.r!.wr);
+    box.innerHTML = lines.length ? `<p class="dr-sub">Matchups de lane · lolalytics, Émeraude+, patch en cours</p><ul class="dr-ll__list">${lines.map(({ id, o, r, lane }) => {
+      const cls = r!.wr < 48.5 ? 'is-bad' : r!.wr > 51.5 ? 'is-good' : '';
+      return `<li class="${cls}"><img src="${icon(id)}" alt="" width="24" height="24" />${esc(name(id))} <span>contre</span> <img src="${icon(o)}" alt="" width="24" height="24" />${esc(name(o))}<b>${r!.wr.toFixed(1)} %</b><small>${r!.games.toLocaleString('fr-FR')} parties${lane ? ` · ${LANE_FR[lane] ?? lane}` : ''}</small></li>`;
+    }).join('')}</ul><p class="eq-note">Taux de victoire de notre champion contre l'adversaire, s'ils jouent le même poste. En rouge sous 48,5 %, en vert au-dessus de 51,5 %. Source : <a href="https://lolalytics.com/" rel="noopener" target="_blank">lolalytics</a>.</p>`
+      : `<p class="eq-note">Pas de matchup de lane direct entre nos picks et les leurs dans les données lolalytics (postes différents ou trop peu de parties).</p>`;
   }
 
   // ---------- Préparation ----------
@@ -411,6 +435,13 @@ for (const r of lolRosters) {
   .dr-read :global(.dr-who li) { display: flex; align-items: center; gap: .4rem; }
   .dr-read :global(.dr-who .is-warn) { color: #f0a04b; }
   .dr-read :global(.dr-sub) { margin: .8rem 0 .3rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .dr-ll :global(.dr-ll__list) { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; }
+  .dr-ll :global(li) { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .3rem .5rem; border-left: 3px solid var(--line); }
+  .dr-ll :global(li span) { color: var(--muted); }
+  .dr-ll :global(li b) { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .dr-ll :global(li small) { width: 100%; padding-left: 1.9rem; color: var(--muted); font-size: .75rem; }
+  .dr-ll :global(li.is-bad) { border-left-color: #e5251f; } .dr-ll :global(li.is-bad b) { color: #ff6a5c; }
+  .dr-ll :global(li.is-good) { border-left-color: #2fbf71; } .dr-ll :global(li.is-good b) { color: #2fbf71; }
   .dr-suggest :global(h4) { margin-top: 1.25rem; background: none !important; color: var(--ink) !important; padding: 0 !important; }
   .dr-suggest :global(ul) { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; }
   .dr-suggest :global(li) { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
