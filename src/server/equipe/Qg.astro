@@ -25,9 +25,9 @@ const game = activeRoster?.game ?? null;
 const PATH: Record<string, string> = {
   accueil: '/equipe/', planning: '/equipe/planning/', calendrier: '/equipe/calendrier/', match: '/equipe/match/', stats: '/equipe/stats/', objectifs: '/equipe/objectifs/',
   notes: '/equipe/notes/', vod: '/equipe/vod/', tactique: '/equipe/tactique/', scouting: '/equipe/scouting/', lol: '/equipe/lol/',
-  valo: '/equipe/valo/', osu: '/equipe/osu/', joueurs: '/equipe/joueurs/', setup: '/equipe/setup/', docs: '/equipe/docs/', contenu: '/equipe/contenu/', tournois: '/equipe/tournois/',
+  valo: '/equipe/valo/', osu: '/equipe/osu/', rl: '/equipe/rl/', joueurs: '/equipe/joueurs/', setup: '/equipe/setup/', docs: '/equipe/docs/', contenu: '/equipe/contenu/', tournois: '/equipe/tournois/',
 };
-const GAME_TOOL: Record<string, [string, string]> = { lol: ['lol', 'Drafter'], valo: ['valo', 'Lineups'], osu: ['osu', 'Défis et maps'] };
+const GAME_TOOL: Record<string, [string, string]> = { lol: ['lol', 'Drafter'], valo: ['valo', 'Lineups'], osu: ['osu', 'Défis et maps'], rl: ['rl', 'Tracker'] };
 const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
 // Outil propre au jeu : seulement celui du roster choisi (un roster osu! ne voit pas le drafter LoL)
 const gameTools = game && GAME_TOOL[game] ? [GAME_TOOL[game]] : [];

@@ -1,0 +1,261 @@
+---
+// Tracker Rocket League : parties envoyées par Oni Sync (API Stats locale du jeu, voir rl-sync.ts) et replays ballchasing.
+// Par joueur : forme, moyennes comparées au roster, session du jour, courbe, dernières parties, coéquipiers ; puis le roster côte à côte.
+import Qg from './Qg.astro';
+import { rosterMembers, scope, teamUser } from './outils';
+import { rows } from '../db';
+import { avg, pct, r1, spark } from './ui';
+import { syncStatus } from './rl-sync';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url);
+const rlRosters = sc.list.filter((r) => r.game === 'rl');
+const q = sc.active ? `?r=${sc.active}` : '';
+
+// Joueurs suivis : membres des rosters RL affichés, et moi
+const byId = new Map<string, { id: string; name: string; avatar: string | null }>();
+for (const r of rlRosters) for (const m of await rosterMembers(String(r.role_id))) byId.set(m.id, m);
+if (!byId.has(user.id)) byId.set(user.id, { id: user.id, name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar });
+const people = [...byId.values()];
+const ids = people.map((p) => p.id);
+const accounts = new Map((await rows<{ user_id: string; ident: string }>(`SELECT user_id, ident FROM accounts WHERE game = 'rl' AND user_id IN (${ids.map(() => '?').join(',')})`, ...ids)).map((a) => [String(a.user_id), a.ident]));
+type G = { src?: string; win: boolean; us: number; them: number; playlist?: string | null; map?: string | null; score?: number | null; buts?: number | null; passes?: number | null; arrets?: number | null; tirs?: number | null; precision?: number | null; touches?: number | null; demos?: number | null; mates?: string[]; link?: string; at: number; overtime?: boolean };
+const perf = await rows<{ user_id: string; data: string; at: number }>(`SELECT user_id, data, at FROM perf WHERE game = 'rl' AND user_id IN (${ids.map(() => '?').join(',')}) ORDER BY at DESC LIMIT 2000`, ...ids);
+const games = new Map<string, G[]>(ids.map((id) => [id, []]));
+for (const p of perf) games.get(String(p.user_id))?.push({ ...JSON.parse(p.data), at: Number(p.at) });
+
+const wanted = Astro.url.searchParams.get('j');
+const focus = people.find((p) => p.id === wanted) ?? people.find((p) => p.id === user.id)!;
+const g = (games.get(focus.id) ?? []).slice(0, 50);
+const last20 = g.slice(0, 20);
+const ranks = accounts.get(focus.id) ? JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `rl-ranks:${accounts.get(focus.id)!.toLowerCase()}`))[0]?.value ?? '[]') as { mode: string; tier: number; name: string; div: number | null; mmr: number | null }[] : [];
+const MODE: Record<string, string> = { '1v1': 'Duel 1v1', '2v2': 'Doubles 2v2', '3v3': 'Standard 3v3', hoops: 'Hoops', rumble: 'Rumble', dropshot: 'Dropshot', snowday: 'Snow Day', tournament: 'Tournois' };
+
+// Moyennes par partie, comparées à celles du roster (20 dernières parties de chacun)
+const KEYS: [keyof G, string, number][] = [['score', 'Score', 0], ['buts', 'Buts', 2], ['passes', 'Passes', 2], ['arrets', 'Arrêts', 2], ['tirs', 'Tirs', 2], ['precision', 'Précision', 0], ['touches', 'Touches', 0], ['demos', 'Démos', 2]];
+const mean = (list: G[], k: keyof G) => avg(list.map((x) => Number(x[k])).filter((x) => Number.isFinite(x)));
+const others = people.filter((p) => p.id !== focus.id).map((p) => (games.get(p.id) ?? []).slice(0, 20)).filter((l) => l.length);
+const teamMean = (k: keyof G) => avg(others.map((l) => mean(l, k)).filter((x): x is number => x !== null));
+const fmt = (k: keyof G, v: number | null, d: number) => (v === null ? '—' : k === 'precision' ? pct(v) : r1(v, d));
+
+// Forme et série
+const winRate = last20.length ? (last20.filter((x) => x.win).length / last20.length) * 100 : null;
+let streak = 0; for (const x of g) { if (x.win === g[0]?.win) streak++; else break; }
+// Session du jour (heure de Paris)
+const day = (ms: number) => new Date(ms).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+const today = g.filter((x) => day(x.at) === day(Date.now()));
+// Coéquipiers les plus fréquents (parties Oni Sync)
+const mates = new Map<string, { n: number; w: number }>();
+for (const x of g) for (const m of x.mates ?? []) { const c = mates.get(m) ?? { n: 0, w: 0 }; c.n++; if (x.win) c.w++; mates.set(m, c); }
+const topMates = [...mates.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 5);
+
+const sync = focus.id === user.id ? await syncStatus(user.id) : null;
+const when = (ms: number) => new Date(ms).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const cle = Astro.url.searchParams.get('cle');
+const roster = people.map((p) => { const l = (games.get(p.id) ?? []).slice(0, 20); return { p, n: l.length, win: l.length ? (l.filter((x) => x.win).length / l.length) * 100 : null, score: mean(l, 'score'), buts: mean(l, 'buts'), arrets: mean(l, 'arrets'), passes: mean(l, 'passes'), trend: spark(l.slice().reverse().map((x) => Number(x.score))), lastAt: l[0]?.at ?? null }; }).sort((a, b) => b.n - a.n);
+const initial = (s: string) => s.slice(0, 1).toUpperCase();
+---
+<Qg title="Tracker RL · Inside" heading="Tracker Rocket League" lead="Chaque partie, la forme et la progression de chacun, relevées automatiquement." current="rl" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  <div class="rl">
+    {people.length > 1 && (
+      <nav class="rl-who" aria-label="Joueur">
+        {people.map((p) => (
+          <a href={`/equipe/rl/?${sc.active ? `r=${sc.active}&` : ''}j=${p.id}`} aria-current={p.id === focus.id ? 'true' : undefined}>
+            {p.avatar ? <img src={p.avatar} alt="" width="28" height="28" loading="lazy" /> : <span>{initial(p.name)}</span>}
+            {p.name}<small>{(games.get(p.id) ?? []).length || ''}</small>
+          </a>
+        ))}
+      </nav>
+    )}
+
+    {focus.id === user.id && (
+      <section class="rl-sync" aria-labelledby="rl-sync-h">
+        <div>
+          <p class="rl-tag">Oni Sync</p>
+          <h2 id="rl-sync-h">{sync?.last_at ? 'Tes parties arrivent toutes seules' : 'Relie ton jeu au tracker'}</h2>
+          {!accounts.get(user.id) && <p class="rl-warn">Relie d’abord ton pseudo Rocket League dans <a href={`/equipe/joueurs/${q}`}>Joueurs</a> : c’est lui qui permet de te retrouver dans chaque partie.</p>}
+          {sync?.last_at && <p>Dernière partie reçue {when(Number(sync.last_at))}.</p>}
+          {sync?.last_error && <p class="rl-warn">Dernier envoi refusé : {sync.last_error}</p>}
+          {cle === 'nouvelle' && <p class="rl-ok">Nouvelle clé créée : retélécharge Oni Sync, l’ancien fichier ne marche plus.</p>}
+          <ol>
+            <li><b>Télécharge Oni Sync</b> : un seul fichier, propre à toi (ne le partage pas).</li>
+            <li><b>Double-clique dessus</b> avant de jouer. La première fois, il active l’API Stats de Rocket League ; si Windows refuse, fais clic droit &gt; Exécuter en tant qu’administrateur, une seule fois.</li>
+            <li><b>Joue.</b> Chaque partie terminée apparaît ici, en classé comme en privé ou en inhouse.</li>
+          </ol>
+          <p class="rl-note">Oni Sync lit seulement ce que Rocket League publie lui-même sur ton PC (comme Bakkboard) : aucune injection, rien d’autre n’est envoyé.</p>
+        </div>
+        <div class="rl-sync__act">
+          <a class="btn" href="/api/rl/oni-sync" download>Télécharger Oni Sync</a>
+          {sync && (
+            <form method="post" action="/api/rl/oni-sync">
+              <input type="hidden" name="back" value={`/equipe/rl/${q}`} />
+              <button class="btn btn--ghost" type="submit">Fichier partagé par erreur ? Nouvelle clé</button>
+            </form>
+          )}
+        </div>
+      </section>
+    )}
+
+    <section class="rl-head" aria-label="Résumé">
+      <div class="rl-id">
+        {focus.avatar ? <img src={focus.avatar} alt="" width="64" height="64" /> : <span>{initial(focus.name)}</span>}
+        <div><h2>{focus.name}</h2><p>{accounts.get(focus.id) ? `Pseudo RL : ${accounts.get(focus.id)}` : 'Pseudo RL pas encore relié'} · {g.length} partie{g.length > 1 ? 's' : ''} suivie{g.length > 1 ? 's' : ''}</p></div>
+      </div>
+      {ranks.length > 0 && (
+        <ul class="rl-ranks">
+          {ranks.map((k) => <li><small>{MODE[k.mode] ?? k.mode}</small><b>{k.name}{k.div ? ` · div ${k.div}` : ''}</b>{k.mmr ? <span>{k.mmr} MMR</span> : null}</li>)}
+        </ul>
+      )}
+    </section>
+
+    {!g.length ? (
+      <p class="rl-empty">Aucune partie pour l’instant. {focus.id === user.id ? 'Lance Oni Sync et joue : la première partie apparaîtra ici dès la fin du match.' : `${focus.name} n’a pas encore lancé Oni Sync.`}</p>
+    ) : (
+      <>
+        <section class="rl-grid">
+          <article class="rl-card">
+            <p class="rl-tag">Forme · 20 dernières</p>
+            <p class="rl-big">{pct(winRate)} <small>de victoires</small></p>
+            <div class="rl-form" aria-label="Résultats, du plus récent au plus ancien">
+              {last20.map((x) => <span class:list={[x.win ? 'is-w' : 'is-l']} title={`${x.win ? 'Victoire' : 'Défaite'} ${x.us}-${x.them}`}>{x.win ? 'V' : 'D'}</span>)}
+            </div>
+            <p class="rl-note">{streak > 1 ? `Série en cours : ${streak} ${g[0].win ? 'victoires' : 'défaites'}` : 'Pas de série en cours'}</p>
+          </article>
+          <article class="rl-card">
+            <p class="rl-tag">Session du jour</p>
+            {today.length ? (
+              <>
+                <p class="rl-big">{today.filter((x) => x.win).length}-{today.filter((x) => !x.win).length} <small>{today.length} partie{today.length > 1 ? 's' : ''}</small></p>
+                <p class="rl-note">{today.reduce((a, x) => a + (x.buts ?? 0), 0)} buts · {today.reduce((a, x) => a + (x.passes ?? 0), 0)} passes · {today.reduce((a, x) => a + (x.arrets ?? 0), 0)} arrêts</p>
+              </>
+            ) : <p class="rl-note">Pas encore joué aujourd’hui.</p>}
+          </article>
+          <article class="rl-card">
+            <p class="rl-tag">Score par partie</p>
+            <Fragment set:html={spark(last20.slice().reverse().map((x) => Number(x.score)), { w: 260, h: 60 })} />
+            <p class="rl-note">Moyenne {fmt('score', mean(last20, 'score'), 0)} sur les 20 dernières</p>
+          </article>
+        </section>
+
+        <section aria-labelledby="rl-avg">
+          <h3 id="rl-avg" class="rl-h">Moyennes par partie <small>20 dernières, comparées au reste du roster</small></h3>
+          <div class="rl-avgs">
+            {KEYS.map(([k, label, d]) => {
+              const v = mean(last20, k), team = teamMean(k);
+              const diff = v !== null && team ? (v - team) / team : null;
+              return (
+                <div class="rl-avg">
+                  <small>{label}</small>
+                  <b>{fmt(k, v, d)}</b>
+                  {diff !== null && Math.abs(diff) >= 0.05 ? <span class:list={[diff > 0 ? 'is-up' : 'is-down']}>{diff > 0 ? '▲' : '▼'} {Math.round(Math.abs(diff) * 100)} % vs roster</span> : <span class="is-flat">{team ? 'dans la moyenne' : ' '}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section aria-labelledby="rl-last">
+          <h3 id="rl-last" class="rl-h">Dernières parties</h3>
+          <div class="rl-scroll">
+            <table class="rl-table">
+              <thead><tr><th>Quand</th><th>Mode · arène</th><th>Résultat</th><th>Score</th><th>B</th><th>P</th><th>A</th><th>T</th><th>Touches</th><th>Démos</th><th>Source</th></tr></thead>
+              <tbody>
+                {g.slice(0, 25).map((x) => (
+                  <tr>
+                    <td>{when(x.at)}</td>
+                    <td>{[x.playlist, x.map].filter(Boolean).join(' · ') || '—'}</td>
+                    <td><span class:list={['rl-res', x.win ? 'is-w' : 'is-l']}>{x.win ? 'V' : 'D'} {x.us}-{x.them}{x.overtime ? ' (prol.)' : ''}</span></td>
+                    <td>{x.score ?? '—'}</td><td>{x.buts ?? '—'}</td><td>{x.passes ?? '—'}</td><td>{x.arrets ?? '—'}</td><td>{x.tirs ?? '—'}</td><td>{x.touches ?? '—'}</td><td>{x.demos ?? '—'}</td>
+                    <td>{x.link ? <a href={x.link} rel="noopener">ballchasing</a> : x.src === 'sync' ? 'Oni Sync' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="rl-note">B buts · P passes · A arrêts · T tirs.</p>
+        </section>
+
+        {topMates.length > 0 && (
+          <section aria-labelledby="rl-mates">
+            <h3 id="rl-mates" class="rl-h">Avec qui il joue</h3>
+            <ul class="rl-mates">{topMates.map(([name, c]) => <li><b>{name}</b><span>{c.n} partie{c.n > 1 ? 's' : ''} · {Math.round((c.w / c.n) * 100)} % de victoires</span></li>)}</ul>
+          </section>
+        )}
+      </>
+    )}
+
+    {people.length > 1 && (
+      <section aria-labelledby="rl-roster">
+        <h3 id="rl-roster" class="rl-h">Le roster <small>20 dernières parties de chacun</small></h3>
+        <div class="rl-scroll">
+          <table class="rl-table">
+            <thead><tr><th>Joueur</th><th>Parties</th><th>Victoires</th><th>Score moy.</th><th>Buts</th><th>Passes</th><th>Arrêts</th><th>Tendance</th><th>Dernière</th></tr></thead>
+            <tbody>
+              {roster.map((x) => (
+                <tr>
+                  <td><a href={`/equipe/rl/?${sc.active ? `r=${sc.active}&` : ''}j=${x.p.id}`}>{x.p.name}</a></td>
+                  <td>{x.n}</td><td>{pct(x.win)}</td><td>{r1(x.score, 0)}</td><td>{r1(x.buts, 2)}</td><td>{r1(x.passes, 2)}</td><td>{r1(x.arrets, 2)}</td>
+                  <td><Fragment set:html={x.trend} /></td><td>{x.lastAt ? when(x.lastAt) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+  </div>
+</Qg>
+
+<style>
+  .rl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.25rem; }
+  .rl-tag { margin: 0; font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-accent-text, #b3241e); }
+  .rl h2 { margin: .25rem 0 .5rem; font: 600 1.4rem/1.2 var(--qg-title, sans-serif); }
+  .rl p { margin: 0; }
+  .rl-note { color: var(--qg-muted, #514c46); font-size: .875rem; }
+  .rl-warn { color: var(--qg-accent-text, #b3241e); font-weight: 600; }
+  .rl-ok { color: #1f8f55; font-weight: 600; }
+  .rl-who { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .rl-who a { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .7rem .3rem .3rem; border: 1px solid var(--qg-rule-strong, #7d776f); color: inherit; text-decoration: none; font-weight: 600; font-size: .9rem; }
+  .rl-who a[aria-current] { background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); border-color: var(--qg-ink, #141210); }
+  .rl-who img, .rl-who span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-rule, #d8d3ca); }
+  .rl-who small { font: 500 .72rem var(--qg-mono, monospace); opacity: .7; }
+  .rl-sync { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; padding: 1.25rem; border: var(--rule, 2px) solid var(--qg-ink, #141210); border-left: 6px solid #1450d6; }
+  .rl-sync ol { margin: .75rem 0; padding-left: 1.2rem; display: grid; gap: .4rem; line-height: 1.5; }
+  .rl-sync__act { display: grid; gap: .5rem; justify-items: stretch; }
+  .rl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+  .rl-id { display: flex; gap: 1rem; align-items: center; }
+  .rl-id img, .rl-id > span { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #1450d6; color: #fff; font: 700 1.6rem var(--qg-title, sans-serif); }
+  .rl-id h2 { margin: 0; }
+  .rl-id p { color: var(--qg-muted, #514c46); font-size: .9rem; }
+  .rl-ranks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .rl-ranks li { display: grid; padding: .5rem .8rem; border: 1px solid var(--qg-rule-strong, #7d776f); min-width: 9rem; }
+  .rl-ranks small, .rl-avg small { font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); }
+  .rl-ranks span { font-size: .8rem; color: var(--qg-muted, #514c46); }
+  .rl-empty { padding: 1.5rem; border: 1px dashed var(--qg-rule-strong, #7d776f); color: var(--qg-muted, #514c46); }
+  .rl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+  .rl-card { display: grid; gap: .5rem; align-content: start; padding: 1rem; border: 1px solid var(--qg-rule-strong, #7d776f); }
+  .rl-big { font: 600 2rem/1 var(--qg-title, sans-serif); }
+  .rl-big small { font: 400 .85rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); }
+  .rl-form { display: flex; flex-wrap: wrap; gap: 3px; }
+  .rl-form span, .rl-res { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .3rem; font: 600 .72rem var(--qg-mono, monospace); color: #fff; }
+  .is-w { background: #1f8f55; } .is-l { background: #c81e19; }
+  .rl-card :global(.spark) { width: 100%; height: 60px; }
+  .rl-h { margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: var(--rule, 2px) solid var(--qg-ink, #141210); font: 600 1.1rem var(--qg-title, sans-serif); }
+  .rl-h small { font: 400 .8rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); margin-left: .5rem; }
+  .rl-avgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
+  .rl-avg { display: grid; gap: .15rem; padding: .75rem; border: 1px solid var(--qg-rule, #d8d3ca); }
+  .rl-avg b { font: 600 1.5rem var(--qg-title, sans-serif); font-variant-numeric: tabular-nums; }
+  .rl-avg span { font-size: .78rem; } .rl-avg .is-up { color: #1f8f55; } .rl-avg .is-down { color: #c81e19; } .rl-avg .is-flat { color: var(--qg-muted, #514c46); }
+  .rl-scroll { overflow-x: auto; }
+  .rl-table { width: 100%; border-collapse: collapse; font-size: .88rem; white-space: nowrap; }
+  .rl-table th { text-align: left; font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); padding: .45rem .55rem; border-bottom: 1px solid var(--qg-rule-strong, #7d776f); }
+  .rl-table td { padding: .5rem .55rem; border-bottom: 1px solid var(--qg-rule, #d8d3ca); font-variant-numeric: tabular-nums; }
+  .rl-table a { color: inherit; font-weight: 600; }
+  .rl-mates { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+  .rl-mates li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--qg-rule, #d8d3ca); }
+  .rl-mates span { color: var(--qg-muted, #514c46); font-size: .9rem; }
+  @media (max-width: 700px) { .rl-sync { grid-template-columns: minmax(0, 1fr); } }
+</style>
