@@ -21,7 +21,7 @@ export const variants = {
   'entete-boosters': [800, 2000],
   'entete-inhouses': [800, 2000],
   'album-couverture': [560, 1122],
-  'accueil-album': [560, 1122],
+  'accueil-album': [400, 560, 840, 1122],
   'accueil-inhouses': [800, 1586],
   'recrutement-staff-bloc': [530, 1060],
   'kanji-oni-pinceau': [600, 1100],

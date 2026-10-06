@@ -46,7 +46,7 @@ const staffGroups = [
       <ul class="open-rosters">
         {ouverts.map(([key, label, image, desc, repere]) => (
           <li style={`--g:${({ rl: '#2f6bff', lol: '#0f8a9b', valo: '#ff4655', osu: '#ff66aa' } as Record<string, string>)[key]}`}>
-            <div class="open-rosters__art"><img src={`/img/poste-${key}-480.webp`} srcset={`/img/poste-${key}-480.webp 480w, /img/poste-${key}.webp 800w`} sizes="(max-width: 600px) 100vw, 300px" alt="" width="480" height="320" loading="lazy" /></div>
+            <div class="open-rosters__art"><img src={`/img/poste-${key}-480.webp`} srcset={`/img/poste-${key}-360.webp 360w, /img/poste-${key}-480.webp 480w, /img/poste-${key}.webp 720w`} sizes="(max-width: 600px) 92vw, 300px" alt="" width="480" height="320" loading="lazy" /></div>
             <div>
               <span class="open-rosters__tag">Roster ouvert</span>
               <h3>{label}</h3>
@@ -133,6 +133,7 @@ const staffGroups = [
   .open-rosters__lvl { margin-top: auto !important; padding-top: .9rem; border-top: 1px solid var(--line); }
   .open-rosters__lvl strong { color: var(--ink); }
   .open-rosters .btn { align-self: flex-start; margin-top: .6rem; }
-  .open-rosters__tag { align-self: flex-start; font-size: var(--step--1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--g); }
+  .open-rosters__tag { align-self: flex-start; font-size: var(--step--1); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); display: inline-flex; align-items: center; gap: .4rem; }
+  .open-rosters__tag::before { content: ''; width: .55rem; height: .55rem; background: var(--g); }
   @media (prefers-reduced-motion: reduce) { .open-rosters li, .open-rosters__art img { transition: none; } }
 </style>
