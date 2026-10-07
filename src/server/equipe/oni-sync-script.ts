@@ -238,6 +238,8 @@ elseif (-not $env:ONI_SYNC_TEST) {
 }
 function Mark-Sent($name) { [void]$global:sent.Add($name); try { [IO.File]::AppendAllText($sentFile, $name + [Environment]::NewLine) } catch {} }
 function Check-Replays {
+  # Rien pendant une partie (repris de rockpload) : la connexion reste au jeu
+  if ($global:last) { return }
   $todo = @(All-Replays | Where-Object { -not $global:sent.Contains($_.Name) -and $_.LastWriteTime -lt (Get-Date).AddSeconds(-5) } | Sort-Object LastWriteTime | Select-Object -First 2)
   foreach ($f in $todo) {
     if ($f.Length -gt 4300000) { Mark-Sent $f.Name; Log ('Replay trop gros, pas envoyé : ' + $f.Name); continue }

@@ -52,6 +52,21 @@ const mates = new Map<string, { n: number; w: number }>();
 for (const x of g) for (const m of x.mates ?? []) { const c = mates.get(m) ?? { n: 0, w: 0 }; c.n++; if (x.win) c.w++; mates.set(m, c); }
 const topMates = [...mates.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 5);
 
+// Analyse des replays (ballchasing) : positionnement et boost, sur les 20 dernières parties qui ont un replay
+const RKEYS: [string, string, string, number][] = [
+  ['defense', 'Tiers défensif', 'part du temps dans ton tiers', 0], ['attaque', 'Tiers offensif', 'part du temps chez l’adversaire', 0],
+  ['derriere', 'Derrière le ballon', 'plus c’est haut, plus tu joues en sécurité', 0], ['dernier', 'Dernier homme', 'part du temps en dernier défenseur', 0],
+  ['bpm', 'Boost par minute', 'boost ramassé', 0], ['sansBoost', 'Sans boost', 'part du temps à 0 : à faire baisser', 0],
+  ['vole', 'Boost volé', 'chez l’adversaire, par partie', 0], ['supersonique', 'Supersonique', 'part du temps à pleine vitesse', 0],
+];
+const withReplay = (l: G[]) => l.filter((x) => Number.isFinite(Number((x as any).bpm))).slice(0, 20);
+const rg = withReplay(g);
+const rmean = (l: G[], k: string) => avg(l.map((x) => Number((x as any)[k])).filter((v) => Number.isFinite(v)));
+const rteam = (k: string) => avg(people.filter((p) => p.id !== focus.id).map((p) => rmean(withReplay(games.get(p.id) ?? []), k)).filter((x): x is number => x !== null));
+const rfmt = (k: string, v: number | null) => (v === null ? '—' : ['bpm', 'vole'].includes(k) ? String(Math.round(v)) : pct(v));
+const replays = focus.id === user.id ? await rows<{ status: string; n: number; last: number }>(`SELECT status, COUNT(*) AS n, MAX(at) AS last FROM rl_replays WHERE user_id = ? GROUP BY status`, user.id).catch(() => []) : [];
+const replayCount = (st: string[]) => replays.filter((x) => st.includes(String(x.status))).reduce((a, x) => a + Number(x.n), 0);
+
 const sync = focus.id === user.id ? await syncStatus(user.id) : null;
 const when = (ms: number) => new Date(ms).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const cle = Astro.url.searchParams.get('cle');
@@ -79,8 +94,9 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
           {!accounts.get(user.id) && <p class="rl-warn">Relie d’abord ton pseudo Rocket League dans <a href={`/equipe/joueurs/${q}`}>Joueurs</a> : c’est lui qui permet de te retrouver dans chaque partie.</p>}
           {sync?.last_at && <p>Dernière partie reçue {when(Number(sync.last_at))}.</p>}
           {sync?.seen_at && <p class="rl-note">Oni Sync{sync.version ? ` v${sync.version}` : ''} : {({ lance: 'lancé, en attente du jeu', connecte: 'connecté à Rocket League', abandon: 'partie quittée avant la fin (non comptée)' } as Record<string, string>)[String(sync.seen_state)] ?? String(sync.seen_state)} ({when(Number(sync.seen_at))}){sync.seen_note ? ` · ${sync.seen_note}` : ''}.</p>}
-          {sync && (!sync.version || Number(sync.version) < 4) && <p class="rl-warn">Une nouvelle version d’Oni Sync existe (sans aucune fenêtre, avec raccourci) : retélécharge-la et double-clique une fois.</p>}
+          {sync && (!sync.version || Number(sync.version) < 6) && <p class="rl-warn">Une nouvelle version d’Oni Sync existe (envoi des replays : rang et stats avancées) : retélécharge-la et double-clique une fois.</p>}
           {sync?.last_error && <p class="rl-warn">Dernier envoi refusé : {sync.last_error}</p>}
+          {replays.length > 0 && <p class="rl-note">Replays : {replayCount(['ok'])} analysé{replayCount(['ok']) > 1 ? 's' : ''}{replayCount(['attente', 'envoye']) ? `, ${replayCount(['attente', 'envoye'])} en cours d’analyse` : ''}{replayCount(['echec', 'refuse']) ? `, ${replayCount(['echec', 'refuse'])} non lu${replayCount(['echec', 'refuse']) > 1 ? 's' : ''}` : ''}.</p>}
           {cle === 'nouvelle' && <p class="rl-ok">Nouvelle clé créée : retélécharge Oni Sync, l’ancien fichier ne marche plus.</p>}
           <ol>
             <li><b>Télécharge Oni Sync</b> : un seul fichier, propre à toi (ne le partage pas).</li>
@@ -158,6 +174,27 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
               );
             })}
           </div>
+        </section>
+
+        <section aria-labelledby="rl-rep">
+          <h3 id="rl-rep" class="rl-h">Analyse des replays <small>{rg.length ? `${rg.length} replay${rg.length > 1 ? 's' : ''}, comparés au reste du roster` : 'positionnement et boost'}</small></h3>
+          {rg.length ? (
+            <div class="rl-avgs">
+              {RKEYS.map(([k, label, hint]) => {
+                const v = rmean(rg, k), team = rteam(k);
+                const diff = v !== null && team ? (v - team) / team : null;
+                return (
+                  <div class="rl-avg" title={hint}>
+                    <small>{label}</small>
+                    <b>{rfmt(k, v)}</b>
+                    {diff !== null && Math.abs(diff) >= 0.05 ? <span class:list={[['defense', 'attaque', 'dernier'].includes(k) ? 'is-flat' : (diff > 0) !== (k === 'sansBoost') ? 'is-up' : 'is-down']}>{diff > 0 ? '▲' : '▼'} {Math.round(Math.abs(diff) * 100)} % vs roster</span> : <span class="is-flat">{hint}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p class="rl-note">{focus.id === user.id ? 'Clique « Sauvegarder le replay » sur l’écran de fin de partie : Oni Sync l’envoie, et ton positionnement, ton boost et ton rang apparaissent ici.' : `Aucun replay de ${focus.name} pour l’instant.`}</p>
+          )}
         </section>
 
         <section aria-labelledby="rl-last">
