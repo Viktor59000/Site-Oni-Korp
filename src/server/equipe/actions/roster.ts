@@ -1,7 +1,7 @@
 // Actions d'Inside · Vie du roster : statut des joueurs, objectifs, docs, maps osu!, tableaux blancs, suppressions.
 // Appelées par POST /api/equipe/outils (outils.ts) selon le champ « action ». Chaque action vérifie elle-même les droits.
 import { exec, rows } from '../../db';
-import { canLead, canWriteDoc } from '../access';
+import { canLead, canSee, canWriteDoc } from '../access';
 import { clip, type Action } from './base';
 
 export const actions: Record<string, Action> = {
@@ -73,8 +73,10 @@ export const actions: Record<string, Action> = {
     return redirect(`${back}${back.includes('?') ? '&' : '?'}relance=1`);
   },
   'objectif': async ({ f, user, me, back, redirect }) => {
-    if (!(canLead(me, Number(f.get('roster'))))) return redirect(back);
     const roster = Number(f.get('roster'));
+    // L'encadrement fixe les objectifs de chacun ; un joueur peut s'en fixer un pour lui-même (depuis les Trackers)
+    const self = clip(f.get('user'), 25) === user.id && canSee(me, roster);
+    if (!canLead(me, roster) && !self) return redirect(back);
     const due = clip(f.get('due'), 10);
     await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
     // Objectif d'un joueur : privé par défaut (le joueur et l'encadrement), sauf « visible par tout le roster » coché

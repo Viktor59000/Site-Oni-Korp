@@ -112,6 +112,12 @@ const roster = await Promise.all(people.map(async (p) => {
   const rk = a ? JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `lol:${a.region ?? 'euw'}:${a.ident.toLowerCase()}`))[0]?.value ?? 'null') : null;
   return { p, n: l.length, rk, win: val(l, 'win'), kda: kda(l), cs: val(l, 'csMin'), gd15: val(l, 'gd15'), vspm: val(l, 'vspm'), kp: val(l, 'kp') };
 }));
+// « En faire un objectif » : pour le joueur lui-même ou l'encadrement du roster ; cible = la moyenne de référence
+const goalRoster = lolRosters.find((r) => r.mine) ?? lolRosters[0] ?? null;
+const canGoal = !!goalRoster && (focus.id === user.id || me.staff || me.lead.includes(Number(goalRoster.id)));
+const due = new Date(Date.now() + 28 * 86400_000).toISOString().slice(0, 10);
+const here = `${Astro.url.pathname}${Astro.url.search.replace(/[?&]objectif=ok/, '')}`;
+const objectifOk = Astro.url.searchParams.get('objectif') === 'ok';
 const initial = (s: string) => s.slice(0, 1).toUpperCase();
 const link = (j: string) => `/equipe/tracker-lol/?${sc.active ? `r=${sc.active}&` : ''}j=${j}`;
 const fresh = g.filter((x) => x.v === 2).length;
@@ -168,6 +174,7 @@ const fresh = g.filter((x) => x.v === 2).length;
           </article>
         </section>
 
+        {objectifOk && <p class="rl-ok">Objectif ajouté : retrouve-le dans <a href={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}>Objectifs</a> (privé : toi et l’encadrement).</p>}
         {(strengths.length > 0 || weak.length > 0) && (
           <section class="lt-insight" aria-labelledby="lt-ins">
             <h3 id="lt-ins" class="rl-h">Ce qui ressort <small>20 dernières parties, {refLabel}</small></h3>
@@ -178,7 +185,15 @@ const fresh = g.filter((x) => x.v === 2).length;
               </div>
               <div>
                 <p class="rl-tag">À travailler</p>
-                {weak.length ? <ul>{weak.map((x) => <li><b>{x.m[1]}</b> : {fmt(x.m, x.me)} <span>({x.group.toLowerCase()}, {x.ref !== null ? `${fmt(x.m, x.ref)} ${refLabel}` : ''})</span></li>)}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
+                {weak.length ? <ul>{weak.map((x) => <li><b>{x.m[1]}</b> : {fmt(x.m, x.me)} <span>({x.group.toLowerCase()}, {x.ref !== null ? `${fmt(x.m, x.ref)} ${refLabel}` : ''})</span>{canGoal && (
+                  <form method="post" action="/api/equipe/outils" class="lt-goal">
+                    <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goalRoster!.id} /><input type="hidden" name="user" value={focus.id} />
+                    <input type="hidden" name="title" value={`${x.m[1]} : passer de ${fmt(x.m, x.me)} à ${fmt(x.m, x.ref)}`} />
+                    <input type="hidden" name="detail" value={`Repéré par le Tracker LoL le ${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })} sur les 20 dernières parties (${x.group.toLowerCase()}, ${fmt(x.m, x.ref)} ${refLabel}).`} />
+                    <input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
+                    <button class="lt-goal__btn">En faire un objectif</button>
+                  </form>
+                )}</li>)}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
               </div>
             </div>
           </section>
@@ -326,4 +341,5 @@ const fresh = g.filter((x) => x.v === 2).length;
   .lt-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
   .lt-insight > .lt-cols > div { padding: .9rem 1rem; border: 1px solid var(--qg-rule, #d8d3ca); }
   .lt-champ { display: flex; align-items: center; gap: .45rem; } .lt-champ img { border-radius: 4px; flex: none; }
+  .lt-goal { display: inline; margin-left: .4rem; } .lt-goal__btn { font: inherit; font-size: .78rem; padding: .1rem .5rem; border: 1px solid currentColor; background: none; color: var(--qg-accent, #0f8a9b); cursor: pointer; border-radius: 3px; }
 </style>
