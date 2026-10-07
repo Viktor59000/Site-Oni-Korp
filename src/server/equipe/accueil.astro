@@ -358,7 +358,7 @@ if (!roster) {
       )}
 
       {manageList && manageList.length > 0 && (
-        <section class="qg-card ac-start ac-manage" aria-labelledby="ac-manage">
+        <section class="qg-card ac-card ac-manage" aria-labelledby="ac-manage">
           <h2 id="ac-manage">À gérer · {manageList.length}</h2>
           <ul class="me-todo">
             {manageList.map((x) => <li><a href={x.href}><strong>{x.label}</strong><span>{x.why}</span></a></li>)}
@@ -540,6 +540,7 @@ if (!roster) {
   .me-goals__h span { width: .6rem; height: .6rem; background: var(--g); }
   .me-goals .ac-goals__bar span { background: var(--g); }
   .ac-pick__next { margin-top: .35rem; font-weight: 700; }
+  .ac-manage { border-left: 4px solid var(--qg-accent, #e5251f); }
   .me-acc__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1.25rem 2rem; }
   .me-acc__grid > div { display: grid; gap: .45rem; align-content: start; }
   .me-kv { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
