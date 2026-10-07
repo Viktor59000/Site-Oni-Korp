@@ -13,7 +13,7 @@ Le club tient sur des services gratuits ou presque. Cette fiche dit, pour chacun
 | **HenrikDev** (Valorant) | stats Valorant | erreurs 401/429 | Tracker Valorant | Nouvelle clé gratuite sur le Discord HenrikDev, `HENRIK_API_KEY`. En attendant : tracker.gg. |
 | **osu! API** | rang, tops plays, défis | jeton refusé | annonces osu!, défis | Nouvelle application OAuth sur osu.ppy.sh (compte du club), `OSU_CLIENT_ID` / `OSU_CLIENT_SECRET`. |
 | **ballchasing** | replays RL | replays « refusé » dans le Tracker RL | stats avancées RL, rangs | Nouvelle clé sur ballchasing.com/upload, `BALLCHASING_TOKEN`. Oni Sync continue d'envoyer les parties sans replay. |
-| **Hugging Face** | télécharger le modèle de l'écoute (une fois) | rapport d'écoute en erreur « téléchargement » | `/ecoute` | Le modèle est gardé dans `oni-bot/data/modeles` après le premier téléchargement. Sinon `STT_ENGINE=whisper` (autre modèle, autre source). |
+| **Hugging Face** | télécharger le modèle de l'écoute (une fois) | rapport d'écoute en erreur « téléchargement » | `/ecoute` | Le modèle est gardé dans `oni-bot/data/modeles` après le premier téléchargement. Whisper (`STT_ENGINE=whisper`) vient aussi de Hugging Face : attendre la fin de la panne. |
 | **jsDelivr** | archives de decals RL | téléchargement des decals en erreur | vestiaire RL | jsDelivr ne fait que servir les fichiers du dépôt GitHub : le temps de la panne, pointer les liens vers GitHub (raw.githubusercontent.com). |
 
 ## Qui peut faire quoi
