@@ -66,6 +66,8 @@ Inside a deux étages (décision du 7 oct. 2026) :
 
 **Espace Communauté** (`/equipe/communaute/`, `communaute.astro`) : Accueil, Organisateur, Modérateur et encadrement (`me.community`). Arrivées des 14 derniers jours (date d'arrivée relevée par le miroir d'Oni Bot, `guild_members.joined_at`), soirée inhouse du jeudi, parties et tournois communautaires ; la modération (tickets, avertissements, sanctions) pour les modérateurs et l'encadrement seulement. Aucune donnée de roster.
 
+**À gérer** (accueil du roster, pour capitaine, responsable du jeu et encadrement) : essais qui finissent sous 7 jours sans retour écrit, absence de remplaçant, semaine sans séance, joueurs sans réponse à la prochaine séance.
+
 **Mes rosters et rosters suivis.** `access()` marque chaque roster `mine` (la personne a son rôle). L'encadrement voit aussi les autres rosters, mais ils sont rangés à part (« Suivis en encadrement ») et n'ajoutent ni échéances ni tâches dans Mon espace. L'en-tête d'un roster suivi le rappelle.
 
 Le roster affiché vient de `scope()` dans `outils.ts` : celui de `?r=<slug>`, sinon le dernier ouvert (cookie `oni_r`), sinon le premier. **Jamais plusieurs rosters mélangés** : les tableaux, objectifs, docs, notes d'un roster ne s'affichent que dans ce roster. Un outil de jeu ne propose que les rosters de son jeu (4e argument de `scope`). Un lien direct vers un élément (`?b=`, `?d=`, `?v=`, `?o=`, `?m=`) ouvre le roster auquel il appartient (`ownerOf()`). Ce qui traverse les rosters vit dans Mon espace (perso) ou la Vue d'ensemble (encadrement).

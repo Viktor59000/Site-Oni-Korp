@@ -80,6 +80,23 @@ if (roster) {
     ].sort((a, b) => b.at - a.at).slice(0, 4),
   };
 }
+// À gérer (capitaine, responsable du jeu, encadrement) : ce qui demande une action sur ce roster
+const manageList = roster && data && canLead(me, roster.id) ? await (async () => {
+  const rid = roster.id, out: { label: string; why: string; href: string }[] = [];
+  const st = await rows<{ user_id: string; statut: string; essai_fin: number | null; retour: string | null }>('SELECT user_id, statut, essai_fin, retour FROM roster_status WHERE roster_id = ?', rid).catch(() => []);
+  const name = new Map(data!.members.map((m) => [m.id, m.name]));
+  for (const e of st.filter((x) => x.statut === 'essai' && !x.retour && x.essai_fin && Number(x.essai_fin) < now + 7 * DAY))
+    out.push({ label: `Essai de ${name.get(e.user_id) ?? 'une recrue'} : ${Number(e.essai_fin) < now ? 'terminé, retour à écrire' : `fin ${inDays(Number(e.essai_fin))}`}`, why: 'le retour écrit part en message privé à la recrue', href: `/equipe/joueurs/?r=${roster.slug}` });
+  if (!st.some((x) => x.statut === 'remplacant')) out.push({ label: 'Aucun remplaçant désigné', why: 'un absent le jour du match, et le match est perdu', href: `/equipe/joueurs/?r=${roster.slug}` });
+  const next = data!.events.find((e) => e.type === 'seance');
+  if (!next || next.at > now + 7 * DAY) out.push({ label: 'Aucune séance dans les 7 jours', why: 'à planifier sur Discord avec /entrainement', href: `/equipe/planning/?r=${roster.slug}` });
+  else {
+    const answered = new Set((await rows<{ user_id: string }>('SELECT user_id FROM attendance WHERE training_id = ?', next.id)).map((a) => a.user_id));
+    const silent = data!.members.filter((m) => !answered.has(m.id));
+    if (silent.length) out.push({ label: `${silent.length} sans réponse à la prochaine séance`, why: silent.slice(0, 4).map((m) => m.name).join(', ') + (silent.length > 4 ? '…' : ''), href: `/equipe/planning/?r=${roster.slug}` });
+  }
+  return out;
+})() : null;
 const g = roster ? GAME[roster.game] ?? { label: roster.game, code: roster.game.toUpperCase(), color: '#e5251f' } : null;
 // Bien démarrer : ce qu'un nouveau joueur doit faire une fois (disparaît quand tout est fait)
 const ACC: Record<string, [string, string]> = Object.fromEntries(Object.entries(JEUX).map(([k, j]) => [k, j.account]));
@@ -124,7 +141,7 @@ if (!roster) {
     rows('SELECT 1 FROM setups WHERE user_id = ? LIMIT 1', user.id).catch(() => []),
     rows('SELECT 1 FROM meta WHERE key = ?', `guide:${user.id}`).catch(() => []),
     ids.length ? rows<{ roster_id: number }>(`SELECT DISTINCT roster_id FROM dispo_days WHERE user_id = ? AND week = ? AND roster_id IN (${inR})`, user.id, weekKey(true), ...ids).catch(() => []) : [],
-    rows<{ roster_id: number; status: string; trial_end: number | null; retour: string | null }>('SELECT roster_id, status, trial_end, retour FROM roster_status WHERE user_id = ?', user.id).catch(() => []),
+    rows<{ roster_id: number; status: string; trial_end: number | null; retour: string | null }>('SELECT roster_id, statut AS status, essai_fin AS trial_end, retour FROM roster_status WHERE user_id = ?', user.id).catch(() => []),
     Promise.all(R.map((r) => rosterMembers(r.role_id).then((m) => m.length).catch(() => 0))),
   ]);
   const answers = tr.length ? await rows<{ training_id: number; status: string }>(`SELECT training_id, status FROM attendance WHERE user_id = ? AND training_id IN (${tr.map(() => '?').join(',')})`, user.id, ...tr.map((x) => x.id)) : [];
@@ -337,6 +354,15 @@ if (!roster) {
               <li class:list={{ 'is-done': x.done }}><a href={x.href}><strong>{x.label}</strong><span>{x.why}</span></a></li>
             ))}
           </ol>
+        </section>
+      )}
+
+      {manageList && manageList.length > 0 && (
+        <section class="qg-card ac-start ac-manage" aria-labelledby="ac-manage">
+          <h2 id="ac-manage">À gérer · {manageList.length}</h2>
+          <ul class="me-todo">
+            {manageList.map((x) => <li><a href={x.href}><strong>{x.label}</strong><span>{x.why}</span></a></li>)}
+          </ul>
         </section>
       )}
 
