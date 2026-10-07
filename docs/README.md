@@ -17,6 +17,7 @@ Tout ce qu'il faut pour reprendre le projet sans avoir suivi son histoire : comm
 | Savoir pourquoi les choses sont ainsi | [07 · Décisions](07-decisions.md) |
 | Un mot que tu ne connais pas | [08 · Glossaire](08-glossaire.md) |
 | Ce qui reste à faire | [09 · Feuille de route](09-feuille-de-route.md) |
+| Quand un service tombe | [10 · Secours](10-secours.md) |
 
 ## Les trois règles qui évitent 90 % des problèmes
 
