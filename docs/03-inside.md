@@ -68,6 +68,12 @@ Inside a deux étages (décision du 7 oct. 2026) :
 
 **À gérer** (accueil du roster, pour capitaine, responsable du jeu et encadrement) : essais qui finissent sous 7 jours sans retour écrit, absence de remplaçant, semaine sans séance, joueurs sans réponse à la prochaine séance.
 
+**Plan de séance et relance** : sur Planning, le capitaine ou le coach écrit le plan de chaque séance (`trainings.plan`), repris par Oni Bot sur la carte Discord de la séance. Dans « À gérer », « Relancer sur Discord » pose `trainings.relance_at` : Oni Bot mentionne ceux qui n'ont pas répondu (au plus toutes les 3 h).
+
+**Fiche de cast** (`/equipe/contenu/?cast=<match>`) : pour chaque match public, ce que le casteur doit savoir, uniquement des infos publiques (compo annoncée, postes, rangs, accord d'image, historique contre l'adversaire, derniers résultats). Imprimable.
+
+**Accord d'image** : case dans Mon espace (table `consents`), affichée sur la fiche de cast ; effacé au départ du serveur.
+
 **Mes rosters et rosters suivis.** `access()` marque chaque roster `mine` (la personne a son rôle). L'encadrement voit aussi les autres rosters, mais ils sont rangés à part (« Suivis en encadrement ») et n'ajoutent ni échéances ni tâches dans Mon espace. L'en-tête d'un roster suivi le rappelle.
 
 Le roster affiché vient de `scope()` dans `outils.ts` : celui de `?r=<slug>`, sinon le dernier ouvert (cookie `oni_r`), sinon le premier. **Jamais plusieurs rosters mélangés** : les tableaux, objectifs, docs, notes d'un roster ne s'affichent que dans ce roster. Un outil de jeu ne propose que les rosters de son jeu (4e argument de `scope`). Un lien direct vers un élément (`?b=`, `?d=`, `?v=`, `?o=`, `?m=`) ouvre le roster auquel il appartient (`ownerOf()`). Ce qui traverse les rosters vit dans Mon espace (perso) ou la Vue d'ensemble (encadrement).

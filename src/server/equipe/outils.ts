@@ -50,6 +50,10 @@ export async function ensureTables() {
   for (const col of ['level TEXT', 'game TEXT']) await exec(`ALTER TABLE docs ADD COLUMN ${col}`).catch(() => {});
   // Objectifs individuels privés (07/10) : visibles du joueur et de l'encadrement du roster seulement
   await exec('ALTER TABLE goals ADD COLUMN private INTEGER DEFAULT 0').catch(() => {});
+  // Plan de séance et relance groupée (07/10), aussi créées par Oni Bot
+  for (const col of ['plan TEXT', 'plan_at INTEGER', 'relance_at INTEGER']) await exec(`ALTER TABLE trainings ADD COLUMN ${col}`).catch(() => {});
+  // Accord d'image (07/10) : vignette et clips ; effacé au départ du serveur (purgeOld d'Oni Bot)
+  await exec('CREATE TABLE IF NOT EXISTS consents (user_id TEXT PRIMARY KEY, image INTEGER DEFAULT 0, at INTEGER)').catch(() => {});
   ready = true;
 }
 

@@ -82,7 +82,7 @@ if (roster) {
 }
 // À gérer (capitaine, responsable du jeu, encadrement) : ce qui demande une action sur ce roster
 const manageList = roster && data && canLead(me, roster.id) ? await (async () => {
-  const rid = roster.id, out: { label: string; why: string; href: string }[] = [];
+  const rid = roster.id, out: { label: string; why: string; href: string; relance?: number }[] = [];
   const st = await rows<{ user_id: string; statut: string; essai_fin: number | null; retour: string | null }>('SELECT user_id, statut, essai_fin, retour FROM roster_status WHERE roster_id = ?', rid).catch(() => []);
   const name = new Map(data!.members.map((m) => [m.id, m.name]));
   for (const e of st.filter((x) => x.statut === 'essai' && !x.retour && x.essai_fin && Number(x.essai_fin) < now + 7 * DAY))
@@ -93,7 +93,7 @@ const manageList = roster && data && canLead(me, roster.id) ? await (async () =>
   else {
     const answered = new Set((await rows<{ user_id: string }>('SELECT user_id FROM attendance WHERE training_id = ?', next.id)).map((a) => a.user_id));
     const silent = data!.members.filter((m) => !answered.has(m.id));
-    if (silent.length) out.push({ label: `${silent.length} sans réponse à la prochaine séance`, why: silent.slice(0, 4).map((m) => m.name).join(', ') + (silent.length > 4 ? '…' : ''), href: `/equipe/planning/?r=${roster.slug}` });
+    if (silent.length) out.push({ label: `${silent.length} sans réponse à la prochaine séance`, why: silent.slice(0, 4).map((m) => m.name).join(', ') + (silent.length > 4 ? '…' : ''), href: `/equipe/planning/?r=${roster.slug}`, relance: next.id });
   }
   return out;
 })() : null;
@@ -127,7 +127,7 @@ let espace: null | {
   cards: { r: Rr; next: Mine | null; members: number; team: number }[];
   trial: { roster: string; until: number | null; retour: string | null } | null;
   accounts: { game: string; ident: string }[]; elo: { mode: string; rating: number; wins: number; losses: number }[];
-  sync: { seen_at: number | null; seen_state: string | null; last_at: number | null } | null;
+  sync: { seen_at: number | null; seen_state: string | null; last_at: number | null } | null; image: boolean;
 } = null;
 if (!roster) {
   // Seulement MES rosters (ceux dont j'ai le rôle) : ceux que l'encadrement suit sans y jouer sont listés à part, sans tâches ni échéances
@@ -165,17 +165,18 @@ if (!roster) {
   if (!guideSeen.length) todo.push({ label: 'Lis le guide d’Inside', why: '2 minutes pour tout comprendre', href: '/equipe/guide/' });
   const trial = status.find((x) => x.status === 'essai');
   // Mes comptes, l'état d'Oni Sync (si joueur RL), mon Elo d'inhouse de la saison
-  const [accList, sync, elo] = await Promise.all([
+  const [accList, sync, elo, consent] = await Promise.all([
     rows<{ game: string; ident: string }>('SELECT game, ident FROM accounts WHERE user_id = ? ORDER BY game', user.id).catch(() => []),
     rows<{ seen_at: number | null; seen_state: string | null; last_at: number | null }>('SELECT seen_at, seen_state, last_at FROM rl_sync WHERE user_id = ?', user.id).catch(() => []),
     rows<{ mode: string; rating: number; wins: number; losses: number }>(`SELECT mode, rating, wins, losses FROM inhouse_elo WHERE user_id = ? AND season = (SELECT COALESCE(CAST(value AS INTEGER), 1) FROM meta WHERE key = 'inhouse_season' UNION ALL SELECT 1 LIMIT 1) AND wins + losses > 0 ORDER BY rating DESC`, user.id).catch(() => []),
+    rows<{ image: number }>('SELECT image FROM consents WHERE user_id = ?', user.id).catch(() => []),
   ]);
   espace = {
     next: all.slice(0, 5),
     todo,
     goals: R.map((r) => ({ roster: r, items: goals.filter((x) => Number(x.roster_id) === Number(r.id) && x.user_id === user.id).map((x) => ({ title: x.title, progress: Number(x.progress) || 0, due: x.due ? Number(x.due) : null })) })).filter((x) => x.items.length),
     cards: R.map((r, i) => ({ r, next: all.find((x) => x.roster === r) ?? null, members: members[i], team: goals.filter((x) => Number(x.roster_id) === Number(r.id) && !x.user_id).length })),
-    accounts: accList, elo, sync: sync[0] ?? null,
+    accounts: accList, elo, sync: sync[0] ?? null, image: Number(consent[0]?.image) === 1,
     trial: trial ? { roster: byId.get(Number(trial.roster_id))?.name ?? '', until: trial.trial_end ? Number(trial.trial_end) : null, retour: trial.retour } : null,
   };
 }
@@ -307,6 +308,15 @@ if (!roster) {
             {espace.elo.length ? <ul class="me-kv">{espace.elo.map((e) => <li><span>{e.mode}</span><b>{e.rating}</b><small>{e.wins} V · {e.losses} D</small></li>)}</ul> : <p class="ac-empty">Pas encore de partie. Soirée inhouse le jeudi à 21 h sur Discord.</p>}
             <a class="ac-more" href="/inhouses/">Classement</a>
           </div>
+          <div>
+            <p class="me-goals__h">Ton image</p>
+            <form method="post" action="/api/equipe/outils" class="me-consent">
+              <input type="hidden" name="action" value="accord-image" /><input type="hidden" name="back" value="/equipe/" />
+              <label><input type="checkbox" name="image" value="1" checked={espace.image} onchange="this.form.requestSubmit()" /> J’accepte que le club utilise ma vignette et les clips où j’apparais (site et réseaux du club)</label>
+              <noscript><button class="btn btn--ghost">Enregistrer</button></noscript>
+            </form>
+            <p class="me-sync">{espace.image ? 'Accord donné. Tu peux le retirer à tout moment.' : 'Sans accord, aucun visuel ni clip centré sur toi ne sera publié.'}</p>
+          </div>
         </div>
       </section>
     </div>
@@ -361,8 +371,16 @@ if (!roster) {
         <section class="qg-card ac-card ac-manage" aria-labelledby="ac-manage">
           <h2 id="ac-manage">À gérer · {manageList.length}</h2>
           <ul class="me-todo">
-            {manageList.map((x) => <li><a href={x.href}><strong>{x.label}</strong><span>{x.why}</span></a></li>)}
+            {manageList.map((x) => (
+              <li class="ac-manage__row"><a href={x.href}><strong>{x.label}</strong><span>{x.why}</span></a>
+                {x.relance && (
+                  <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="relance" /><input type="hidden" name="training" value={x.relance} /><input type="hidden" name="back" value={`/equipe/?r=${roster!.slug}`} />
+                    <button class="btn btn--ghost" title="Oni Bot les mentionne dans le salon planning du roster (une fois toutes les 3 h au plus)">Relancer sur Discord</button></form>
+                )}
+              </li>
+            ))}
           </ul>
+          {Astro.url.searchParams.has('relance') && <p class="ac-empty">Relance envoyée : Oni Bot la poste dans le salon planning d’ici une minute.</p>}
         </section>
       )}
 
@@ -541,6 +559,8 @@ if (!roster) {
   .me-goals .ac-goals__bar span { background: var(--g); }
   .ac-pick__next { margin-top: .35rem; font-weight: 700; }
   .ac-manage { border-left: 4px solid var(--qg-accent, #e5251f); }
+  .ac-manage__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; align-items: center; }
+  .ac-manage__row form { margin: 0; }
   .me-acc__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1.25rem 2rem; }
   .me-acc__grid > div { display: grid; gap: .45rem; align-content: start; }
   .me-kv { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
@@ -548,6 +568,8 @@ if (!roster) {
   .me-kv span { color: var(--qg-muted); flex: 1; }
   .me-kv small { color: var(--qg-muted); }
   .me-sync { margin: 0; font-size: var(--text-sm); }
+  .me-consent label { display: flex; gap: .5rem; align-items: flex-start; font-size: var(--text-sm); line-height: 1.4; }
+  .me-consent input { margin-top: .2rem; }
   .me-note { margin: -.25rem 0 .75rem; color: var(--qg-muted); font-size: var(--text-sm); }
   .me-others { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; list-style: none; }
   .me-others a { display: grid; gap: .1rem; min-width: 10rem; padding: .6rem .9rem; border: 1px dashed var(--qg-rule-strong, var(--qg-rule)); border-left: 4px solid var(--g); color: var(--qg-ink); text-decoration: none; }

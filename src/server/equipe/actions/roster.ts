@@ -17,6 +17,25 @@ export const actions: Record<string, Action> = {
       roster, target, statut, fin, clip(f.get('retour'), 1000) || null, user.id, Date.now());
     return redirect(back);
   },
+  // Accord d'image (07/10) : chacun pour soi, depuis Mon espace
+  'accord-image': async ({ f, user, back, redirect }) => {
+    await exec('INSERT INTO consents (user_id, image, at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET image = excluded.image, at = excluded.at', user.id, f.get('image') === '1' ? 1 : 0, Date.now());
+    return redirect(back);
+  },
+  // Plan d'une séance (07/10) : capitaine, coach ou responsable ; Oni Bot le reprend sur la carte Discord de la séance
+  'plan-seance': async ({ f, me, back, redirect }) => {
+    const id = Number(f.get('training'));
+    const [t] = await rows<{ roster_id: number }>('SELECT roster_id FROM trainings WHERE id = ?', id);
+    if (t && canLead(me, t.roster_id)) await exec('UPDATE trainings SET plan = ?, plan_at = ? WHERE id = ?', String(f.get('plan') ?? '').trim().slice(0, 1000) || null, Date.now(), id);
+    return redirect(back);
+  },
+  // Relance groupée (bloc « À gérer ») : Oni Bot mentionne, dans le salon planning, ceux qui n'ont pas répondu
+  'relance': async ({ f, me, back, redirect }) => {
+    const id = Number(f.get('training'));
+    const [t] = await rows<{ roster_id: number; relance_at: number | null }>('SELECT roster_id, relance_at FROM trainings WHERE id = ?', id);
+    if (t && canLead(me, t.roster_id) && Date.now() - Number(t.relance_at ?? 0) > 3 * 3600_000) await exec('UPDATE trainings SET relance_at = ? WHERE id = ?', Date.now(), id);
+    return redirect(`${back}${back.includes('?') ? '&' : '?'}relance=1`);
+  },
   'objectif': async ({ f, user, me, back, redirect }) => {
     if (!(canLead(me, Number(f.get('roster'))))) return redirect(back);
     const roster = Number(f.get('roster'));

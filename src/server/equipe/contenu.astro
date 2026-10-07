@@ -9,6 +9,7 @@ import { teamUser } from './outils';
 import { rows } from '../db';
 import { METRICS, NETWORKS, TASK_KINDS, ensureMatchTasks, renderTask } from './contenu-taches';
 import { spark } from './ui';
+import { TIERS_FR, valoTierFr } from './stats';
 import { exec } from '../db';
 import type { Task } from './contenu-taches';
 
@@ -69,6 +70,37 @@ const ROLE_HINT: Record<string, string> = {
 const hints = me.content.map((r) => ROLE_HINT[r]).filter(Boolean);
 const err = Astro.url.searchParams.get('erreur');
 
+// ---------- Fiche de cast (07/10) : ?cast=<match> ----------
+// Ce qu'un casteur doit savoir avant l'antenne, uniquement des infos publiques (jamais les stratégies ni le scouting) :
+// format, compo annoncée avec postes et rangs, historique contre l'adversaire, derniers résultats du roster.
+const castId = Number(Astro.url.searchParams.get('cast')) || null;
+const cast = castId ? await (async () => {
+  const [m] = await rows<{ id: number; roster_id: number; opponent: string; at: number; format: string | null; kind: string | null; link: string | null; lineup: string | null; game: string | null; roster: string | null; caster_name: string | null }>(
+    `SELECT m.id, m.roster_id, m.opponent, m.at, m.format, m.kind, m.link, m.lineup, COALESCE(r.game, m.game) AS game, r.name AS roster, c.name AS caster_name
+     FROM matches m LEFT JOIN rosters r ON r.id = m.roster_id LEFT JOIN guild_members c ON c.id = m.caster WHERE m.id = ?`, castId);
+  if (!m) return null;
+  let lineup: { titulaires: { id: string; nom: string }[]; remplacant: { id: string; nom: string } | null; coach: { id: string; nom: string } | null } | null = null;
+  try { lineup = m.lineup ? JSON.parse(m.lineup) : null; } catch {}
+  const ids = (lineup?.titulaires ?? []).map((p) => p.id);
+  const postes = new Map<string, string>((await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', m.roster_id).catch(() => [])).map((x) => [String(x.user_id), x.poste] as [string, string]));
+  const accs = ids.length ? await rows<{ user_id: string; game: string; ident: string; region: string | null }>(`SELECT user_id, game, ident, region FROM accounts WHERE user_id IN (${ids.map(() => '?').join(',')})`, ...ids).catch(() => []) : [];
+  const cacheGet = async (k: string) => { const [c] = await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', k).catch(() => []); try { return c ? JSON.parse(c.value) : null; } catch { return null; } };
+  const rankOf = async (uid: string) => {
+    const riot = accs.find((a) => a.user_id === uid && a.game === 'riot'), osu = accs.find((a) => a.user_id === uid && a.game === 'osu');
+    if (m.game === 'lol' && riot) { const r = await cacheGet(`lol:${riot.region ?? 'euw'}:${riot.ident.toLowerCase()}`); return r && r.tier !== 'UNRANKED' ? `${TIERS_FR[r.tier] ?? r.tier} ${r.rank ?? ''}`.trim() : null; }
+    if (m.game === 'valo' && riot) { const r = await cacheGet(`valo:${riot.ident.toLowerCase()}`); return r?.tier ? valoTierFr(r.tier) : null; }
+    if (m.game === 'osu' && osu) { const r = await cacheGet(`osu:${osu.ident.toLowerCase()}`); return r?.rank ? `#${Number(r.rank).toLocaleString('fr-FR')}` : null; }
+    return null;
+  };
+  // Accord d'image de chacun : sans lui, pas de visuel ni de clip centré sur la personne
+  const ok = new Set(ids.length ? (await rows<{ user_id: string }>(`SELECT user_id FROM consents WHERE image = 1 AND user_id IN (${ids.map(() => '?').join(',')})`, ...ids).catch(() => [])).map((x) => x.user_id) : []);
+  const players = await Promise.all((lineup?.titulaires ?? []).map(async (p) => ({ nom: p.nom, poste: postes.get(p.id) ?? null, rang: await rankOf(p.id), image: ok.has(p.id) })));
+  const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '');
+  const past = await rows<{ opponent: string; at: number; score_us: number; score_them: number; kind: string | null }>(
+    'SELECT opponent, at, score_us, score_them, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NOT NULL ORDER BY at DESC LIMIT 30', m.roster_id);
+  return { m, lineup, players, vs: past.filter((x) => norm(x.opponent) === norm(m.opponent)), last: past.filter((x) => (x.kind ?? 'officiel') !== 'scrim').slice(0, 5) };
+})() : null;
+
 // Indicateurs : dernière valeur, écart sur 30 jours et courbe
 await exec('CREATE TABLE IF NOT EXISTS metrics (day TEXT, key TEXT, value REAL, source TEXT, PRIMARY KEY (day, key))').catch(() => {});
 const since = new Date(now - 90 * DAY).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
@@ -103,6 +135,31 @@ const ctx = { user: user.id, staff: me.staff, roles: myRoles, back, now };
 const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? matchOf(x)?.opponent : undefined);
 ---
 <Qg title="Contenu · Inside" heading="Contenu" lead="Ce qui arrive dans le club, ce qu'il faut produire autour, et qui s'en occupe." current="contenu" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  {cast && (
+    <article class="ct-cast" style={`--g:${GAMES[cast.m.game ?? '']?.color ?? 'var(--line)'}`}>
+      <p class="ct-cast__nav"><a class="ct-back" href="/equipe/contenu/">← Contenu</a> · <button type="button" class="ct-print" onclick="window.print()">Imprimer</button></p>
+      <p class="ct-game">Fiche de cast · {GAMES[cast.m.game ?? '']?.label ?? 'Club'}{cast.m.roster ? ` · ${cast.m.roster}` : ''}</p>
+      <h2>Oni Korp vs {cast.m.opponent}</h2>
+      <p class="ct-when">{fmt.format(new Date(Number(cast.m.at)))}{cast.m.format ? ` · ${cast.m.format}` : ''}{cast.m.caster_name ? ` · cast : ${cast.m.caster_name}` : ''}{cast.m.link && <> · <a href={cast.m.link} rel="noopener" target="_blank">lien du live</a></>}</p>
+      <div class="ct-cast__grid">
+        <section>
+          <h3>Notre compo</h3>
+          {cast.players.length ? (
+            <ul>{cast.players.map((p) => <li><strong>{p.nom}</strong>{p.poste && <span>{p.poste}</span>}{p.rang && <span>{p.rang}</span>}<span class:list={['ct-img', { 'is-no': !p.image }]}>{p.image ? 'image : accord' : 'image : pas d’accord'}</span></li>)}</ul>
+          ) : <p class="eq-note">Compo pas encore annoncée (capitaine : Avant-match ou <code>/match compo</code>).</p>}
+          {cast.lineup?.remplacant && <p class="eq-note">Remplaçant : {cast.lineup.remplacant.nom}{cast.lineup.coach ? ` · coach : ${cast.lineup.coach.nom}` : ''}</p>}
+        </section>
+        <section>
+          <h3>Contre {cast.m.opponent}</h3>
+          {cast.vs.length ? <ul>{cast.vs.map((x) => <li><strong>{x.score_us}-{x.score_them}</strong><span>{short.format(new Date(Number(x.at)))}{(x.kind ?? '') === 'scrim' ? ' · scrim' : ''}</span></li>)}</ul> : <p class="eq-note">Première rencontre entre les deux équipes.</p>}
+        </section>
+        <section>
+          <h3>Nos 5 derniers matchs</h3>
+          {cast.last.length ? <ul>{cast.last.map((x) => <li><strong class:list={{ 'is-win': x.score_us > x.score_them }}>{x.score_us}-{x.score_them}</strong><span>vs {x.opponent} · {short.format(new Date(Number(x.at)))}</span></li>)}</ul> : <p class="eq-note">Premier match officiel du roster.</p>}
+        </section>
+      </div>
+    </article>
+  )}
   <section class="ct">
     {me.content.length > 0 && <p class="ct-roles">Ton rôle : {me.content.join(', ')}. {hints.join(' ')}</p>}
     <p class="eq-note">Le circuit : <b>à faire</b> → quelqu'un la prend (<b>en cours</b>) → livrable déposé (<b>à valider</b>) → la direction valide et publie (<b>fait</b>). Rien n'est publié sans validation.</p>
@@ -134,6 +191,7 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
                   {played ? <em class:list={{ 'is-ok': Number(m.score_us) > Number(m.score_them) }}>{Number(m.score_us) > Number(m.score_them) ? 'Victoire' : Number(m.score_us) < Number(m.score_them) ? 'Défaite' : 'Égalité'}</em>
                     : <em class:list={{ 'is-warn': !m.caster }}>{m.caster ? `Casté par ${m.caster_name ?? 'un casteur'}` : 'Cherche casteur'}</em>}
                   {m.link && <a href={m.link} rel="noopener" target="_blank">Live</a>}
+                  {!played && <a href={`/equipe/contenu/?cast=${m.id}`}>Fiche de cast</a>}
                 </span>
               </header>
               <ul class="ct-tasks">{byMatch(m.id).map((x) => <Fragment set:html={row(x)} />)}</ul>
@@ -267,5 +325,18 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
   .ct-kpi :global(.spark polyline) { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
   .ct-kpi :global(.spark.is-up polyline) { stroke: #1f8f55; } .ct-kpi :global(.spark.is-down polyline) { stroke: var(--lacquer); }
   @media (max-width: 640px) { .ct-match header { grid-template-columns: 1fr; grid-template-areas: 'game' 'what' 'when' 'tags'; } .ct-tags { justify-content: flex-start; } .ct :global(.ct-task) { grid-template-columns: 1fr; } .ct :global(.ct-act) { justify-content: flex-start; } }
+  .ct-cast { display: grid; gap: .6rem; margin-bottom: 2.5rem; padding: 1.25rem; border: 1px solid var(--line); border-top: 6px solid var(--g); }
+  .ct-cast h2 { margin: 0; font-size: clamp(1.4rem, 3vw, 2rem); }
+  .ct-cast h3 { margin: 0 0 .5rem; font-family: var(--font-body); font-size: .95rem; }
+  .ct-cast ul { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+  .ct-cast li { display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: baseline; }
+  .ct-cast li span { color: var(--muted); font-size: .88rem; }
+  .ct-cast .is-win { color: var(--ok, #1d7a49); }
+  .ct-cast__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1.25rem 2rem; margin-top: .5rem; }
+  .ct-back { color: var(--muted); font-weight: 700; }
+  .ct-img { font-size: .75rem !important; }
+  .ct-img.is-no { color: var(--danger, #b3241e) !important; }
+  .ct-print { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
+  @media print { :global(.qg-top), :global(.qg-nav), :global(.qg-tabs), :global(.qg-head), .ct, .ct-cast__nav { display: none !important; } .ct-cast { border: 0; } }
 </style>
 

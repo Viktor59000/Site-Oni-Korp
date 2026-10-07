@@ -74,6 +74,7 @@ Colonne « écrit » : qui crée les lignes. « Lit » : qui s'en sert.
 | `contacts` | formulaire de contact et avis (« Un avis ? ») | site | bot (relais dans #staff) |
 | `content_tasks` | tâches de contenu (brief de match, calendrier éditorial) | les deux | les deux |
 | `metrics` | indicateurs de communication, un relevé par jour | bot | site |
+| `consents` | accord d'image (vignette, clips) de chaque membre | site (Mon espace) | site (fiche de cast) |
 | `staff_public` | qui apparaît sur la page Staff, avec sa phrase | site | site |
 | `survey_answers` | réponses au sondage des membres | site | site |
 | `creators` | créateurs de contenu (Twitch, YouTube) | bot | bot, site |
@@ -98,4 +99,5 @@ Promises sur la page publique de confidentialité (`/mentions-legales/#confident
 | Historique de rang (`rank_history`) | 1 an |
 | Cache des rangs et profils (`stats_cache`) | 30 jours (sauf identifiants techniques) |
 | Avertissements et sanctions | 2 ans |
+| Accord d'image (`consents`) | jusqu'au départ du serveur (ou retrait par la personne) |
 | Sauvegardes de la base (serveur de coulisses) | 30 jours |

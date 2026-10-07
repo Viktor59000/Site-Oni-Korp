@@ -4,7 +4,7 @@
 // Les données viennent de la base partagée avec Oni Bot ; une réponse ici met à jour le message Discord dans la minute.
 import { currentSession, icsKey, userKeys } from './session';
 import { rows, weekKey } from './db';
-import { access } from './equipe/access';
+import { access, canLead } from './equipe/access';
 import { CHOICES, encode, loadDispos } from './equipe/dispos';
 import { kindLabel } from './ics';
 import Qg from './equipe/Qg.astro';
@@ -37,7 +37,7 @@ const host = Astro.url.host;
 const icsPath = user && process.env.SESSION_SECRET ? `/api/equipe/agenda.ics?u=${user.id}&k=${icsKey(user.id, (await userKeys(user.id)).salt)}` : null;
 const icsGoogle = icsPath ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(`webcal://${host}${icsPath}`)}` : null;
 
-type T = { id: number; roster_id: number; at: number; duration: number; kind: string; note: string | null };
+type T = { id: number; roster_id: number; at: number; duration: number; kind: string; note: string | null; plan?: string | null };
 type A = { training_id: number; user_id: string; status: string; reason: string | null };
 type Mb = { id: string; name: string; avatar: string };
 
@@ -169,6 +169,17 @@ const noAccess = !user || !!(me?.member && !me.staff && !me.rosters.length && !m
                   <div class="eq-seance__body">
                     <p class="eq-seance__title"><strong>{t.kind}</strong> <span>{fWhen.format(date(t.at))} · {t.duration} min</span></p>
                     {t.note && <p class="eq-seance__note">{t.note}</p>}
+                    {/* Plan de séance (07/10) : écrit par le capitaine ou le coach, repris sur la carte Discord de la séance */}
+                    {me && canLead(me, s.r.id) ? (
+                      <details class="eq-plan" open={!!t.plan}>
+                        <summary>{t.plan ? 'Plan de la séance' : 'Écrire le plan de la séance'}</summary>
+                        <form method="post" action="/api/equipe/outils">
+                          <input type="hidden" name="action" value="plan-seance" /><input type="hidden" name="training" value={t.id} /><input type="hidden" name="back" value={`/equipe/planning/?r=${s.r.slug}#seance-${t.id}`} />
+                          <textarea name="plan" rows="4" maxlength="1000" placeholder={['Échauffement 15 min', 'Thème : …', 'Exercices : …', 'Scrim ou revue de VOD'].join(String.fromCharCode(10))}>{t.plan ?? ''}</textarea>
+                          <button class="btn btn--ghost">Enregistrer le plan</button>
+                        </form>
+                      </details>
+                    ) : t.plan && <div class="eq-plan"><p class="eq-plan__h">Plan de la séance</p><p class="eq-plan__txt">{t.plan}</p></div>}
                     <form method="post" action="/api/equipe/presence" class="eq-answer">
                       <input type="hidden" name="training" value={t.id} />
                       <div class="eq-seg" role="group" aria-label="Ma réponse">
@@ -417,4 +428,10 @@ const noAccess = !user || !!(me?.member && !me.staff && !me.rosters.length && !m
   .dp-verdict small { display: block; margin-top: .15rem; font-size: .6875rem; color: var(--muted); }
   .dp-verdict.is-ok strong { color: var(--ok); }
   @media (max-width: 700px) { .dp-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .eq-plan { margin: .5rem 0; }
+  .eq-plan summary, .eq-plan__h { cursor: pointer; font-weight: 700; font-size: .85rem; margin: 0; }
+  .eq-plan form { display: grid; gap: .5rem; margin-top: .5rem; max-width: 40rem; }
+  .eq-plan textarea { width: 100%; box-sizing: border-box; padding: .5rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .9rem var(--font-body); }
+  .eq-plan .btn { justify-self: start; }
+  .eq-plan__txt { margin: .3rem 0 0; white-space: pre-line; color: var(--muted); font-size: .9rem; }
 </style>
