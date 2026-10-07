@@ -4,6 +4,7 @@
 import Qg from './Qg.astro';
 import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { exec, rows } from '../db';
+import { fmtMetric, measure, parseMetric, type Metric } from './mesure-objectif';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
@@ -14,7 +15,7 @@ const sc = scope(me.rosters, Astro.url, Astro.cookies);
 // Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
 const manage = sc.list.some((r) => canLead(me, r.id));
 const back = `/equipe/objectifs/${sc.active ? `?r=${sc.active}` : ''}`;
-type G = { id: number; roster_id: number; user_id: string | null; title: string; detail: string | null; due: number | null; status: string; progress: number; updated_at: number; private: number | null };
+type G = { id: number; roster_id: number; user_id: string | null; title: string; detail: string | null; due: number | null; status: string; progress: number; updated_at: number; private: number | null; at?: number; metric?: string | null; auto?: Awaited<ReturnType<typeof measure>> & { m: Metric } };
 // Un objectif privé ne se voit que par le joueur concerné et l'encadrement du roster
 const canView = (g: G) => !Number(g.private) || g.user_id === user.id || canLead(me, g.roster_id);
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
@@ -23,6 +24,8 @@ const STATUS: Record<string, string> = { 'en-cours': 'En cours', atteint: 'Attei
 const blocks = await Promise.all(sc.list.map(async (r) => {
   const members = await rosterMembers(r.role_id);
   const goals = (await rows<G>(`SELECT * FROM goals WHERE roster_id = ? AND (status = 'en-cours' OR updated_at > ?) ORDER BY status = 'en-cours' DESC, due IS NULL, due`, r.id, Date.now() - 30 * 86400_000)).filter(canView);
+  // Objectifs mesurés : valeur actuelle sur les parties jouées depuis leur création
+  for (const g of goals) { const m = parseMetric(g.metric); if (m && g.user_id) g.auto = { ...(await measure(g.user_id, Number(g.at ?? 0), m)), m }; }
   const groups = [
     { key: 'roster', label: 'Tout le roster', avatar: null as string | null, list: goals.filter((g) => !g.user_id) },
     ...members.map((m) => ({ key: m.id, label: m.name, avatar: m.avatar, list: goals.filter((g) => g.user_id === m.id) })),
@@ -64,11 +67,12 @@ const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (
                           <span class="ob-status">{STATUS[o.status] ?? o.status}{o.due && o.status === 'en-cours' ? ` · avant le ${fmt.format(new Date(Number(o.due)))}` : ''}</span>
                         </div>
                         {o.detail && <p class="ob-detail">{o.detail}</p>}
-                        <div class="ob-bar" style={`--p:${o.progress}%`}><span></span></div>
+                        <div class="ob-bar" style={`--p:${o.auto ? o.auto.progress : o.progress}%`}><span></span></div>
+                        {o.auto && <p class="ob-auto">{o.auto.n ? <>Mesuré automatiquement : <b>{fmtMetric(o.auto.m, o.auto.cur)}</b> sur {o.auto.n} partie{o.auto.n > 1 ? 's' : ''} depuis l’objectif (départ {fmtMetric(o.auto.m, o.auto.m.s)}, cible {fmtMetric(o.auto.m, o.auto.m.t)}){o.auto.reached && o.status === 'en-cours' ? <strong class="ob-reached"> · cible atteinte</strong> : ''}</> : <>Mesuré automatiquement dès tes prochaines parties (départ {fmtMetric(o.auto.m, o.auto.m.s)}, cible {fmtMetric(o.auto.m, o.auto.m.t)}).</>}</p>}
                         {canEdit(o) && o.status === 'en-cours' && (
                           <form method="post" action="/api/equipe/outils" class="ob-update">
                             <input type="hidden" name="action" value="objectif-maj" /><input type="hidden" name="id" value={o.id} /><input type="hidden" name="back" value={back} />
-                            <label><span>Avancement <b><output>{o.progress}</output> %</b></span><input type="range" name="progress" min="0" max="100" step="10" value={o.progress} oninput="this.parentElement.querySelector('output').value = this.value" /></label>
+                            {!o.auto && <label><span>Avancement <b><output>{o.progress}</output> %</b></span><input type="range" name="progress" min="0" max="100" step="10" value={o.progress} oninput="this.parentElement.querySelector('output').value = this.value" /></label>}
                             <button class="ob-btn" name="status" value="en-cours">Enregistrer</button>
                             <button class="ob-btn is-ok" name="status" value="atteint">Atteint</button>
                             {canLead(me, o.roster_id) && <button class="ob-btn" name="status" value="abandonne">Abandonner</button>}
@@ -121,4 +125,5 @@ const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (
   .ob-check { display: flex !important; align-items: center; gap: .45rem; font-weight: 400 !important; }
   .ob-check small { color: var(--muted); }
   .ob-priv { margin-left: .5rem; padding: .05rem .4rem; border: 1px dashed var(--muted); color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+  .ob-auto { font-size: .82rem; color: var(--muted); margin: .35rem 0 0; } .ob-auto b { color: var(--ink); } .ob-reached { color: var(--ok); }
 </style>

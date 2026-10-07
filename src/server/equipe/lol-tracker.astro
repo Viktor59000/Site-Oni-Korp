@@ -190,7 +190,7 @@ const fresh = g.filter((x) => x.v === 2).length;
                     <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goalRoster!.id} /><input type="hidden" name="user" value={focus.id} />
                     <input type="hidden" name="title" value={`${x.m[1]} : passer de ${fmt(x.m, x.me)} à ${fmt(x.m, x.ref)}`} />
                     <input type="hidden" name="detail" value={`Repéré par le Tracker LoL le ${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })} sur les 20 dernières parties (${x.group.toLowerCase()}, ${fmt(x.m, x.ref)} ${refLabel}).`} />
-                    <input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
+                    <input type="hidden" name="metric" value={JSON.stringify({ g: 'lol', k: x.m[0], s: x.me, t: x.ref, d: x.m[3], u: x.m[4] })} /><input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
                     <button class="lt-goal__btn">En faire un objectif</button>
                   </form>
                 )}</li>)}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}

@@ -3,6 +3,7 @@
 import { exec, rows } from '../../db';
 import { canLead, canSee, canWriteDoc } from '../access';
 import { clip, type Action } from './base';
+import { parseMetric } from '../mesure-objectif';
 
 export const actions: Record<string, Action> = {
   // Statut d'un joueur dans un roster : seulement l'encadrement, le responsable du jeu ou le capitaine
@@ -82,9 +83,12 @@ export const actions: Record<string, Action> = {
     // Objectif d'un joueur : privé par défaut (le joueur et l'encadrement), sauf « visible par tout le roster » coché
     const who = clip(f.get('user'), 25) || null;
     const priv = who && f.get('public') !== '1' ? 1 : 0;
-    if (clip(f.get('title'), 120)) await exec('INSERT INTO goals (roster_id, user_id, title, detail, due, created_by, at, updated_at, private) VALUES (?,?,?,?,?,?,?,?,?)',
+    // Objectif mesuré automatiquement (depuis un Tracker) : la mesure, son départ et sa cible
+    await exec('ALTER TABLE goals ADD COLUMN metric TEXT').catch(() => {});
+    const metric = who ? parseMetric(f.get('metric')) : null;
+    if (clip(f.get('title'), 120)) await exec('INSERT INTO goals (roster_id, user_id, title, detail, due, created_by, at, updated_at, private, metric) VALUES (?,?,?,?,?,?,?,?,?,?)',
       roster, who, clip(f.get('title'), 120), clip(f.get('detail'), 500) || null,
-      /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(`${due}T23:59:00+01:00`) : null, user.id, Date.now(), Date.now(), priv);
+      /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(`${due}T23:59:00+01:00`) : null, user.id, Date.now(), Date.now(), priv, metric ? JSON.stringify(metric) : null);
     return redirect(back);
   },
   'objectif-maj': async ({ f, user, me, back, redirect }) => {
