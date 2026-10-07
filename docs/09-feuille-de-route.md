@@ -40,6 +40,8 @@ Aucune pour l'instant (les dernières sont dans [07 · Décisions](07-decisions.
 | Objectif d'activité suivi dans les indicateurs | Inside > Contenu | quand le chiffre est fixé |
 | Collection de boosters liée au compte Discord | Site + base | |
 | Histoire de 4C Korp dans la frise du club | Site | récit à fournir |
+| Message « Prends soin de ton mental » : la carte existe, le texte peut vivre aussi dans un salon dédié | Site, Discord | idée de l'ancien PLAN.md |
+| Tournoi Oni Korp (ronde suisse puis double élimination) si un tournoi revient ; avant toute récompense : `notes/strategie/CADRE-LEGAL.md` | Site (agenda), bot | en attente |
 | Nouveaux visuels du vestiaire, dans le style final | Site | visuels à générer |
 | Panneaux Twitch dans la DA | Réseaux | |
 | Kit presse (présentation, chiffres réels, logos, contacts) | Kit de marque | à J+60 ; chiffres : `discord/bilan-partenaires.mjs` |
