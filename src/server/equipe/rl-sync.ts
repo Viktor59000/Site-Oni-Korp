@@ -48,7 +48,7 @@ export const GET: APIRoute = async ({ cookies, url }) => {
   const token = await tokenFor(t.user.id);
   const [acc] = await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE user_id = ? AND game = 'rl'`, t.user.id);
   const api = `${url.origin}/api/rl/sync`;
-  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION).replace('__ICON__', ONI_ICON)
+  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION).replaceAll('__ICON__', ONI_ICON)
     .replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
   // La fenêtre de commande se ferme aussitôt : Oni Sync tourne caché, avec son icône près de l'horloge
   const cmd = [

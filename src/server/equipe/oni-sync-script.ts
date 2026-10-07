@@ -7,7 +7,7 @@
 // 4. signale au site son état (lancé, connecté au jeu, partie quittée avant la fin) : Inside > Tracker l'affiche, ce qui permet d'aider à distance.
 // Aucun accès à la mémoire du jeu, aucune injection : seulement ce que Rocket League publie lui-même.
 // Pas de backtick ni de « ${ » dans ce texte (gabarit TypeScript).
-export const ONI_SYNC_VERSION = '3';
+export const ONI_SYNC_VERSION = '4';
 // Logo Oni Korp (64 px, PNG) pour l'icône de la zone de notification
 export const ONI_ICON = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAEzElEQVR4nO2aT1IbRxjFX0sbFyyMl9iuUm8g2Vk3iHwCkxOgnMC6AfIJIp/A5AQhJ7C4gdglZtNUYbI0LOwdar9v0IgR6p5pofmEMfyqBnXzjd73+s0fTZVk8MB5DIDbg+YxAG4zfGnbjWcjd87hT0dobTMBnG7ZtjHYefHJ9fET8nnb9r3HwctjN+I0YyaAqx38W/77dXGnOpBwm0085bCUzX/dIV9qR/oD/qMx5n3xABtuUyQAeL/ngXOWKkP4/1drAbS8R5vbBjws32uR4dsG/N+CvDg+4duuvXAIf+VnxCFYdPzjGg0cMqwhEpguXvwY8y4awNm23fHe/83hBLPfaOIdBxh7vKITCnHzsBSUce2EAghSWMjnrZbnP0ZcjQMgr6OGwRHHGF9iD/BdTOAZ8PvzT+6Aw4ysWRE2dmzc4vBOuH0ACRhzwvdYFDDcZjibOwtWi2YAN4++kDW7Ca/tzniMfRpocbpSVALgkec9o7sZuGdkzWJUCucYc+Q9znndOb7BgXDueNd3mPDkCUbyGVylqRFArhkiWhCqhNfWzTNZFIfJVGnmZu9FAGXCObycfuPLCU8/B5Kqea8C4CI7/LjZ5c4WxMB3UOQWZu9VABpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYTam6WEu+FV3//l/bsBpRpmm7P/y2G1wGCRrFoMmDmjiDYdBqsxOqSkALub9+jr6xW+kr76X9B85DGPMP+y9w1GQrFmMKvEyszMsGQAXfthsZj9wcJhAb/byEh/mvoi9QaNpXvN9Q0TImpVxumW7bPKBwzlCZoPcNgCAvdEr/qxFfuz47Rvesl8fFTC4P3j676ME6leT/W4IGLBpi9MpM2ZrDoDBt2l+xOGU0227yz4D7rDBaRxjRGQmuBjcLx1ZqPfo8Yx4yunUrPwfNQdQhKc7L0X8iYqf5vGIXxiDQd4rhblmVdCM9WP0vfe7uVmtAKTXeMyFe7/DaSnGmL8MPx02C/eJFKbNFoXmOmw2BKk7gPw6Z8g828pPdx51uUH2cy+LQv3lqTMAb0yXpvrUsyiBC7/gS4/3iX0sAXstz+SI9Wh6j9N5FgggCeqtrWFQfB64LbUEkMPLQq7ZAYN4w+k1NFxLAHyo4VNgj6e7Q03UGkAOg+hMgnjFKbssGYAxR5OFD1EzKgHknP1iewyibwofTYsEINc5Fz7z3F83qgEIcn/4+hWWN6sRp8kBcPFzz/0aqAdwk6oAuHD5WOvydHdYASsPIPZYDT6+8nSXhQ+xQlYeQI48O3g+VnPItV/fI1bNnQUgyP2BL9C+zsu40wB+BB4D4PagefABfAeu9hyMASqlYQAAAABJRU5ErkJggg==';
 export const ONI_SYNC_PS = String.raw`
@@ -21,14 +21,53 @@ $Pseudo = '__PSEUDO__'
 $Site = '__SITE__'
 $Version = '__VERSION__'
 
+# ---------- Installation (v4) : jamais de fenêtre de console ----------
+# Oni-Sync.cmd ne sert qu'une fois : il copie le script dans %LOCALAPPDATA%\OniSync, crée le raccourci « Oni Sync »
+# (Bureau et menu Démarrer) puis relance Oni Sync sans console. Le raccourci passe par « conhost --headless » :
+# Windows ne montre aucune fenêtre, même brièvement. ONI_SYNC_HOME : dossier d'essai (tests), au lieu du vrai dossier.
+$dir = if ($env:ONI_SYNC_HOME) { $env:ONI_SYNC_HOME } else { Join-Path $env:LOCALAPPDATA 'OniSync' }
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+$ps1 = Join-Path $dir 'oni-sync.ps1'
+$conhost = Join-Path $env:WINDIR 'System32\conhost.exe'
+function Silent-Args { return '--headless powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "' + $ps1 + '"' }
+function Make-Shortcut($folder) {
+  $w = New-Object -ComObject WScript.Shell
+  $l = $w.CreateShortcut((Join-Path $folder 'Oni Sync.lnk'))
+  if (Test-Path $conhost) { $l.TargetPath = $conhost; $l.Arguments = (Silent-Args) }
+  else { $l.TargetPath = 'powershell.exe'; $l.Arguments = '-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $ps1 + '"' }
+  $l.WorkingDirectory = $dir; $l.Description = 'Oni Sync : tracker Rocket League du club Oni Korp'
+  if (Test-Path (Join-Path $dir 'oni.ico')) { $l.IconLocation = (Join-Path $dir 'oni.ico') }
+  $l.Save()
+}
+if ($env:ONI_SYNC_FILE) {
+  $src = [IO.File]::ReadAllText($env:ONI_SYNC_FILE, [Text.Encoding]::UTF8)
+  [IO.File]::WriteAllText($ps1, $src.Substring($src.IndexOf('#ONI' + 'PS') + 6), (New-Object Text.UTF8Encoding $true))
+  # Icône du raccourci : le logo Oni
+  try {
+    Add-Type -AssemblyName System.Drawing
+    $bm = New-Object System.Drawing.Bitmap 64, 64; $gg = [System.Drawing.Graphics]::FromImage($bm)
+    $lg = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,[Convert]::FromBase64String('__ICON__'))))
+    $gg.DrawImage($lg, 0, [int]((64 - 64 * $lg.Height / $lg.Width) / 2), 64, [int](64 * $lg.Height / $lg.Width)); $gg.Dispose()
+    $fs = [IO.File]::Create((Join-Path $dir 'oni.ico')); [System.Drawing.Icon]::FromHandle($bm.GetHicon()).Save($fs); $fs.Close()
+  } catch {}
+  # Une ancienne version qui tourne encore est arrêtée (nouvelle clé ou nouvelle version)
+  Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*oni-sync.ps1*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  $places = if ($env:ONI_SYNC_HOME) { @($dir) } else { @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs')) }
+  foreach ($f in $places) { try { Make-Shortcut $f } catch {} }
+  $startupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) 'Oni Sync.lnk'
+  if (-not $env:ONI_SYNC_HOME -and (Test-Path $startupLnk)) { try { Make-Shortcut ([Environment]::GetFolderPath('Startup')) } catch {} }
+  $old = Join-Path ([Environment]::GetFolderPath('Startup')) 'Oni-Sync.cmd'; if (-not $env:ONI_SYNC_HOME -and (Test-Path $old)) { Remove-Item $old -Force }
+  $env:ONI_SYNC_FILE = $null  # sinon le processus relancé hériterait de la variable et se réinstallerait
+  if (Test-Path $conhost) { Start-Process $conhost -ArgumentList (Silent-Args) -WindowStyle Hidden } else { Start-Process powershell.exe -ArgumentList ('-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $ps1 + '"') -WindowStyle Hidden }
+  exit
+}
+
 # Une seule instance à la fois
 $created = $false
-$mutex = New-Object System.Threading.Mutex($true, 'OniKorpOniSync', [ref]$created)
+$mutex = New-Object System.Threading.Mutex($true, $(if ($env:ONI_SYNC_HOME) { 'OniKorpOniSyncEssai' } else { 'OniKorpOniSync' }), [ref]$created)
 if (-not $created) { [System.Windows.Forms.MessageBox]::Show('Oni Sync tourne déjà : son icône est dans la zone de notification, à côté de l''horloge (flèche ^).', 'Oni Sync') | Out-Null; exit }
 
 # ---------- Journal (gardé dans %LOCALAPPDATA%\OniSync) ----------
-$dir = Join-Path $env:LOCALAPPDATA 'OniSync'
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
 $journal = Join-Path $dir 'journal.txt'
 if ((Test-Path $journal) -and (Get-Item $journal).Length -gt 300000) { Remove-Item $journal -Force }
 function Log($t) { try { [IO.File]::AppendAllText($journal, ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '  ' + $t + [Environment]::NewLine), (New-Object Text.UTF8Encoding $false)) } catch {} }
@@ -250,12 +289,12 @@ $pause.Add_Click({
 }) | Out-Null
 $menu.Items.Add('Voir mes parties sur Inside').Add_Click({ Start-Process ($Site + '/equipe/rl/') }) | Out-Null
 $menu.Items.Add('Ouvrir le journal').Add_Click({ if (Test-Path $journal) { Start-Process notepad.exe $journal } }) | Out-Null
-$startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'Oni-Sync.cmd'
+$startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'Oni Sync.lnk'
 $auto = $menu.Items.Add('Lancer avec Windows')
 $auto.Checked = Test-Path $startup
 $auto.Add_Click({
   if (Test-Path $startup) { Remove-Item $startup -Force; $auto.Checked = $false }
-  elseif ($env:ONI_SYNC_FILE -and (Test-Path $env:ONI_SYNC_FILE)) { Copy-Item $env:ONI_SYNC_FILE $startup -Force; $auto.Checked = $true }
+  else { try { Make-Shortcut ([Environment]::GetFolderPath('Startup')); $auto.Checked = $true } catch {} }
 }) | Out-Null
 [void]$menu.Items.Add('-')
 $menu.Items.Add('Quitter').Add_Click({ $timer.Stop(); $tray.Visible = $false; Log 'Arrêt.'; [System.Windows.Forms.Application]::Exit() }) | Out-Null
