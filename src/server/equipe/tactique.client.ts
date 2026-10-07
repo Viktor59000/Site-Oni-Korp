@@ -76,6 +76,12 @@ function visionPoly(m: { w: number; h: number; d: Uint8ClampedArray; bush?: Uint
 // Portée de vision des balises sur la Faille : 900 unités sur une carte de 14 870 (en fraction de la largeur, rayon)
 const WARD_RANGE: Record<string, number> = { ward: 900 / 14870, controle: 900 / 14870 };
 const WARD_COLOR: Record<string, string> = { ward: '#ffd23f', controle: '#ff4fa3' };
+// Éléments du jeu du tableau (jeux.ts, envoyés par la page) : couleurs des pions et des repères ; anciens repères gardés pour les vieux tableaux
+type Kit = { players: string[]; ally: { color: string }; enemy: { color: string }; pings: { key: string; bg: string; fg: string }[] };
+const KIT: Kit = JSON.parse(document.querySelector<HTMLElement>('[data-kit]')?.dataset.kit || '{"players":[],"ally":{"color":"#2f6bff"},"enemy":{"color":"#e5251f"},"pings":[]}');
+const LEGACY: Record<string, [string, string]> = { danger: ['#ff4655', '#fff'], vision: ['#ffffff', '#111'], balle: ['#eeeeee', '#555'], ward: ['#ffd23f', '#111'], controle: ['#ff4fa3', '#111'], objectif: ['#ffd23f', '#111'], question: ['#ffd23f', '#111'] };
+const pingColor = (ref: string | undefined): [string, string] => { const p = KIT.pings.find((x) => x.key === ref); return p ? [p.bg, p.fg] : LEGACY[ref ?? ''] ?? ['#ffd23f', '#111']; };
+const teamColor = (kind: string | undefined) => (kind === 'ally' ? KIT.ally.color : kind === 'enemy' ? KIT.enemy.color : '#0f1923');
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 let valoMaps: { name: string; icon: string }[] = [];
 // Garde le fond actuel dans la liste même s'il vient d'un autre jeu (ancien tableau)
@@ -108,7 +114,7 @@ if (form) {
 // ---------- Tableau ----------
 const root = document.querySelector<HTMLElement>('[data-board]');
 if (root) {
-  type Item = { id: string; type: 'tok' | 'ping' | 'note' | 'text' | 'arrow' | 'line' | 'rect' | 'circle' | 'zone'; x: number; y: number; x2?: number; y2?: number; color?: string; w?: number; label?: string; ref?: string; kind?: string };
+  type Item = { id: string; type: 'tok' | 'ping' | 'note' | 'text' | 'arrow' | 'line' | 'rect' | 'circle' | 'zone'; x: number; y: number; x2?: number; y2?: number; color?: string; w?: number; label?: string; ref?: string; kind?: string; dash?: boolean };
   type Stroke = { id: string; color: string; w: number; pts: [number, number][] };
   type Frame = { name: string; items: Item[]; strokes: Stroke[]; down?: string[] };
   type State = { bg: string; notes: string; frames: Frame[]; towers?: boolean; look?: string; bush?: boolean };
@@ -122,7 +128,10 @@ if (root) {
   const undo: string[] = [], redo: string[] = [];
   const icons = new Map<string, string>();
   const uid = () => Math.random().toString(36).slice(2, 9);
-  const frame = () => state.frames[Math.min(fi, state.frames.length - 1)];
+  // Pendant une animation, l'étape affichée est une étape intermédiaire calculée (anim) ; sinon l'étape choisie
+  let anim: Frame | null = null;
+  let playing = false, speed = 1, loop = false, raf = 0;
+  const frame = () => anim ?? state.frames[Math.min(fi, state.frames.length - 1)];
   const stage = $('[data-stage]');
 
   // Ancien format (tokens / strokes) → étapes
@@ -189,7 +198,7 @@ if (root) {
   const P = (v: number) => v * 1000;
   const shapeSvg = (it: Item, extra = '') => {
     const c = esc(it.color ?? '#ff4655'), w = Number(it.w) || 6, id = esc(it.id), cls = `wb-shape${sel === it.id ? ' is-sel' : ''}`;
-    if (it.type === 'arrow' || it.type === 'line') return `<line data-id="${id}" class="${cls}" x1="${P(it.x)}" y1="${P(it.y)}" x2="${P(it.x2!)}" y2="${P(it.y2!)}" stroke="${c}" stroke-width="${w}" ${it.type === 'arrow' ? `marker-end="url(#ah${c.slice(1)})"` : ''} ${extra}/>`;
+    if (it.type === 'arrow' || it.type === 'line') return `<line data-id="${id}" class="${cls}" x1="${P(it.x)}" y1="${P(it.y)}" x2="${P(it.x2!)}" y2="${P(it.y2!)}" stroke="${c}" stroke-width="${w}" ${it.dash ? `stroke-dasharray="${w * 2.2} ${w * 1.6}"` : ''} ${it.type === 'arrow' ? `marker-end="url(#ah${c.slice(1)})"` : ''} ${extra}/>`;
     const x = Math.min(it.x, it.x2!), y = Math.min(it.y, it.y2!), wd = Math.abs(it.x2! - it.x), ht = Math.abs(it.y2! - it.y);
     if (it.type === 'rect') return `<rect data-id="${id}" class="${cls}" x="${P(x)}" y="${P(y)}" width="${P(wd)}" height="${P(ht)}" stroke="${c}" stroke-width="${w}" fill="none" ${extra}/>`;
     return `<ellipse data-id="${id}" class="${cls}" cx="${P(x + wd / 2)}" cy="${P(y + ht / 2)}" rx="${P(wd / 2)}" ry="${P(ht / 2)}" stroke="${c}" stroke-width="${it.type === 'zone' ? 2 : w}" fill="${it.type === 'zone' ? c : 'none'}" fill-opacity="${it.type === 'zone' ? .35 : 0}" ${extra}/>`;
@@ -200,6 +209,10 @@ if (root) {
     $('[data-frames]').innerHTML = state.frames.map((fr, i) => `<button type="button" data-frame="${i}" aria-pressed="${i === fi}">${esc(fr.name)}</button>`).join('')
       + `<button type="button" data-frame-add title="Nouvelle étape (copie de l'étape actuelle)">+ Étape</button>`
       + `<button type="button" data-frame-rename>Renommer</button>`
+      + (state.frames.length > 1 ? `<span class="wb-anim" role="group" aria-label="Animation"><button type="button" data-anim-play>${playing ? '⏸ Pause' : '▶ Animer'}</button>`
+        + `<button type="button" data-anim-speed title="Vitesse de l'animation">${speed}×</button>`
+        + `<button type="button" data-anim-loop aria-pressed="${loop}" title="Répéter l'animation">↻</button>`
+        + `<button type="button" data-anim-video title="Enregistre l'animation en vidéo (à poster sur Discord)">Vidéo</button></span>` : '')
       + (state.frames.length > 1 ? `<button type="button" data-frame-del>Supprimer l'étape</button>` : '');
     const wm = isRift(state.bg) ? wallMask(riftUrl(state.bg), render) : null;
     const mask = wm ? { ...wm, bush: state.bush === false ? null : bushMask(bushUrl(state.bg), wm.w, wm.h, render) } : null;
@@ -217,8 +230,8 @@ if (root) {
       const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
       if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${esc(it.id)}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
       if (it.type === 'text') return `<div class="wb-text${isSel}" data-id="${esc(it.id)}" style="${s};color:${esc(it.color)}">${esc(it.label)}</div>`;
-      if (it.type === 'ping') return (WARD_RANGE[it.ref ?? ''] && isRift(state.bg) && !mask ? `<div class="wb-range is-${esc(it.ref)}" style="${s};width:${WARD_RANGE[it.ref ?? ''] * 200}%" aria-hidden="true"></div>` : '') + `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s}">${esc(it.label)}</div>`;
-      return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${esc(it.id)}" style="${s}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
+      if (it.type === 'ping') return (WARD_RANGE[it.ref ?? ''] && isRift(state.bg) && !mask ? `<div class="wb-range is-${esc(it.ref)}" style="${s};width:${WARD_RANGE[it.ref ?? ''] * 200}%" aria-hidden="true"></div>` : '') + `<div class="wb-ping is-${esc(it.ref)}${isSel}" data-id="${esc(it.id)}" style="${s};background:${pingColor(it.ref)[0]};color:${pingColor(it.ref)[1]}">${esc(it.label)}</div>`;
+      return `<div class="wb-tok is-${esc(it.kind)}${isSel}" data-id="${esc(it.id)}" style="${s}${it.kind === 'ally' || it.kind === 'enemy' ? `;background:${teamColor(it.kind)}` : ''}">${it.kind === 'pic' ? `<img src="${esc(icons.get(it.ref ?? '') ?? '')}" alt="${esc(it.ref)}" title="${esc(it.ref)}" draggable="false" />` : esc(it.label)}</div>`;
     }).join('');
     const n = $<HTMLTextAreaElement>('[data-notes]');
     if (document.activeElement !== n) n.value = state.notes ?? '';
@@ -256,6 +269,9 @@ if (root) {
     color = b.dataset.color!; root.querySelectorAll('[data-color]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     const it = frame().items.find((x) => x.id === sel); if (it) { snapshot(); it.color = color; changed(); }
   }));
+  // Trait plein ou pointillés (flèches et lignes) : une trajectoire prévue, une rotation, une passe possible
+  let dashed = false;
+  root.querySelector<HTMLElement>('[data-dash]')?.addEventListener('click', (e) => { dashed = !dashed; (e.currentTarget as HTMLElement).setAttribute('aria-pressed', String(dashed)); });
   root.querySelectorAll<HTMLElement>('[data-width]').forEach((b) => b.addEventListener('click', () => {
     width = Number(b.dataset.width); root.querySelectorAll('[data-width]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   }));
@@ -268,6 +284,11 @@ if (root) {
   // Étapes
   $('[data-frames]').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('button'); if (!b) return;
+    if (b.hasAttribute('data-anim-play')) { playing ? stopAnim(false) : playAnim(); return; }
+    if (b.hasAttribute('data-anim-speed')) { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; render(); return; }
+    if (b.hasAttribute('data-anim-loop')) { loop = !loop; render(); return; }
+    if (b.hasAttribute('data-anim-video')) { recordVideo(b); return; }
+    if (playing) stopAnim(false);
     if (b.dataset.frame !== undefined) { fi = Number(b.dataset.frame); sel = null; render(); return; }
     if (b.hasAttribute('data-frame-rename')) { const n = prompt("Nom de l'étape", frame().name); if (!n) return; snapshot(); frame().name = n.slice(0, 30); changed(); return; }
     snapshot();
@@ -377,7 +398,7 @@ if (root) {
       const txt = prompt(tool === 'note' ? 'Texte du post-it' : 'Texte'); if (!txt) return;
       snapshot(); f.items.push({ id: uid(), type: tool, x, y, color: tool === 'note' && ['#111111', '#ffffff'].includes(color) ? '#ffd23f' : color, label: txt.slice(0, 200) }); changed(); setTool('select'); return;
     }
-    if (['arrow', 'line', 'rect', 'circle', 'zone'].includes(tool)) { shape = { id: uid(), type: tool as Item['type'], x, y, x2: x, y2: y, color, w: width }; stage.setPointerCapture(e.pointerId); }
+    if (['arrow', 'line', 'rect', 'circle', 'zone'].includes(tool)) { shape = { id: uid(), type: tool as Item['type'], x, y, x2: x, y2: y, color, w: width, ...(dashed && ['arrow', 'line'].includes(tool) ? { dash: true } : {}) }; stage.setPointerCapture(e.pointerId); }
   });
   stage.addEventListener('pointermove', (e) => {
     const [x, y] = pos(e);
@@ -515,7 +536,7 @@ if (root) {
       const col = it.color ?? '#ff4655';
       if (['arrow', 'line'].includes(it.type)) {
         c.strokeStyle = col; c.fillStyle = col; c.lineWidth = (it.w ?? 6) * k;
-        c.beginPath(); c.moveTo(X(it.x), Y(it.y)); c.lineTo(X(it.x2!), Y(it.y2!)); c.stroke();
+        c.beginPath(); if (it.dash) c.setLineDash([(it.w ?? 6) * k * 2.2, (it.w ?? 6) * k * 1.6]); c.moveTo(X(it.x), Y(it.y)); c.lineTo(X(it.x2!), Y(it.y2!)); c.stroke(); c.setLineDash([]);
         if (it.type === 'arrow') { const a = Math.atan2(Y(it.y2!) - Y(it.y), X(it.x2!) - X(it.x)), L = 14 * k + (it.w ?? 6) * k * 1.5; c.beginPath(); c.moveTo(X(it.x2!), Y(it.y2!)); c.lineTo(X(it.x2!) - L * Math.cos(a - .45), Y(it.y2!) - L * Math.sin(a - .45)); c.lineTo(X(it.x2!) - L * Math.cos(a + .45), Y(it.y2!) - L * Math.sin(a + .45)); c.closePath(); c.fill(); }
       } else if (['rect', 'circle', 'zone'].includes(it.type)) {
         const x = Math.min(it.x, it.x2!), y = Math.min(it.y, it.y2!), w = Math.abs(it.x2! - it.x), h = Math.abs(it.y2! - it.y);
@@ -544,11 +565,11 @@ if (root) {
         if (vm) { const poly = visionPoly(vm, it.x, it.y, WARD_RANGE[it.ref ?? '']); c.beginPath(); poly.forEach(([a, b], i) => (i ? c.lineTo(X(a), Y(b)) : c.moveTo(X(a), Y(b)))); c.closePath(); c.globalAlpha = .22; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 1.5 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.stroke(); c.globalAlpha = 1; }
         else if (it.type === 'ping' && WARD_RANGE[it.ref ?? ''] && isRift(state.bg)) { const rr = X(WARD_RANGE[it.ref ?? '']); c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.globalAlpha = .18; c.fillStyle = WARD_COLOR[it.ref ?? '']; c.fill(); c.globalAlpha = .9; c.lineWidth = 2 * k; c.strokeStyle = WARD_COLOR[it.ref ?? '']; c.setLineDash([6 * k, 5 * k]); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; }
         c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
-        c.fillStyle = it.type === 'ping' ? ({ danger: '#ff4655', vision: '#ffffff', balle: '#eeeeee', ward: '#ffd23f', controle: '#ff4fa3' } as Record<string, string>)[it.ref ?? ''] ?? '#ffd23f' : it.kind === 'ally' ? '#2f6bff' : it.kind === 'enemy' ? '#e5251f' : '#0f1923';
+        c.fillStyle = it.type === 'ping' ? pingColor(it.ref)[0] : teamColor(it.kind);
         c.fill();
         if (it.kind === 'pic') { const img = await loadImg(icons.get(it.ref ?? '') ?? ''); if (img) { c.save(); c.beginPath(); c.arc(x, y, r - 1, 0, Math.PI * 2); c.clip(); c.drawImage(img, x - r, y - r, r * 2, r * 2); c.restore(); } }
         c.lineWidth = 2.5 * k; c.strokeStyle = it.type === 'ping' ? '#111' : '#fff'; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke();
-        if (it.kind !== 'pic') { c.fillStyle = it.type === 'ping' && !['danger'].includes(it.ref ?? '') ? '#111' : '#fff'; c.font = `700 ${15 * k}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(it.label ?? '', x, y + 1); }
+        if (it.kind !== 'pic') { c.fillStyle = it.type === 'ping' ? pingColor(it.ref)[1] : '#fff'; c.font = `700 ${15 * k}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(it.label ?? '', x, y + 1); }
       } else if (it.type === 'note' || it.type === 'text') {
         c.font = `700 ${(it.type === 'note' ? 13 : 16) * k}px system-ui, sans-serif`; c.textBaseline = 'top'; c.textAlign = 'left';
         const words = (it.label ?? '').split(/\s+/), lines: string[] = []; let line = '';
@@ -584,6 +605,69 @@ if (root) {
       b.textContent = 'Copiée ! Colle-la dans Discord'; setTimeout(() => (b.textContent = "Copier l'image"), 2500);
     } catch { b.textContent = 'Copie impossible : utilise Télécharger'; setTimeout(() => (b.textContent = "Copier l'image"), 3000); }
   });
+
+  // ---------- Animation entre les étapes (repris de tactical-board.com) ----------
+  // Chaque élément présent dans deux étapes successives (même identifiant : « + Étape » copie l'étape) glisse de sa place à la suivante ;
+  // les éléments qui apparaissent ou disparaissent le font à mi-chemin, les traits nouveaux aussi.
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const ease = (t: number) => (t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+  function between(a: Frame, b: Frame, t: number): Frame {
+    const k = ease(t), byId = new Map(a.items.map((x) => [x.id, x]));
+    const items = b.items.map((it) => {
+      const o = byId.get(it.id); if (!o) return t >= .5 ? it : null;
+      return { ...it, x: lerp(o.x, it.x, k), y: lerp(o.y, it.y, k), ...(it.x2 != null && o.x2 != null ? { x2: lerp(o.x2, it.x2, k), y2: lerp(o.y2!, it.y2!, k) } : {}) };
+    }).filter(Boolean) as Item[];
+    if (t < .5) for (const o of a.items) if (!b.items.some((x) => x.id === o.id)) items.push(o);
+    const old = new Set(a.strokes.map((x) => x.id));
+    return { name: t < .5 ? a.name : b.name, items, strokes: b.strokes.filter((x) => old.has(x.id) || t >= .5), down: (t < .5 ? a : b).down };
+  }
+  const STEP = 1600, HOLD = 700; // durée d'un passage et pause sur chaque étape (ms, à vitesse 1×)
+  function stopAnim(keep: boolean) { playing = false; cancelAnimationFrame(raf); anim = null; root!.classList.remove('is-animating'); if (!keep) render(); }
+  function playAnim() {
+    if (state.frames.length < 2) return;
+    playing = true; root!.classList.add('is-animating');
+    let from = fi >= state.frames.length - 1 ? 0 : fi, t0 = performance.now();
+    fi = from; anim = null; render();
+    const tick = (now: number) => {
+      if (!playing) return;
+      const el = (now - t0) * speed;
+      if (el < HOLD) { anim = null; fi = from; }
+      else if (el < HOLD + STEP) { anim = between(state.frames[from], state.frames[from + 1], (el - HOLD) / STEP); }
+      else {
+        from++; t0 = now; anim = null; fi = from;
+        if (from >= state.frames.length - 1) { if (loop) { from = 0; fi = 0; } else { render(); stopAnim(true); render(); return; } }
+      }
+      render(); raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  // Vidéo : l'animation dessinée image par image (même rendu que « Télécharger »), en MP4 si le navigateur sait faire, sinon WebM
+  async function recordVideo(btn: HTMLElement) {
+    if (state.frames.length < 2 || typeof MediaRecorder === 'undefined') { alert('La vidéo demande au moins deux étapes et un navigateur récent (Chrome, Edge, Firefox).'); return; }
+    if (playing) stopAnim(false);
+    const label = btn.textContent; btn.textContent = 'Enregistrement…'; root!.classList.add('is-animating');
+    try {
+      const first = await toCanvas();
+      const out = document.createElement('canvas'); out.width = first.width; out.height = first.height;
+      const ctx = out.getContext('2d')!; ctx.drawImage(first, 0, 0);
+      const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((x) => MediaRecorder.isTypeSupported(x)) ?? 'video/webm';
+      const stream = out.captureStream(25), rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 4_000_000 }), chunks: Blob[] = [];
+      rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      const done = new Promise((ok) => (rec.onstop = ok));
+      rec.start();
+      const FPS = 25, wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+      const show = async (f: Frame | null, idx: number) => { anim = f; fi = idx; const cv = await toCanvas(); ctx.drawImage(cv, 0, 0); };
+      for (let i = 0; i < state.frames.length; i++) {
+        await show(null, i); await wait(HOLD / speed);
+        if (i === state.frames.length - 1) break;
+        const n = Math.round((STEP / speed / 1000) * FPS);
+        for (let s2 = 1; s2 <= n; s2++) { const t1 = performance.now(); await show(between(state.frames[i], state.frames[i + 1], s2 / n), i); await wait(Math.max(0, 1000 / FPS - (performance.now() - t1))); }
+      }
+      await wait(HOLD / speed); rec.stop(); await done;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, { type })); a.download = `${(root!.querySelector('.wb-bar h2')!.textContent ?? 'tableau').replace(/[^\p{L}\p{N} _-]+/gu, '').trim().replace(/\s+/g, '-').toLowerCase()}-animation.${type.includes('mp4') ? 'mp4' : 'webm'}`; a.click();
+    } catch { alert("Impossible d'enregistrer la vidéo avec ce fond."); }
+    anim = null; fi = 0; root!.classList.remove('is-animating'); btn.textContent = label; render();
+  }
 
   stage.dataset.tool = tool;
   loadValo().then(render);

@@ -4,6 +4,7 @@
 // des étapes pour dérouler une strat et des notes. Synchronisé en quasi direct pour tout le roster.
 import Qg from './Qg.astro';
 import { valoMaps } from './valo-api';
+import { jeu, KIT_NEUTRE } from './jeux';
 import { ownerOf, scope, teamUser } from './outils';
 import { ensureBoards } from './tableau-api';
 import { rows } from '../db';
@@ -53,8 +54,9 @@ const TOOLS: [string, string, string][] = [
   ['erase', 'Gomme', 'M16 4l4 4-10 10H6l-2-2z'],
 ];
 // Sur la Faille, deux vraies balises avec leur portée (900 unités, à l'échelle de la carte) ; ailleurs un repère de vision générique
-const VISION: [string, string, string][] = current?.game === 'lol' ? [['ward', '◉', 'Balise (portée)'], ['controle', '◉', 'Balise de contrôle (portée)']] : [['vision', '◉', 'Vision']];
-const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ...VISION, ...(current?.game === 'lol' ? [] : [['balle', '●', current?.game === 'valo' ? 'Spike' : 'Balle'] as [string, string, string]])];
+// Éléments du tableau propres au jeu (jeux.ts) : pions, couleurs des deux équipes, repères (balises en LoL, ballon et boosts en RL, spike en Valorant)
+const KIT = (current ? jeu(rosterGame.get(Number(current.roster_id)) ?? current.game)?.board?.kit : null) ?? KIT_NEUTRE;
+const PINGS = KIT.pings;
 ---
 <Qg title="Tableau blanc · Inside" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {!current && usable.length > 0 && (
@@ -126,7 +128,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
         )}
       </div>
     ) : (
-      <div class="wb" data-board={current.id} data-game={rosterGame.get(Number(current.roster_id)) ?? current.game} data-map={current.map} data-me={user.id} data-state={initial?.state ?? '{}'} data-at={initial?.updated_at ?? 0}>
+      <div class="wb" data-board={current.id} data-kit={JSON.stringify(KIT)} data-game={rosterGame.get(Number(current.roster_id)) ?? current.game} data-map={current.map} data-me={user.id} data-state={initial?.state ?? '{}'} data-at={initial?.updated_at ?? 0}>
         <div class="wb-bar">
           <a class="wb-back" href={listUrl}>← Tableaux</a>
           <h2>{current.title}</h2>
@@ -152,7 +154,7 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
             {TOOLS.map(([k, label, d], i) => <button type="button" data-tool={k} aria-pressed={i === 0 ? 'true' : 'false'} title={label} aria-label={label}><svg viewBox="0 0 24 24"><path d={d} /></svg></button>)}
           </div>
           <div class="wb-group wb-colors">{COLORS.map((c, i) => <button type="button" data-color={c} aria-pressed={i === 0 ? 'true' : 'false'} style={`--c:${c}`} aria-label={`Couleur ${c}`}></button>)}</div>
-          <div class="wb-group">{[[3, 'Fin'], [6, 'Moyen'], [12, 'Épais']].map(([w, l], i) => <button type="button" data-width={w} aria-pressed={i === 1 ? 'true' : 'false'} title={String(l)} aria-label={`Trait ${l}`}><span style={`height:${Number(w) / 2 + 1}px`}></span></button>)}</div>
+          <div class="wb-group">{[[3, 'Fin'], [6, 'Moyen'], [12, 'Épais']].map(([w, l], i) => <button type="button" data-width={w} aria-pressed={i === 1 ? 'true' : 'false'} title={String(l)} aria-label={`Trait ${l}`}><span style={`height:${Number(w) / 2 + 1}px`}></span></button>)}<button type="button" data-dash aria-pressed="false" title="Flèches et lignes en pointillés (trajectoire prévue, rotation)" aria-label="Pointillés"><span class="wb-dash"></span></button></div>
           <div class="wb-group">
             <button type="button" data-undo title="Annuler (Ctrl+Z)" aria-label="Annuler"><svg viewBox="0 0 24 24"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10h-3" /></svg></button>
             <button type="button" data-redo title="Rétablir (Ctrl+Y)" aria-label="Rétablir"><svg viewBox="0 0 24 24"><path d="M15 7l5 5-5 5M20 12H9a5 5 0 000 10h3" /></svg></button>
@@ -183,13 +185,13 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
 
           <aside class="wb-side">
             <details open><summary>Éléments</summary>
-              <div class="wb-markers" style={`--n:${({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5}`}>
-                {/* Autant de pions que de joueurs : 3 en Rocket League, 2 en osu! (tag), 5 en LoL et Valorant */}
-                {(current.game === 'lol' ? ['T', 'J', 'M', 'B', 'S'] : Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => String(k + 1))).map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" aria-label={`Allié ${n}`}>{n}</button>)}
-                {(current.game === 'lol' ? ['T', 'J', 'M', 'B', 'S'] : Array.from({ length: ({ rl: 3, osu: 2 } as Record<string, number>)[current.game] ?? 5 }, (_, k) => String(k + 1))).map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" aria-label={`Adversaire ${n}`}>{n}</button>)}
+              {/* Autant de pions que de joueurs du jeu (3 en Rocket League, 5 en LoL et Valorant), aux couleurs des deux équipes du jeu */}
+              <div class="wb-markers" style={`--n:${KIT.players.length}`}>
+                {KIT.players.map((n) => <button type="button" data-add="ally" data-label={n} class="is-ally" style={`background:${KIT.ally.color}`} aria-label={`${KIT.ally.name} ${n}`} title={`${KIT.ally.name} ${n}`}>{n}</button>)}
+                {KIT.players.map((n) => <button type="button" data-add="enemy" data-label={n} class="is-enemy" style={`background:${KIT.enemy.color}`} aria-label={`${KIT.enemy.name} ${n}`} title={`${KIT.enemy.name} ${n}`}>{n}</button>)}
               </div>
               <div class="wb-pings">
-                {PINGS.map(([k, s, l]) => <button type="button" data-add="ping" data-ref={k} data-label={s}><span class={`is-${k}`}>{s}</span>{l}</button>)}
+                {PINGS.map((p) => <button type="button" data-add="ping" data-ref={p.key} data-label={p.sym}><span class={`is-${p.key}`} style={`background:${p.bg};color:${p.fg}`}>{p.sym}</span>{p.label}</button>)}
               </div>
               <p class="wb-pal-h" data-pal-title hidden></p>
               <input type="search" placeholder="Chercher" data-pal-search aria-label="Chercher" hidden />
@@ -381,4 +383,9 @@ const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif
   .wb-del { margin-top: 1.5rem; }
   .wb-link { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; font-size: var(--step--1); }
   @media (max-width: 1000px) { .wb-main { grid-template-columns: 1fr; } }
+  /* Animation : barre de lecture dans la ligne des étapes ; pendant la lecture, le tableau ne se modifie pas */
+  .wb-frames :global(.wb-anim) { display: inline-flex; gap: 4px; margin-left: auto; }
+  .wb-frames :global(.wb-anim button[aria-pressed="true"]) { background: var(--ink); color: var(--paper); }
+  .wb:global(.is-animating) :global([data-stage]) { pointer-events: none; }
+  .wb-group [data-dash] .wb-dash { display: block; width: 18px; height: 3px; background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 8px); }
 </style>
