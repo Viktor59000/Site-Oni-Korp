@@ -54,6 +54,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
         m, acc, rank, games, champs, kda,
         win: games.length ? (games.filter((g) => g.win).length / games.length) * 100 : null,
         cs: avg(games.map((g) => g.csMin)), vis: avg(games.map((g) => g.visionMin)), kp: avg(games.map((g) => g.kp)), dmg: avg(games.map((g) => g.dmgShare)),
+        cs10: avg(games.map((g) => g.cs10).filter((v) => v !== undefined)), gd15: avg(games.map((g) => g.gd15).filter((v) => v !== undefined)),
         trend: spark(hist.filter((h) => h.user_id === m.id && h.game === 'lol').map((h) => JSON.parse(h.value).score)),
       };
     }));
@@ -93,7 +94,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
       const kd = g.length ? g.reduce((s, x) => s + x.k, 0) / Math.max(1, g.reduce((s, x) => s + x.d, 0)) : null;
       const agents = Object.entries(g.reduce<Record<string, number>>((o, x) => ({ ...o, [x.agent]: (o[x.agent] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([a]) => a);
       return { m, n: g.length, win: g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null, rank, agents,
-        a: { acs: avg(g.map((x) => x.acs)), adr: avg(g.map((x) => x.adr)), hs: avg(g.map((x) => x.hs).filter((v) => v !== null)), fb: avg(g.map((x) => x.fb)), fd: avg(g.map((x) => x.fd ?? 0)), kd },
+        a: { acs: avg(g.map((x) => x.acs)), adr: avg(g.map((x) => x.adr)), hs: avg(g.map((x) => x.hs).filter((v) => v !== null)), fb: avg(g.map((x) => x.fb)), fd: avg(g.map((x) => x.fd ?? 0)), kast: avg(g.map((x) => x.kast).filter((v) => v !== undefined)), multi: avg(g.map((x) => x.multi).filter((v) => v !== undefined)), kd },
         trend: spark(hist.filter((h) => h.user_id === m.id && h.game === 'valo').map((h) => JSON.parse(h.value).score)), last: g.slice(0, 8) };
     }));
   }
@@ -124,7 +125,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
               <p class="eq-note">20 dernières parties classées de chaque joueur, relevées automatiquement toutes les 30 minutes. Courbe : évolution du rang sur 90 jours.</p>
               <div class="st-scroll">
                 <table class="st-table">
-                  <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>Parties</th><th>Victoires</th><th>KDA</th><th>CS/min</th><th>Vision/min</th><th>KP</th><th>Dégâts</th><th>Champions</th></tr></thead>
+                  <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>Parties</th><th>Victoires</th><th>KDA</th><th>CS/min</th><th>Vision/min</th><th>KP</th><th>Dégâts</th><th title="Sbires et monstres tués à 10 minutes">CS à 10</th><th title="Écart d’or à 15 minutes face à l’adversaire du même poste">Or à 15</th><th>Champions</th></tr></thead>
                   <tbody>
                     {b.players.map((p) => (
                       <tr>
@@ -138,6 +139,8 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                         <td>{r1(p.vis, 2)}</td>
                         <td>{pct(p.kp)}</td>
                         <td>{pct(p.dmg)}</td>
+                        <td>{r1(p.cs10, 0)}</td>
+                        <td>{p.gd15 === null ? '—' : `${p.gd15 > 0 ? '+' : p.gd15 < 0 ? '−' : ''}${Math.abs(Math.round(p.gd15)).toLocaleString('fr-FR')}`}</td>
                         <td class="st-champs">{p.champs.map(([c, n]) => <img src={champIcon(c)} alt={c} title={`${c} · ${n} partie${n > 1 ? 's' : ''}`} width="26" height="26" loading="lazy" />)}</td>
                       </tr>
                     ))}
@@ -152,7 +155,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                       <li class:list={{ 'is-win': g.win }}>
                         <img src={champIcon(g.champ)} alt="" width="30" height="30" loading="lazy" />
                         <strong>{g.win ? 'Victoire' : 'Défaite'}</strong>
-                        <span>{g.k}/{g.d}/{g.a}</span><span>{g.csMin} CS/min</span><span>vision {g.vision}</span><span>KP {g.kp} %</span><span>{g.dmgShare} % des dégâts</span>
+                        <span>{g.k}/{g.d}/{g.a}</span><span>{g.csMin} CS/min</span><span>vision {g.vision}</span><span>KP {g.kp} %</span><span>{g.dmgShare} % des dégâts</span>{g.cs10 !== undefined && <span>{g.cs10} CS à 10</span>}{g.gd15 !== undefined && <span title="Écart d’or à 15 min face à l’adversaire du même poste">{g.gd15 >= 0 ? '+' : '−'}{Math.abs(g.gd15).toLocaleString('fr-FR')} or à 15</span>}
                         <small>{g.min} min · {fmtD.format(new Date(g.at))}</small>
                       </li>
                     ))}
@@ -207,14 +210,14 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
               {b.auto.some((p: any) => p.n || p.rank) ? (
                 <div class="st-scroll">
                   <table class="st-table">
-                    <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>Parties</th><th>Victoires</th><th>ACS</th><th>K/D</th><th>ADR</th><th>HS %</th><th title="Premier kill de la manche, par partie">First bloods</th><th title="Premier mort de la manche, par partie">First deaths</th><th>Agents</th></tr></thead>
+                    <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>Parties</th><th>Victoires</th><th>ACS</th><th>K/D</th><th>ADR</th><th>HS %</th><th title="Premier kill de la manche, par partie">First bloods</th><th title="Premier mort de la manche, par partie">First deaths</th><th title="Part des manches où il tue, aide, survit ou est échangé">KAST</th><th title="Manches à 3 kills ou plus, par partie">3K+</th><th>Agents</th></tr></thead>
                     <tbody>
                       {b.auto.map((p: any) => (
                         <tr>
                           <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                           <td>{p.rank?.tier ? `${valoTierFr(p.rank.tier)}${p.rank.rr !== null ? ` · ${p.rank.rr} RR` : ''}` : '—'}</td>
                           <td set:html={p.trend || '—'} /><td>{p.n || '—'}</td><td>{pct(p.win)}</td>
-                          <td>{r1(p.a.acs, 0)}</td><td>{r1(p.a.kd, 2)}</td><td>{r1(p.a.adr, 0)}</td><td>{pct(p.a.hs)}</td><td>{r1(p.a.fb)}</td><td>{r1(p.a.fd)}</td>
+                          <td>{r1(p.a.acs, 0)}</td><td>{r1(p.a.kd, 2)}</td><td>{r1(p.a.adr, 0)}</td><td>{pct(p.a.hs)}</td><td>{r1(p.a.fb)}</td><td>{r1(p.a.fd)}</td><td>{pct(p.a.kast)}</td><td>{r1(p.a.multi)}</td>
                           <td>{p.agents.join(', ') || '—'}</td>
                         </tr>
                       ))}
@@ -229,7 +232,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                     {p.last.map((g: any) => (
                       <li class:list={{ 'is-win': g.win }}>
                         <strong>{g.win ? 'Victoire' : 'Défaite'}{g.us !== null ? ` ${g.us}-${g.them}` : ''}</strong>
-                        <span>{g.agent} · {g.map}</span><span>{g.k}/{g.d}/{g.a}</span><span>{g.acs} ACS</span><span>{g.adr} ADR</span>{g.hs !== null && <span>{g.hs} % HS</span>}
+                        <span>{g.agent} · {g.map}</span><span>{g.k}/{g.d}/{g.a}</span><span>{g.acs} ACS</span><span>{g.adr} ADR</span>{g.hs !== null && <span>{g.hs} % HS</span>}{g.kast !== undefined && <span>KAST {g.kast} %</span>}
                         <small>{fmtD.format(new Date(g.at))}</small>
                       </li>
                     ))}
