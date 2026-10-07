@@ -55,6 +55,10 @@ export type Access = Awaited<ReturnType<typeof access>>;
 /** Peut voir et utiliser ce roster : encadrement, membre du roster, responsable du jeu ou capitaine. */
 export const canSee = (me: Access, rosterId: number | string | null | undefined) => me.staff || (rosterId != null && (me.rosterIds.includes(Number(rosterId)) || me.lead.includes(Number(rosterId))));
 
+/** Peut écrire un doc de ce niveau : roster (ses membres), jeu (responsable du jeu ou encadrement), club (encadrement). */
+export const canWriteDoc = (me: Access, level: string, rosterId: number | null, game: string | null) =>
+  level === 'club' ? me.staff : level === 'jeu' ? me.staff || (!!game && me.games.includes(game)) : canSee(me, rosterId);
+
 /** Peut gérer ce roster : encadrement, responsable du jeu, ou capitaine du roster. */
 export const canLead = (me: Access, rosterId: number | string | null | undefined) => me.staff || (rosterId != null && me.lead.includes(Number(rosterId)));
 

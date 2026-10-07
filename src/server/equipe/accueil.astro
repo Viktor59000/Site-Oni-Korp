@@ -5,7 +5,7 @@
 // - avec ?r= : l'accueil du roster (prochaine échéance, réponses en attente, forme, objectifs, ce qui a bougé).
 // Sans accès (non connecté, pas membre d'un roster) : la page Planning gère la connexion et les messages.
 import Qg from './Qg.astro';
-import { rosterMembers, scope, teamUser } from './outils';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { rows, weekKey } from '../db';
 import { JEUX } from './jeux';
 
@@ -46,7 +46,7 @@ if (roster) {
     rows<{ id: number; at: number; kind: string; duration: number }>('SELECT id, at, kind, duration FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 6', rid, now - 2 * 3600_000),
     rows<{ id: number; at: number; opponent: string; format: string; kind: string | null }>('SELECT id, at, opponent, format, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 3', rid, now - 3 * 3600_000),
     rows<{ opponent: string; score_us: number; score_them: number; at: number }>('SELECT opponent, score_us, score_them, at FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NOT NULL ORDER BY at DESC LIMIT 1', rid),
-    rows<{ title: string; progress: number; due: number | null; user_id: string | null }>(`SELECT title, progress, due, user_id FROM goals WHERE roster_id = ? AND status = 'en-cours' ORDER BY (user_id = ?) DESC, due IS NULL, due LIMIT 4`, rid, user.id).catch(() => []),
+    rows<{ title: string; progress: number; due: number | null; user_id: string | null }>(`SELECT title, progress, due, user_id FROM goals WHERE roster_id = ? AND status = 'en-cours' AND (COALESCE(private, 0) = 0 OR user_id = ? OR ? = 1) ORDER BY (user_id = ?) DESC, due IS NULL, due LIMIT 4`, rid, user.id, canLead(me, rid) ? 1 : 0, user.id).catch(() => []),
     rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM boards WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
     rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM docs WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
     rows<{ id: number; title: string; at: number }>('SELECT id, title, at FROM vods WHERE roster_id = ? ORDER BY at DESC LIMIT 3', rid).catch(() => []),
@@ -111,6 +111,8 @@ let espace: null | {
   goals: { roster: Rr; items: { title: string; progress: number; due: number | null }[] }[];
   cards: { r: Rr; next: Mine | null; members: number; team: number }[];
   trial: { roster: string; until: number | null; retour: string | null } | null;
+  accounts: { game: string; ident: string }[]; elo: { mode: string; rating: number; wins: number; losses: number }[];
+  sync: { seen_at: number | null; seen_state: string | null; last_at: number | null } | null;
 } = null;
 if (!roster) {
   // Seulement MES rosters (ceux dont j'ai le rôle) : ceux que l'encadrement suit sans y jouer sont listés à part, sans tâches ni échéances
@@ -147,11 +149,18 @@ if (!roster) {
   if (R.length && !setup.length) todo.push({ label: 'Renseigne ton setup', why: 'sensibilité, DPI, matériel : utile au coach', href: '/equipe/setup/' });
   if (!guideSeen.length) todo.push({ label: 'Lis le guide d’Inside', why: '2 minutes pour tout comprendre', href: '/equipe/guide/' });
   const trial = status.find((x) => x.status === 'essai');
+  // Mes comptes, l'état d'Oni Sync (si joueur RL), mon Elo d'inhouse de la saison
+  const [accList, sync, elo] = await Promise.all([
+    rows<{ game: string; ident: string }>('SELECT game, ident FROM accounts WHERE user_id = ? ORDER BY game', user.id).catch(() => []),
+    rows<{ seen_at: number | null; seen_state: string | null; last_at: number | null }>('SELECT seen_at, seen_state, last_at FROM rl_sync WHERE user_id = ?', user.id).catch(() => []),
+    rows<{ mode: string; rating: number; wins: number; losses: number }>(`SELECT mode, rating, wins, losses FROM inhouse_elo WHERE user_id = ? AND season = (SELECT COALESCE(CAST(value AS INTEGER), 1) FROM meta WHERE key = 'inhouse_season' UNION ALL SELECT 1 LIMIT 1) AND wins + losses > 0 ORDER BY rating DESC`, user.id).catch(() => []),
+  ]);
   espace = {
     next: all.slice(0, 5),
     todo,
     goals: R.map((r) => ({ roster: r, items: goals.filter((x) => Number(x.roster_id) === Number(r.id) && x.user_id === user.id).map((x) => ({ title: x.title, progress: Number(x.progress) || 0, due: x.due ? Number(x.due) : null })) })).filter((x) => x.items.length),
     cards: R.map((r, i) => ({ r, next: all.find((x) => x.roster === r) ?? null, members: members[i], team: goals.filter((x) => Number(x.roster_id) === Number(r.id) && !x.user_id).length })),
+    accounts: accList, elo, sync: sync[0] ?? null,
     trial: trial ? { roster: byId.get(Number(trial.roster_id))?.name ?? '', until: trial.trial_end ? Number(trial.trial_end) : null, retour: trial.retour } : null,
   };
 }
@@ -221,6 +230,29 @@ if (!roster) {
         </section>
       </div>
 
+      <section class="qg-card ac-card me-acc" aria-labelledby="me-acc-h">
+        <h2 id="me-acc-h">Mes comptes et inhouses</h2>
+        <div class="me-acc__grid">
+          <div>
+            <p class="me-goals__h">Comptes de jeu</p>
+            {espace.accounts.length ? <ul class="me-kv">{espace.accounts.map((a) => <li><span>{({ riot: 'Riot (LoL, Valorant)', rl: 'Rocket League', osu: 'osu!' } as Record<string, string>)[a.game] ?? a.game}</span><b>{a.ident}</b></li>)}</ul> : <p class="ac-empty">Aucun compte relié.</p>}
+            <a class="ac-more" href="/equipe/joueurs/">Relier ou modifier</a>
+          </div>
+          {me.rosters.some((r) => r.mine && r.game === 'rl') && (
+            <div>
+              <p class="me-goals__h">Oni Sync</p>
+              <p class="me-sync">{!espace.sync ? 'Pas encore installé.' : espace.sync.last_at ? `Dernière partie reçue ${ago(Number(espace.sync.last_at))}.` : espace.sync.seen_state === 'connecte' ? 'Connecté au jeu, en attente d’une partie terminée.' : 'Installé, pas encore de partie reçue.'}</p>
+              <a class="ac-more" href={`/equipe/rl/?r=${me.rosters.find((r) => r.mine && r.game === 'rl')!.slug}`}>Tracker RL</a>
+            </div>
+          )}
+          <div>
+            <p class="me-goals__h">Inhouses · saison en cours</p>
+            {espace.elo.length ? <ul class="me-kv">{espace.elo.map((e) => <li><span>{e.mode}</span><b>{e.rating}</b><small>{e.wins} V · {e.losses} D</small></li>)}</ul> : <p class="ac-empty">Pas encore de partie. Soirée inhouse le jeudi à 21 h sur Discord.</p>}
+            <a class="ac-more" href="/inhouses/">Classement</a>
+          </div>
+        </div>
+      </section>
+
       <section aria-labelledby="me-rosters-h">
         <h2 id="me-rosters-h" class="me-h">Mes rosters</h2>
         <ul class="ac-pick">
@@ -240,6 +272,9 @@ if (!roster) {
           {me.staff && (
             <li><a class="ac-pick__card ac-pick__card--vue" href="/equipe/vue/"><span>Vue d’ensemble</span><small>Santé des rosters, alertes, candidatures</small></a></li>
           )}
+          {!me.staff && me.games.map((g) => GAME[g] && (
+            <li><a class="ac-pick__card" href={`/equipe/vue/?jeu=${g}`} style={`--g:${GAME[g].color}`}><b class="ac-pick__code" aria-hidden="true" translate="no">{GAME[g].code}</b><span>Espace {GAME[g].label}</span><small>Rosters, recrutement, essais du jeu</small></a></li>
+          ))}
         </ul>
         {!espace.cards.length && <p class="ac-empty">Tu n’as le rôle d’aucun roster.</p>}
       </section>
@@ -475,6 +510,13 @@ if (!roster) {
   .me-goals__h span { width: .6rem; height: .6rem; background: var(--g); }
   .me-goals .ac-goals__bar span { background: var(--g); }
   .ac-pick__next { margin-top: .35rem; font-weight: 700; }
+  .me-acc__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1.25rem 2rem; }
+  .me-acc__grid > div { display: grid; gap: .45rem; align-content: start; }
+  .me-kv { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+  .me-kv li { display: flex; gap: .5rem; align-items: baseline; }
+  .me-kv span { color: var(--qg-muted); flex: 1; }
+  .me-kv small { color: var(--qg-muted); }
+  .me-sync { margin: 0; font-size: var(--text-sm); }
   .me-note { margin: -.25rem 0 .75rem; color: var(--qg-muted); font-size: var(--text-sm); }
   .me-others { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; list-style: none; }
   .me-others a { display: grid; gap: .1rem; min-width: 10rem; padding: .6rem .9rem; border: 1px dashed var(--qg-rule-strong, var(--qg-rule)); border-left: 4px solid var(--g); color: var(--qg-ink); text-decoration: none; }

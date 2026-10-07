@@ -4,6 +4,7 @@
 import Qg from './Qg.astro';
 import { rosterMembers, teamUser } from './outils';
 import { rows } from '../db';
+import { JEUX } from './jeux';
 import { CAMPAIGN, QUESTIONS } from '../sondage-questions';
 
 export const prerender = false;
@@ -12,7 +13,12 @@ if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
 if (!(me.staff || me.games.length || me.mod)) return Astro.redirect('/equipe/');
 // Responsable d'un jeu : seulement son jeu (rosters, candidatures, recrues, matchs) ; le reste du club est pour l'encadrement
-const mineGame = (g: string | null | undefined) => me.staff || me.mod || (!!g && me.games.includes(g));
+// Espace jeu (07/10) : ?jeu=<rl|lol|valo|osu> filtre tout l'écran sur un jeu ; un responsable d'un seul jeu y arrive directement
+const asked = Astro.url.searchParams.get('jeu');
+const focus = asked && asked in JEUX && (me.staff || me.mod || me.games.includes(asked)) ? asked : !me.staff && !me.mod && me.games.length === 1 ? me.games[0] : null;
+const mineGame = (g: string | null | undefined) => (focus ? g === focus : me.staff || me.mod || (!!g && me.games.includes(g)));
+const tabs = (me.staff || me.mod ? Object.keys(JEUX) : me.games).filter((g) => g in JEUX);
+const shown = me.rosters.filter((r) => !focus || r.game === focus);
 
 const now = Date.now(), DAY = 86400_000;
 const ago = (ms: number) => { const m = Math.round((now - ms) / 60_000); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`; };
@@ -48,7 +54,7 @@ const upcoming = (await rows<{ id: number; opponent: string; at: number; kind: s
    WHERE m.cancelled = 0 AND m.score_us IS NULL AND m.at > ? AND m.at < ? ORDER BY m.at`, now, now + 21 * DAY)).filter((x) => mineGame(x.game));
 
 // Rosters
-const cards = await Promise.all(me.rosters.map(async (r) => {
+const cards = await Promise.all(shown.map(async (r) => {
   const members = await rosterMembers(r.role_id);
   const [next] = await rows<{ id: number; at: number; kind: string }>('SELECT id, at, kind FROM trainings WHERE roster_id = ? AND cancelled = 0 AND at > ? ORDER BY at LIMIT 1', r.id, now);
   const nextAnswers = next ? (await rows<{ n: number }>('SELECT COUNT(*) AS n FROM attendance WHERE training_id = ?', next.id))[0] : null;
@@ -142,12 +148,20 @@ const oldTickets = tickets.filter((x) => now - Number(x.opened_at) > 3 * DAY);
 if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouverte(s) depuis plus de 3 jours`, 'action']);
 if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, 'action']);
 ---
-<Qg title="Vue d'ensemble · Inside" heading="Vue d'ensemble" lead="Tout le club en un écran : ce qui va, ce qui demande une action." current="vue" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title={focus ? `Espace ${JEUX[focus as keyof typeof JEUX].label} · Inside` : "Vue d'ensemble · Inside"} heading={focus ? `Espace ${JEUX[focus as keyof typeof JEUX].label}` : "Vue d'ensemble"}
+  lead={focus ? 'Les rosters du jeu, le recrutement, les essais et les matchs : ce qui va, ce qui demande une action.' : 'Tout le club en un écran : ce qui va, ce qui demande une action.'} current="vue" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ov">
+      {tabs.length > 0 && (
+        <nav class="ov-tabs" aria-label="Espaces de jeu">
+          {(me.staff || me.mod) && <a href="/equipe/vue/" aria-current={!focus ? 'page' : undefined}>Tout le club</a>}
+          {tabs.map((g) => <a href={`/equipe/vue/?jeu=${g}`} style={`--g:${JEUX[g as keyof typeof JEUX].color}`} aria-current={focus === g ? 'page' : undefined}>{JEUX[g as keyof typeof JEUX].label}</a>)}
+        </nav>
+      )}
+      {focus && shown[0] && <p class="ov-docs">Docs communs à tous les rosters {JEUX[focus as keyof typeof JEUX].label} : <a href={`/equipe/docs/?r=${shown[0].slug}`}>les lire ou en écrire</a> (rubrique Préparer, section « Docs {JEUX[focus as keyof typeof JEUX].label} »).</p>}
       <ul class="ov-kpis">
         <li class:list={{ 'is-ok': botOnline, 'is-ko': !botOnline }}><b>{botOnline ? 'En ligne' : 'Arrêté'}</b><span>Oni Bot {meta['bot:version'] ? `v${meta['bot:version']}` : ''}</span></li>
         <li><b>{stats?.membres ?? '—'}</b><span>membres Discord{stats?.enLigne ? ` · ${stats.enLigne} en ligne` : ''}</span></li>
-        <li><b>{me.rosters.length}</b><span>roster{me.rosters.length > 1 ? 's' : ''} actif{me.rosters.length > 1 ? 's' : ''}</span></li>
+        <li><b>{shown.length}</b><span>roster{shown.length > 1 ? 's' : ''} actif{shown.length > 1 ? 's' : ''}</span></li>
         <li><b>{tickets.length}</b><span>candidature{tickets.length > 1 ? 's' : ''} ouverte{tickets.length > 1 ? 's' : ''}</span></li>
         <li><b>{upcoming.length}</b><span>match{upcoming.length > 1 ? 's' : ''} sur 3 semaines</span></li>
       </ul>
@@ -298,4 +312,8 @@ if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du form
   .ov-list li { display: flex; flex-wrap: wrap; gap: .2rem .75rem; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid var(--line); }
   .ov-list a { font-weight: 700; color: var(--red-text); }
   .ov-list span { color: var(--muted); font-size: var(--step--1); }
+  .ov-tabs { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .ov-tabs a { padding: .45rem .9rem; border: 1px solid var(--line, var(--qg-rule)); border-top: 3px solid var(--g, var(--qg-ink)); color: inherit; text-decoration: none; font-weight: 600; font-size: .9rem; }
+  .ov-tabs a[aria-current] { background: var(--qg-surface, rgb(255 255 255 / .06)); border-color: var(--qg-ink); }
+  .ov-docs { margin: 0; color: var(--muted, var(--qg-muted)); font-size: .9rem; }
 </style>

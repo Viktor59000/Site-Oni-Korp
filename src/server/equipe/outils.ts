@@ -11,7 +11,7 @@ import { actions as contenu } from './actions/contenu';
 import { actions as roster } from './actions/roster';
 import { actions as match } from './actions/match';
 import { LL_LANES, llChamp, llMeta, lv, lvList, lvOne, vcList, type VC } from './sources';
-export { canSee, canLead, rosterMembers } from './access';
+export { canSee, canLead, canWriteDoc, rosterMembers } from './access';
 export { GAMES_ACCOUNTS };
 
 /** Les gestes d'Inside, par domaine (actions/*.ts). */
@@ -46,6 +46,10 @@ export async function ensureTables() {
   const c = db(); if (c) await c.batch(statements, 'write').catch(async () => { for (const sql of statements) await exec(sql).catch(() => {}); });
   // Lineups (07/10) : compétence utilisée, type (lineup ou setup) et captures (position, visée, impact)
   for (const col of ['ability TEXT', 'kind TEXT', 'imgs TEXT']) await exec(`ALTER TABLE lineups ADD COLUMN ${col}`).catch(() => {});
+  // Docs à trois niveaux (07/10) : 'roster' (défaut), 'jeu' (game, tous les rosters du jeu), 'club' (tout Inside) ; roster_id nul hors roster
+  for (const col of ['level TEXT', 'game TEXT']) await exec(`ALTER TABLE docs ADD COLUMN ${col}`).catch(() => {});
+  // Objectifs individuels privés (07/10) : visibles du joueur et de l'encadrement du roster seulement
+  await exec('ALTER TABLE goals ADD COLUMN private INTEGER DEFAULT 0').catch(() => {});
   ready = true;
 }
 

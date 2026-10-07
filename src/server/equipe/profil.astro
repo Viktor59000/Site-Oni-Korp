@@ -85,7 +85,9 @@ const rIds = target.rosterIds;
 const done = rIds.length ? await rows<{ id: number }>(`SELECT id FROM trainings WHERE cancelled = 0 AND roster_id IN (${rIds.map(() => '?').join(',')}) AND at BETWEEN ? AND ?`, ...rIds, Date.now() - 90 * DAY, Date.now()) : [];
 const att = done.length ? await rows<{ status: string }>(`SELECT status FROM attendance WHERE user_id = ? AND training_id IN (${done.map(() => '?').join(',')})`, uid, ...done.map((d) => d.id)) : [];
 const presence = done.length ? Math.round((att.filter((a) => a.status === 'present').length / done.length) * 100) : null;
-const goals = await rows<{ title: string; status: string; progress: number; due: number | null }>(`SELECT title, status, progress, due FROM goals WHERE user_id = ? ORDER BY status = 'en-cours' DESC, updated_at DESC LIMIT 8`, uid).catch(() => []);
+// Objectifs privés : seulement pour la personne elle-même et l'encadrement de leur roster
+const goals = (await rows<{ title: string; status: string; progress: number; due: number | null; private: number | null; roster_id: number }>(`SELECT title, status, progress, due, private, roster_id FROM goals WHERE user_id = ? ORDER BY status = 'en-cours' DESC, updated_at DESC LIMIT 8`, uid).catch(() => []))
+  .filter((g) => !Number(g.private) || uid === user.id || canLead(me, g.roster_id));
 const [deb] = await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE user_id = ?', uid);
 const setups = await rows<{ game: string; data: string }>('SELECT game, data FROM setups WHERE user_id = ?', uid);
 // Inhouses de la saison en cours : Elo et bilan par mode

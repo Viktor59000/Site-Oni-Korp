@@ -1,7 +1,7 @@
 // Actions d'Inside · Vie du roster : statut des joueurs, objectifs, docs, maps osu!, tableaux blancs, suppressions.
 // Appelées par POST /api/equipe/outils (outils.ts) selon le champ « action ». Chaque action vérifie elle-même les droits.
 import { exec, rows } from '../../db';
-import { canLead } from '../access';
+import { canLead, canWriteDoc } from '../access';
 import { clip, type Action } from './base';
 
 export const actions: Record<string, Action> = {
@@ -22,9 +22,12 @@ export const actions: Record<string, Action> = {
     const roster = Number(f.get('roster'));
     const due = clip(f.get('due'), 10);
     await exec(`CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`).catch(() => {});
-    if (clip(f.get('title'), 120)) await exec('INSERT INTO goals (roster_id, user_id, title, detail, due, created_by, at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
-      roster, clip(f.get('user'), 25) || null, clip(f.get('title'), 120), clip(f.get('detail'), 500) || null,
-      /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(`${due}T23:59:00+01:00`) : null, user.id, Date.now(), Date.now());
+    // Objectif d'un joueur : privé par défaut (le joueur et l'encadrement), sauf « visible par tout le roster » coché
+    const who = clip(f.get('user'), 25) || null;
+    const priv = who && f.get('public') !== '1' ? 1 : 0;
+    if (clip(f.get('title'), 120)) await exec('INSERT INTO goals (roster_id, user_id, title, detail, due, created_by, at, updated_at, private) VALUES (?,?,?,?,?,?,?,?,?)',
+      roster, who, clip(f.get('title'), 120), clip(f.get('detail'), 500) || null,
+      /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(`${due}T23:59:00+01:00`) : null, user.id, Date.now(), Date.now(), priv);
     return redirect(back);
   },
   'objectif-maj': async ({ f, user, me, back, redirect }) => {
@@ -44,15 +47,22 @@ export const actions: Record<string, Action> = {
     const qs = back.includes('?') ? `&${back.split('?')[1]}` : '';
     if (!title) return redirect(back);
     if (id) {
-      const [d] = await rows<{ roster_id: number; pinned: number }>('SELECT roster_id, pinned FROM docs WHERE id = ?', id);
-      if (!d || !canRoster(Number(d.roster_id))) return redirect(back);
-      await exec('UPDATE docs SET title = ?, body = ?, pinned = ?, author = ?, updated_at = ? WHERE id = ?', title, body, canLead(me, d.roster_id) ? wantPin : Number(d.pinned), user.id, Date.now(), id);
+      const [d] = await rows<{ roster_id: number | null; pinned: number; level: string | null; game: string | null }>('SELECT roster_id, pinned, level, game FROM docs WHERE id = ?', id);
+      const lvl = d?.level ?? 'roster';
+      if (!d || !canWriteDoc(me, lvl, d.roster_id, d.game)) return redirect(back);
+      const pinOk = lvl === 'roster' ? canLead(me, d.roster_id) : true;
+      await exec('UPDATE docs SET title = ?, body = ?, pinned = ?, author = ?, updated_at = ? WHERE id = ?', title, body, pinOk ? wantPin : Number(d.pinned), user.id, Date.now(), id);
       return redirect(`/equipe/docs/?d=${id}${qs}`);
     }
+    // Niveau : ce roster, tous les rosters du jeu (responsable du jeu), ou tout le club (encadrement)
     const roster = Number(f.get('roster'));
-    if (!canRoster(roster)) return redirect(back);
-    const pinned = canLead(me, roster) ? wantPin : 0;
-    const [n] = await rows<{ id: number }>('INSERT INTO docs (roster_id, title, body, pinned, author, updated_at) VALUES (?,?,?,?,?,?) RETURNING id', roster, title, body, pinned, user.id, Date.now());
+    const level = ['jeu', 'club'].includes(clip(f.get('level'), 6)) ? clip(f.get('level'), 6) : 'roster';
+    const [rr] = await rows<{ game: string }>('SELECT game FROM rosters WHERE id = ?', roster);
+    const game = level === 'jeu' ? rr?.game ?? null : null;
+    if (!canRoster(roster) || !canWriteDoc(me, level, roster, game)) return redirect(back);
+    const pinned = level !== 'roster' || canLead(me, roster) ? wantPin : 0;
+    const [n] = await rows<{ id: number }>('INSERT INTO docs (roster_id, title, body, pinned, author, updated_at, level, game) VALUES (?,?,?,?,?,?,?,?) RETURNING id',
+      level === 'roster' ? roster : null, title, body, pinned, user.id, Date.now(), level, game);
     return redirect(n ? `/equipe/docs/?d=${n.id}${qs}` : back);
   },
   'osu-map': async ({ f, user, me, back, redirect, canRoster }) => {
@@ -94,8 +104,9 @@ export const actions: Record<string, Action> = {
     if (['osu_maps', 'vods', 'docs'].includes(tname)) {
       // Contenus du roster : l'auteur ou l'encadrement
       const col = tname === 'docs' ? 'author' : 'added_by';
-      const [row] = await rows<{ who: string; roster_id: number }>(`SELECT ${col} AS who, roster_id FROM ${tname} WHERE id = ?`, id);
-      if (row && (row.who === user.id || canLead(me, row.roster_id))) { await exec(`DELETE FROM ${tname} WHERE id = ?`, id); if (tname === 'vods') await exec('DELETE FROM vod_marks WHERE vod_id = ?', id); }
+      const [row] = await rows<{ who: string; roster_id: number; level?: string | null; game?: string | null }>(`SELECT ${col} AS who, roster_id${tname === 'docs' ? ', level, game' : ''} FROM ${tname} WHERE id = ?`, id);
+      const lvl = row?.level ?? 'roster';
+      if (row && (row.who === user.id || (lvl === 'roster' ? canLead(me, row.roster_id) : canWriteDoc(me, lvl, row.roster_id, row.game ?? null)))) { await exec(`DELETE FROM ${tname} WHERE id = ?`, id); if (tname === 'vods') await exec('DELETE FROM vod_marks WHERE vod_id = ?', id); }
       return redirect(back);
     }
     const table = tname === 'lineups' ? 'lineups' : 'drafts';
