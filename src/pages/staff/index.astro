@@ -1,11 +1,13 @@
 ---
 // Le staff : les bénévoles qui font tourner le club, par pôle, et ce qu'ils ont fait (SWOT-ROLES.md, chantier 7).
 // Liste en direct (/api/staff) : seulement celles et ceux qui l'ont choisi dans Inside > Mon profil.
-// Pas d'image d'en-tête pour l'instant : un visuel dédié reste à générer (règle des visuels uniques).
+// En-tête : visuel dédié de Viktor (07/10/2026), « les coulisses d'un club », gauche vide pour le titre.
 import Base from '../../layouts/Base.astro';
+import { srcset } from '../../lib/img.js';
 ---
 <Base title="Le staff" description="Les bénévoles d'Oni Korp, club esport français : direction, encadrement, contenu et communauté. Qui fait quoi, et comment nous rejoindre.">
-  <header class="page-head page-head--plain">
+  <header class="page-head">
+    <img class="page-head__bg" src="/img/entete-staff.webp" srcset={srcset("/img/entete-staff.webp")} sizes="100vw" fetchpriority="high" alt="" width="2000" height="667" />
     <div class="wrap">
       <h1>Le staff</h1>
       <p>Bénévoles, à distance, et sans eux rien ne tourne : les rosters, les casts, les visuels, le Discord.</p>

@@ -21,7 +21,7 @@ const PAGES = [
   ['contact', 'Contact', 'Une question, un partenariat ? Écris-nous', 'public/img/entete-contact.webp'],
   ['createurs', 'Créateurs', 'Les streamers et vidéastes du club', 'public/img/entete-createurs.webp'],
   ['postuler', 'Postuler', 'Joueurs et staff : candidature en deux minutes', 'public/img/entete-postuler.webp'],
-  ['staff', 'Le staff', 'Les bénévoles qui font tourner le club', null],
+  ['staff', 'Le staff', 'Les bénévoles qui font tourner le club', 'public/img/entete-staff.webp'],
   ['sondage', 'Ton avis', 'Deux minutes pour dire ce qui manque au club', null],
   ['mentions-legales', 'Mentions légales', 'Oni Korp, club esport français', null],
 ];

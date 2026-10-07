@@ -9,6 +9,7 @@ export const variants = {
   'decal-fennec-domicile': [800, 1600],
   'decal-fennec-visiteur': [800, 1600],
   'entete-club': [800, 2000],
+  'entete-staff': [800, 2000],
   'entete-effectif': [800, 2000],
   'entete-recrutement': [800, 2000],
   'entete-vestiaire': [800, 2000],
