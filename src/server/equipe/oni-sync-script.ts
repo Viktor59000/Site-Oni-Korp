@@ -7,7 +7,7 @@
 // 4. signale au site son état (lancé, connecté au jeu, partie quittée avant la fin) : Inside > Tracker l'affiche, ce qui permet d'aider à distance.
 // Aucun accès à la mémoire du jeu, aucune injection : seulement ce que Rocket League publie lui-même.
 // Pas de backtick ni de « ${ » dans ce texte (gabarit TypeScript).
-export const ONI_SYNC_VERSION = '4';
+export const ONI_SYNC_VERSION = '5';
 // Logo Oni Korp (64 px, PNG) pour l'icône de la zone de notification
 export const ONI_ICON = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAEzElEQVR4nO2aT1IbRxjFX0sbFyyMl9iuUm8g2Vk3iHwCkxOgnMC6AfIJIp/A5AQhJ7C4gdglZtNUYbI0LOwdar9v0IgR6p5pofmEMfyqBnXzjd73+s0fTZVk8MB5DIDbg+YxAG4zfGnbjWcjd87hT0dobTMBnG7ZtjHYefHJ9fET8nnb9r3HwctjN+I0YyaAqx38W/77dXGnOpBwm0085bCUzX/dIV9qR/oD/qMx5n3xABtuUyQAeL/ngXOWKkP4/1drAbS8R5vbBjws32uR4dsG/N+CvDg+4duuvXAIf+VnxCFYdPzjGg0cMqwhEpguXvwY8y4awNm23fHe/83hBLPfaOIdBxh7vKITCnHzsBSUce2EAghSWMjnrZbnP0ZcjQMgr6OGwRHHGF9iD/BdTOAZ8PvzT+6Aw4ysWRE2dmzc4vBOuH0ACRhzwvdYFDDcZjibOwtWi2YAN4++kDW7Ca/tzniMfRpocbpSVALgkec9o7sZuGdkzWJUCucYc+Q9znndOb7BgXDueNd3mPDkCUbyGVylqRFArhkiWhCqhNfWzTNZFIfJVGnmZu9FAGXCObycfuPLCU8/B5Kqea8C4CI7/LjZ5c4WxMB3UOQWZu9VABpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYTam6WEu+FV3//l/bsBpRpmm7P/y2G1wGCRrFoMmDmjiDYdBqsxOqSkALub9+jr6xW+kr76X9B85DGPMP+y9w1GQrFmMKvEyszMsGQAXfthsZj9wcJhAb/byEh/mvoi9QaNpXvN9Q0TImpVxumW7bPKBwzlCZoPcNgCAvdEr/qxFfuz47Rvesl8fFTC4P3j676ME6leT/W4IGLBpi9MpM2ZrDoDBt2l+xOGU0227yz4D7rDBaRxjRGQmuBjcLx1ZqPfo8Yx4yunUrPwfNQdQhKc7L0X8iYqf5vGIXxiDQd4rhblmVdCM9WP0vfe7uVmtAKTXeMyFe7/DaSnGmL8MPx02C/eJFKbNFoXmOmw2BKk7gPw6Z8g828pPdx51uUH2cy+LQv3lqTMAb0yXpvrUsyiBC7/gS4/3iX0sAXstz+SI9Wh6j9N5FgggCeqtrWFQfB64LbUEkMPLQq7ZAYN4w+k1NFxLAHyo4VNgj6e7Q03UGkAOg+hMgnjFKbssGYAxR5OFD1EzKgHknP1iewyibwofTYsEINc5Fz7z3F83qgEIcn/4+hWWN6sRp8kBcPFzz/0aqAdwk6oAuHD5WOvydHdYASsPIPZYDT6+8nSXhQ+xQlYeQI48O3g+VnPItV/fI1bNnQUgyP2BL9C+zsu40wB+BB4D4PagefABfAeu9hyMASqlYQAAAABJRU5ErkJggg==';
 export const ONI_SYNC_PS = String.raw`
@@ -96,8 +96,15 @@ function Status($t) { $s = 'Oni Sync : ' + $t; if ($s.Length -gt 63) { $s = $s.S
 function Hello($state, $note) {
   try {
     $body = (@{ hello = @{ state = $state; note = $note; version = $Version } } | ConvertTo-Json -Compress)
-    Invoke-RestMethod -Method Post -Uri $Api -Headers @{ Authorization = ('Bearer ' + $Token) } -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 10 | Out-Null
+    return Invoke-RestMethod -Method Post -Uri $Api -Headers @{ Authorization = ('Bearer ' + $Token) } -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 10
   } catch { Log ('Signal au site impossible : ' + $_.Exception.Message) }
+}
+
+# ---------- Nouvelle version ----------
+# Le site répond au signal de démarrage avec la dernière version. Pas de mise à jour automatique (un script qui se
+# télécharge et se relance seul ressemble à un virus pour Windows Defender) : une seule notification, le joueur retélécharge.
+function Check-Version($latest) {
+  if ($latest -and [string]$latest -ne $Version) { Log ('Nouvelle version disponible : v' + $latest); Tip 'Oni Sync : nouvelle version' ('La version ' + $latest + ' est sortie : retélécharge Oni Sync dans Inside > Tracker RL et double-clique dessus.') 'Info' }
 }
 
 # ---------- 1. Où est Rocket League ? Son API Stats est-elle active ? ----------
@@ -114,30 +121,35 @@ $ini = $null
 foreach ($r in $roots) { if ($r) { $f = Join-Path $r 'TAGame\Config\DefaultStatsAPI.ini'; if (Test-Path $f) { $ini = $f; break } } }
 
 $port = 49123
-$iniNote = 'fichier de config introuvable'
+$global:iniNote = 'fichier de config introuvable'
 if ($env:ONI_SYNC_PORT) { $port = [int]$env:ONI_SYNC_PORT }
-if ($ini) {
+# Vérifiée au démarrage puis toutes les 30 s sans jeu : une mise à jour de Rocket League réécrit ce fichier (PacketSendRate=0)
+function Check-Ini($boot) {
+  if (-not $ini) { return }
   $txt = [IO.File]::ReadAllText($ini)
-  if (-not $env:ONI_SYNC_PORT -and $txt -match '(?m)^\s*Port\s*=\s*(\d+)') { $port = [int]$Matches[1] }
+  if ($boot -and -not $env:ONI_SYNC_PORT -and $txt -match '(?m)^\s*Port\s*=\s*(\d+)') { $script:port = [int]$Matches[1] }
   $fixed = $txt.TrimStart([char]0xFEFF)
   $off = $fixed -match '(?m)^\s*PacketSendRate\s*=\s*0(\D|$)'
   if ($off) { $fixed = $fixed -replace '(?m)(?<=^\s*PacketSendRate\s*=\s*)0(?=\D|$)', '30' }
-  if ($env:ONI_SYNC_TEST) { $iniNote = 'test : config non modifiée' }
+  if ($env:ONI_SYNC_TEST) { $global:iniNote = 'test : config non modifiée' }
   elseif ($fixed -ne $txt) {
     try {
       if (-not (Test-Path ($ini + '.avant-oni-sync'))) { Copy-Item $ini ($ini + '.avant-oni-sync') -ErrorAction Stop }
       [IO.File]::WriteAllText($ini, $fixed, (New-Object Text.UTF8Encoding $false))
-      $iniNote = 'API Stats activée (relancer le jeu s''il était ouvert)'
-      Tip 'Oni Sync' 'API Stats de Rocket League activée. Si le jeu était ouvert, relance-le.' 'Info'
+      $global:iniNote = 'API Stats activée (relancer le jeu s''il était ouvert)'
+      if (-not $boot) { Log 'Config du jeu remise à zéro (mise à jour de Rocket League ?) : API Stats réactivée' }
+      if (@(Get-Process RocketLeague -ErrorAction SilentlyContinue).Count) { Tip 'Oni Sync : relance Rocket League' 'Une mise à jour du jeu avait coupé l''API Stats. Elle est réactivée : ferme et relance Rocket League pour que la partie soit suivie.' 'Warning' }
     } catch {
-      $iniNote = 'API Stats coupée, modification refusée par Windows'
+      $global:iniNote = 'API Stats coupée, modification refusée par Windows'
       Tip 'Oni Sync : une étape à faire' 'Windows refuse d''activer l''API Stats du jeu. Fais une fois : clic droit sur Oni-Sync.cmd > Exécuter en tant qu''administrateur.' 'Warning'
     }
-  } else { $iniNote = 'API Stats active' }
+  } elseif ($boot) { $global:iniNote = 'API Stats active' }
 }
-Log ('Démarrage v' + $Version + ' · pseudo ' + $Pseudo + ' · ' + $iniNote + ' · port ' + $port + ' · ' + $ini)
+Check-Ini $true
+Log ('Démarrage v' + $Version + ' · pseudo ' + $Pseudo + ' · ' + $global:iniNote + ' · port ' + $port + ' · ' + $ini)
 if (-not $Pseudo) { Tip 'Oni Sync' 'Relie ton pseudo Rocket League dans Inside > Joueurs, sinon tes parties seront refusées.' 'Warning' }
-Hello 'lance' $iniNote
+$hi = Hello 'lance' $global:iniNote
+if ($hi) { Check-Version $hi.latest }
 
 # ---------- 2. Découpage du flux JSON (en C#, rapide) ----------
 Add-Type -TypeDefinition @'
@@ -232,6 +244,7 @@ function Drop($why) {
 
 $global:paused = $false
 $global:waitLog = [DateTime]::Now
+$global:iniCheck = [DateTime]::Now
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 200
 $timer.Add_Tick({
@@ -239,6 +252,7 @@ $timer.Add_Tick({
   if (-not $global:client) {
     # Une ligne de journal toutes les 10 minutes tant que le jeu ne répond pas (aide au dépannage)
     if (([DateTime]::Now - $global:waitLog).TotalMinutes -ge 10) { $global:waitLog = [DateTime]::Now; $rl = @(Get-Process RocketLeague -ErrorAction SilentlyContinue).Count; Log ('Toujours en attente du jeu (Rocket League ' + $(if ($rl) { 'ouvert, port ' + $port + ' fermé : API Stats coupée ?' } else { 'fermé' }) + ')') }
+    if (([DateTime]::Now - $global:iniCheck).TotalSeconds -ge 30) { $global:iniCheck = [DateTime]::Now; Check-Ini $false }
     if ([DateTime]::Now -lt $global:nextTry) { return }
     $global:nextTry = [DateTime]::Now.AddSeconds(5)
     $c = Try-Connect
@@ -246,7 +260,7 @@ $timer.Add_Tick({
       $global:client = $c; $global:reader = New-Object System.IO.StreamReader($c.GetStream(), [Text.Encoding]::UTF8)
       $global:split = New-Object OniSplit; $global:last = $null; $global:events = 0; $global:announced = $false; Reset-Stats
       Log ('Connecté à Rocket League (' + $c.Client.RemoteEndPoint + ')'); Status 'connecté au jeu'
-      Hello 'connecte' ('port ' + $port)
+      [void](Hello 'connecte' ('port ' + $port))
     }
     return
   }
@@ -267,7 +281,7 @@ $timer.Add_Tick({
             'StatfeedEvent' { Note-Feed $m }
             'MatchCreated' { Reset-Stats }
             'MatchEnded' { Send-Match $m $global:last; $global:last = $null }
-            'MatchDestroyed' { if ($global:last) { Log 'Partie quittée avant la fin : non comptée.'; Hello 'abandon' 'partie quittée avant la fin' }; $global:last = $null; Reset-Stats }
+            'MatchDestroyed' { if ($global:last) { Log 'Partie quittée avant la fin : non comptée.'; [void](Hello 'abandon' 'partie quittée avant la fin') }; $global:last = $null; Reset-Stats }
           }
         }
       }
@@ -279,7 +293,7 @@ $timer.Add_Tick({
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $head = $menu.Items.Add('Oni Sync · Oni Korp'); $head.Enabled = $false
 [void]$menu.Items.Add('-')
-$menu.Items.Add('État').Add_Click({ [System.Windows.Forms.MessageBox]::Show(('État : ' + $global:statusText + [Environment]::NewLine + 'Pseudo suivi : ' + $Pseudo + [Environment]::NewLine + 'Config du jeu : ' + $iniNote + [Environment]::NewLine + 'Messages reçus du jeu : ' + $global:events), 'Oni Sync') | Out-Null }) | Out-Null
+$menu.Items.Add('État').Add_Click({ [System.Windows.Forms.MessageBox]::Show(('État : ' + $global:statusText + [Environment]::NewLine + 'Pseudo suivi : ' + $Pseudo + [Environment]::NewLine + 'Config du jeu : ' + $global:iniNote + [Environment]::NewLine + 'Messages reçus du jeu : ' + $global:events), 'Oni Sync') | Out-Null }) | Out-Null
 # Pause : Oni Sync se déconnecte du jeu et n'envoie plus rien jusqu'à « Reprendre »
 $pause = $menu.Items.Add('Mettre en pause')
 $pause.Add_Click({

@@ -40,6 +40,7 @@ Le journal des choix qui structurent le projet. Avant de défaire l'un d'eux, li
 - **Rubrique « Préparer »** (ex-« Outils ») : tableau blanc, outil du jeu et Docs du roster côte à côte.
 - **Terrain Rocket League réaliste** sur le tableau blanc : vraie forme, buts, 34 boosts aux positions du jeu, coups d'envoi (`scripts/terrain-rl.mjs`).
 - **Oni Sync dans la zone de notification** (7 oct. 2026), sans fenêtre ; notifications Windows seulement quand il faut agir (jamais à chaque partie). **Pas de mod type BakkesMod qui contourne l'anti-triche** (Easy Anti-Cheat) : risque de bannissement des comptes et contraire aux conditions d'Epic et Psyonix.
+- **Oni Sync v5 : pas de mise à jour automatique** (7 oct. 2026). Un script PowerShell qui se télécharge et se relance seul est classé « Trojan PShellDlr » par Windows Defender (vérifié ce jour-là). Oni Sync signale seulement une nouvelle version (une notification), le joueur retélécharge. La v5 revérifie aussi la config du jeu toutes les 30 s : une mise à jour de Rocket League remet `PacketSendRate=0` et coupait le suivi.
 
 - **Nom « Inside »** (l'ancien « QG » était froid et confus). Noms d'outils sobres.
 - **Rangement par usage** (Accueil, Semaine, Match, Progrès, Outils, Équipe) et **outils filtrés selon le jeu** du roster.

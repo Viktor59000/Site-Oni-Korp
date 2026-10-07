@@ -42,14 +42,18 @@ async function tokenFor(userId: string, fresh = false) {
 }
 
 // ---------- Téléchargement du script ----------
+async function scriptFor(userId: string, token: string, origin: string) {
+  const [acc] = await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE user_id = ? AND game = 'rl'`, userId);
+  const api = `${origin}/api/rl/sync`;
+  return ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION).replaceAll('__ICON__', ONI_ICON)
+    .replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
+}
+
 export const GET: APIRoute = async ({ cookies, url }) => {
   const t = await teamUser(cookies);
   if (!t) return new Response('Connecte-toi à Inside.', { status: 401 });
   const token = await tokenFor(t.user.id);
-  const [acc] = await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE user_id = ? AND game = 'rl'`, t.user.id);
-  const api = `${url.origin}/api/rl/sync`;
-  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION).replaceAll('__ICON__', ONI_ICON)
-    .replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
+  const ps = await scriptFor(t.user.id, token, url.origin);
   // La fenêtre de commande se ferme aussitôt : Oni Sync tourne caché, avec son icône près de l'horloge
   const cmd = [
     '@echo off',
@@ -90,7 +94,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (body?.hello) {
     const h = body.hello;
     await exec('UPDATE rl_sync SET seen_at = ?, seen_state = ?, seen_note = ?, version = ? WHERE user_id = ?', Date.now(), String(h.state ?? '').slice(0, 20), String(h.note ?? '').slice(0, 200), String(h.version ?? '').slice(0, 10), uid);
-    return json({ ok: true });
+    return json({ ok: true, latest: ONI_SYNC_VERSION });
   }
 
   // Les premiers messages reçus sont gardés tels quels (débogage du format de l'API Stats)
