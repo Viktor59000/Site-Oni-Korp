@@ -1,0 +1,86 @@
+---
+// Packs d'entraînement Rocket League (07/10) : la bibliothèque du roster. Un code (XXXX-XXXX-XXXX-XXXX) à coller dans le jeu
+// (Entraînement > Packs personnalisés > Rechercher un code), un titre, un thème, une note. Copie du code en un clic.
+import Qg from './Qg.astro';
+import { canLead, scope, teamUser } from './outils';
+import { rows } from '../db';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'rl');
+const roster = sc.list[0] ?? null;
+const back = `/equipe/packs/${roster ? `?r=${roster.slug}` : ''}`;
+const KINDS: [string, string][] = [['aerien', 'Aérien'], ['tir', 'Tir'], ['defense', 'Défense et arrêts'], ['kickoff', 'Coup d’envoi'], ['dribble', 'Dribble et contrôle'], ['mur', 'Murs et plafond'], ['autre', 'Autre']];
+type P = { id: number; code: string; title: string; kind: string; note: string | null; author: string; at: number; name: string | null };
+const packs = roster ? await rows<P>(`SELECT p.*, g.name FROM rl_packs p LEFT JOIN guild_members g ON g.id = p.author WHERE p.roster_id = ? ORDER BY p.kind, p.at DESC`, roster.id).catch(() => [] as P[]) : [];
+const err = Astro.url.searchParams.get('erreur');
+---
+<Qg title="Packs d’entraînement · Inside" heading="Packs d’entraînement" lead="Les packs que le roster travaille : un code à coller dans le jeu, en un clic." current="packs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? t.user.name, avatar: me.member?.avatar ?? t.user.avatar }}>
+  {!roster ? <p class="eq-note">Aucun roster Rocket League pour l’instant.</p> : (
+    <div class="pk">
+      <details class="pk-new" open={!packs.length}>
+        <summary>Ajouter un pack</summary>
+        <form method="post" action="/api/equipe/outils">
+          <input type="hidden" name="action" value="pack" /><input type="hidden" name="roster" value={roster.id} /><input type="hidden" name="back" value={back} />
+          <label>Code<input name="code" required pattern="[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}" placeholder="A1B2-C3D4-E5F6-G7H8" autocomplete="off" spellcheck="false" /></label>
+          <label>Titre<input name="title" maxlength="80" placeholder="Ex. : Aerials depuis le mur" /></label>
+          <label>Thème<select name="kind">{KINDS.map(([k, l]) => <option value={k}>{l}</option>)}</select></label>
+          <label class="pk-wide">Pourquoi ce pack <small>(facultatif)</small><input name="note" maxlength="400" placeholder="Ex. : 10 tirs par jour avant les scrims" /></label>
+          <button class="btn">Ajouter</button>
+        </form>
+        {err === 'code' && <p class="pk-err">Le code doit ressembler à A1B2-C3D4-E5F6-G7H8 (4 groupes de 4 lettres ou chiffres).</p>}
+      </details>
+      <p class="eq-note">Dans le jeu : Entraînement › Packs personnalisés › Rechercher un code, puis colle le code.</p>
+      {packs.length ? KINDS.filter(([k]) => packs.some((p) => p.kind === k)).map(([k, l]) => (
+        <section class="pk-group">
+          <h2>{l}</h2>
+          <ul>
+            {packs.filter((p) => p.kind === k).map((p) => (
+              <li>
+                <div class="pk-main"><strong>{p.title}</strong>{p.note && <span>{p.note}</span>}<small>ajouté par {p.name ?? 'un membre'}</small></div>
+                <button type="button" class="pk-code" data-copy={p.code} title="Copier le code">{p.code}</button>
+                {(p.author === user.id || canLead(me, roster.id)) && (
+                  <form method="post" action="/api/equipe/outils" onsubmit="return confirm('Retirer ce pack ?')"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="rl_packs" /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="back" value={back} /><button class="pk-del" aria-label={`Retirer ${p.title}`}>×</button></form>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )) : <p class="eq-note">Aucun pack pour l’instant. Ajoute ceux que le roster travaille : tout le monde les retrouve ici.</p>}
+    </div>
+  )}
+</Qg>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    const code = b.dataset.copy!;
+    try { await navigator.clipboard.writeText(code); b.textContent = 'Copié !'; } catch { b.textContent = code; }
+    setTimeout(() => (b.textContent = code), 1500);
+  }));
+</script>
+
+<style>
+  .pk { display: grid; gap: 1.5rem; }
+  .pk-new { border: 1px solid var(--line); padding: .75rem 1rem; }
+  .pk-new summary { cursor: pointer; font-weight: 700; }
+  .pk-new form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .8rem; align-items: end; margin-top: .8rem; }
+  .pk-new label { display: grid; gap: .3rem; font-weight: 700; font-size: .85rem; }
+  .pk-new small { font-weight: 400; color: var(--muted); }
+  .pk-new :is(input, select) { min-height: 40px; padding: .4rem .6rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
+  .pk-wide { grid-column: 1 / -1; }
+  .pk-new .btn { justify-self: start; }
+  .pk-err { color: var(--danger, #b3241e); font-size: .9rem; margin: .5rem 0 0; }
+  .pk-group { display: grid; gap: .5rem; }
+  .pk-group h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; padding-bottom: .4rem; border-bottom: 2px solid var(--ink); }
+  .pk-group ul { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+  .pk-group li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .75rem; align-items: center; padding: .6rem .8rem; background: var(--qg-surface, rgb(255 255 255 / .04)); border-left: 4px solid #2f6bff; }
+  .pk-main { display: grid; gap: .15rem; min-width: 0; }
+  .pk-main span, .pk-main small { color: var(--muted); font-size: .85rem; }
+  .pk-code { font: 600 .9rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .04em; padding: .55rem .7rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: copy; min-width: 13.5rem; }
+  .pk-code:hover, .pk-code:focus-visible { border-color: var(--ink); }
+  .pk-del { border: 0; background: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; width: 32px; height: 32px; }
+  .eq-note { color: var(--muted); font-size: .9rem; margin: 0; }
+  @media (max-width: 640px) { .pk-group li { grid-template-columns: minmax(0, 1fr) auto; } .pk-code { grid-column: 1 / -1; min-width: 0; } }
+</style>

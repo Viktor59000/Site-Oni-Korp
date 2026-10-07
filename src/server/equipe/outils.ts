@@ -40,6 +40,11 @@ export async function ensureTables() {
     `CREATE TABLE IF NOT EXISTS vod_marks (id INTEGER PRIMARY KEY, vod_id INTEGER, t INTEGER, text TEXT, kind TEXT, author TEXT, at INTEGER)`,
     `CREATE TABLE IF NOT EXISTS docs (id INTEGER PRIMARY KEY, roster_id INTEGER, title TEXT, body TEXT, pinned INTEGER DEFAULT 0, author TEXT, updated_at INTEGER)`,
     `CREATE TABLE IF NOT EXISTS boards (id INTEGER PRIMARY KEY, roster_id INTEGER, game TEXT, map TEXT, title TEXT, state TEXT, updated_at INTEGER, updated_by TEXT)`,
+    // Outils par jeu (07/10) : pools de champions et d'agents, compos Valorant par carte, packs d'entraînement RL, carnet perso
+    `CREATE TABLE IF NOT EXISTS pools (roster_id INTEGER, user_id TEXT, game TEXT, item TEXT, tier TEXT, note TEXT, at INTEGER, PRIMARY KEY (roster_id, user_id, game, item))`,
+    `CREATE TABLE IF NOT EXISTS comps (id INTEGER PRIMARY KEY, roster_id INTEGER, map TEXT, agents TEXT, note TEXT, author TEXT, at INTEGER)`,
+    `CREATE TABLE IF NOT EXISTS rl_packs (id INTEGER PRIMARY KEY, roster_id INTEGER, code TEXT, title TEXT, kind TEXT, note TEXT, author TEXT, at INTEGER)`,
+    `CREATE TABLE IF NOT EXISTS carnet (user_id TEXT PRIMARY KEY, body TEXT, at INTEGER)`,
     `CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY, roster_id INTEGER, user_id TEXT, title TEXT, detail TEXT, due INTEGER, status TEXT DEFAULT 'en-cours', progress INTEGER DEFAULT 0, created_by TEXT, at INTEGER, updated_at INTEGER)`,
   ];
   // Un seul aller-retour vers la base pour toutes les tables
@@ -50,6 +55,9 @@ export async function ensureTables() {
   for (const col of ['level TEXT', 'game TEXT']) await exec(`ALTER TABLE docs ADD COLUMN ${col}`).catch(() => {});
   // Objectifs individuels privés (07/10) : visibles du joueur et de l'encadrement du roster seulement
   await exec('ALTER TABLE goals ADD COLUMN private INTEGER DEFAULT 0').catch(() => {});
+  await exec('ALTER TABLE osu_maps ADD COLUMN slot TEXT').catch(() => {});
+  // Brouillon de tableau (07/10) : owner = la seule personne qui le voit, jusqu'à ce qu'elle le partage au roster
+  await exec('ALTER TABLE boards ADD COLUMN owner TEXT').catch(() => {});
   // Plan de séance et relance groupée (07/10), aussi créées par Oni Bot
   for (const col of ['plan TEXT', 'plan_at INTEGER', 'relance_at INTEGER']) await exec(`ALTER TABLE trainings ADD COLUMN ${col}`).catch(() => {});
   // Accord d'image (07/10) : vignette et clips ; effacé au départ du serveur (purgeOld d'Oni Bot)

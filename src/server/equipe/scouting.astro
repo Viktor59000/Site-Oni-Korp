@@ -30,7 +30,7 @@ const edit = Astro.url.searchParams.has('modifier') || oid === 'nouveau';
 const current = oid === 'nouveau' ? { id: 0, roster_id: ids[0], name: Astro.url.searchParams.get('nom') ?? '', players: '', style: '', forces: '', faiblesses: '', plan: '', links: '', author: '', updated_at: 0 } as O : oid ? fiches.find((f) => String(f.id) === oid) ?? null : null;
 const related = current?.id ? {
   vods: await rows<{ id: number; title: string }>(`SELECT id, title FROM vods WHERE roster_id = ? AND LOWER(title) LIKE ?`, current.roster_id, `%${current.name.toLowerCase()}%`),
-  boards: await rows<{ id: number; title: string }>(`SELECT id, title FROM boards WHERE roster_id = ? AND LOWER(title) LIKE ?`, current.roster_id, `%${current.name.toLowerCase()}%`),
+  boards: await rows<{ id: number; title: string }>(`SELECT id, title FROM boards WHERE roster_id = ? AND owner IS NULL AND LOWER(title) LIKE ?`, current.roster_id, `%${current.name.toLowerCase()}%`),
 } : null;
 const names = new Map((await rows<{ id: string; name: string }>('SELECT id, name FROM guild_members')).map((m) => [m.id, m.name]));
 const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));

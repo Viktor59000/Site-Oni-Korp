@@ -1,0 +1,88 @@
+---
+// Compos et agents Valorant (07/10) : la compo du roster sur chaque carte (5 agents et une note), et le pool d'agents de chaque joueur.
+import Qg from './Qg.astro';
+import PoolBoard from './PoolBoard.astro';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
+import { rows } from '../db';
+import { valoAgents } from './catalogues';
+import { valoMaps } from './valo-api';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'valo');
+const roster = sc.list[0] ?? null;
+const back = `/equipe/compos/${roster ? `?r=${roster.slug}` : ''}`;
+type C = { id: number; map: string; agents: string; note: string | null; author: string; at: number };
+const members = roster ? await rosterMembers(roster.role_id) : [];
+const pools = roster ? await rows<{ user_id: string; item: string; tier: string }>(`SELECT user_id, item, tier FROM pools WHERE roster_id = ? AND game = 'valo'`, roster.id).catch(() => []) : [];
+const agents = roster ? await valoAgents() : [];
+const maps = roster ? (await valoMaps()).filter((m) => m.competitive) : [];
+const comps = roster ? await rows<C>('SELECT * FROM comps WHERE roster_id = ? ORDER BY map, at DESC', roster.id).catch(() => [] as C[]) : [];
+const agentIcon = new Map<string, string>(agents.map((a: { name: string; icon: string }) => [a.name, a.icon]));
+const agentRole = new Map<string, string>(agents.map((a: { name: string; role: string }) => [a.name, a.role]));
+const edit = Astro.url.searchParams.get('carte');
+const editUrl = (map: string) => `${back}${back.includes('?') ? '&' : '?'}carte=${encodeURIComponent(map)}#carte-${encodeURIComponent(map)}`;
+---
+<Qg title="Compos et agents · Inside" heading="Compos et agents" lead="La compo du roster sur chaque carte, et les agents que chacun maîtrise." current="compos" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  {!roster ? <p class="eq-note">Aucun roster Valorant pour l’instant.</p> : (
+    <div class="cp">
+      <section aria-labelledby="cp-maps">
+        <h2 id="cp-maps">Compos par carte</h2>
+        {!maps.length && <p class="eq-note">Liste des cartes indisponible pour le moment (valorant-api.com). Réessaie plus tard.</p>}
+        <div class="cp-maps">
+          {maps.map((m) => {
+            const c = comps.find((x) => x.map === m.name);
+            const list: string[] = c ? (JSON.parse(c.agents) as string[]) : [];
+            return (
+              <article class="cp-map" id={`carte-${encodeURIComponent(m.name)}`}>
+                <div class="cp-map__img" style={`background-image:url("${m.icon}")`} aria-hidden="true"></div>
+                <div class="cp-map__body">
+                  <h3>{m.name}</h3>
+                  {list.length ? (
+                    <ul class="cp-agents">{list.map((a) => <li title={`${a}${agentRole.get(a) ? ` · ${agentRole.get(a)}` : ''}`}><img src={agentIcon.get(a)} alt={a} width="40" height="40" loading="lazy" /></li>)}</ul>
+                  ) : <p class="eq-note">Pas encore de compo.</p>}
+                  {c?.note && <p class="cp-note">{c.note}</p>}
+                  {edit === m.name ? (
+                    <form method="post" action="/api/equipe/outils" class="cp-form">
+                      <input type="hidden" name="action" value="compo-carte" /><input type="hidden" name="roster" value={roster.id} /><input type="hidden" name="id" value={c?.id ?? 0} /><input type="hidden" name="map" value={m.name} /><input type="hidden" name="back" value={back} />
+                      <div class="cp-pick">{[0, 1, 2, 3, 4].map((k) => <select name="agents" aria-label={`Agent ${k + 1}`}><option value="">—</option>{agents.map((a) => <option selected={list[k] === a.name}>{a.name}</option>)}</select>)}</div>
+                      <input name="note" maxlength="600" value={c?.note ?? ''} placeholder="Note : qui joue quoi, plan B" aria-label="Note" />
+                      <button class="btn">Enregistrer</button>
+                    </form>
+                  ) : <a class="cp-edit" href={editUrl(m.name)}>{c ? 'Modifier' : 'Choisir la compo'}</a>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+      <section aria-labelledby="cp-pools">
+        <h2 id="cp-pools">Agents de chaque joueur</h2>
+        {members.length ? (
+          <PoolBoard game="valo" rosterId={roster.id} back={back} canEditAll={canLead(me, roster.id)} meId={user.id}
+            members={members} pools={pools} catalogue={agents.map((a) => ({ key: a.name, name: a.name, icon: a.icon }))} />
+        ) : <p class="eq-note">Aucun joueur dans ce roster pour l’instant.</p>}
+      </section>
+    </div>
+  )}
+</Qg>
+<style>
+  .cp { display: grid; gap: 2rem; }
+  .cp h2 { margin: 0 0 .75rem; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .cp-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+  .cp-map { display: grid; grid-template-columns: 6rem minmax(0, 1fr); border: 1px solid var(--line); }
+  .cp-map__img { background: #0f1923 center / contain no-repeat; }
+  .cp-map__body { display: grid; gap: .45rem; padding: .75rem; align-content: start; }
+  .cp-map h3 { margin: 0; font-family: var(--font-body); font-size: .95rem; }
+  .cp-agents { display: flex; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+  .cp-agents img { display: block; width: 40px; height: 40px; background: #1b2733; }
+  .cp-note { margin: 0; color: var(--muted); font-size: .85rem; }
+  .cp-edit { justify-self: start; font-weight: 700; font-size: .85rem; color: var(--ink); }
+  .cp-form { display: grid; gap: .4rem; }
+  .cp-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .3rem; }
+  .cp-form :is(select, input) { min-height: 36px; padding: .25rem .4rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .85rem var(--font-body); min-width: 0; }
+  .cp-form .btn { justify-self: start; }
+  .eq-note { color: var(--muted); font-size: .9rem; margin: 0; }
+</style>

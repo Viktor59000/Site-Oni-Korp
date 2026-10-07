@@ -45,7 +45,7 @@ if (roster) {
     rows<{ id: number; at: number; opponent: string; format: string; kind: string | null }>('SELECT id, at, opponent, format, kind FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 3', rid, now - 3 * 3600_000),
     rows<{ opponent: string; score_us: number; score_them: number; at: number }>('SELECT opponent, score_us, score_them, at FROM matches WHERE roster_id = ? AND cancelled = 0 AND score_us IS NOT NULL ORDER BY at DESC LIMIT 1', rid),
     rows<{ title: string; progress: number; due: number | null; user_id: string | null }>(`SELECT title, progress, due, user_id FROM goals WHERE roster_id = ? AND status = 'en-cours' AND (COALESCE(private, 0) = 0 OR user_id = ? OR ? = 1) ORDER BY (user_id = ?) DESC, due IS NULL, due LIMIT 4`, rid, user.id, canLead(me, rid) ? 1 : 0, user.id).catch(() => []),
-    rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM boards WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
+    rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM boards WHERE roster_id = ? AND owner IS NULL ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
     rows<{ id: number; title: string; updated_at: number }>('SELECT id, title, updated_at FROM docs WHERE roster_id = ? ORDER BY updated_at DESC LIMIT 3', rid).catch(() => []),
     rows<{ id: number; title: string; at: number }>('SELECT id, title, at FROM vods WHERE roster_id = ? ORDER BY at DESC LIMIT 3', rid).catch(() => []),
     // Disponibilités v2 (dispo_days) : au moins un jour coché pour la semaine prochaine
@@ -127,7 +127,7 @@ let espace: null | {
   cards: { r: Rr; next: Mine | null; members: number; team: number }[];
   trial: { roster: string; until: number | null; retour: string | null } | null;
   accounts: { game: string; ident: string }[]; elo: { mode: string; rating: number; wins: number; losses: number }[];
-  sync: { seen_at: number | null; seen_state: string | null; last_at: number | null } | null; image: boolean;
+  sync: { seen_at: number | null; seen_state: string | null; last_at: number | null } | null; image: boolean; carnet: string;
 } = null;
 if (!roster) {
   // Seulement MES rosters (ceux dont j'ai le rôle) : ceux que l'encadrement suit sans y jouer sont listés à part, sans tâches ni échéances
@@ -165,18 +165,19 @@ if (!roster) {
   if (!guideSeen.length) todo.push({ label: 'Lis le guide d’Inside', why: '2 minutes pour tout comprendre', href: '/equipe/guide/' });
   const trial = status.find((x) => x.status === 'essai');
   // Mes comptes, l'état d'Oni Sync (si joueur RL), mon Elo d'inhouse de la saison
-  const [accList, sync, elo, consent] = await Promise.all([
+  const [accList, sync, elo, consent, carnet] = await Promise.all([
     rows<{ game: string; ident: string }>('SELECT game, ident FROM accounts WHERE user_id = ? ORDER BY game', user.id).catch(() => []),
     rows<{ seen_at: number | null; seen_state: string | null; last_at: number | null }>('SELECT seen_at, seen_state, last_at FROM rl_sync WHERE user_id = ?', user.id).catch(() => []),
     rows<{ mode: string; rating: number; wins: number; losses: number }>(`SELECT mode, rating, wins, losses FROM inhouse_elo WHERE user_id = ? AND season = (SELECT COALESCE(CAST(value AS INTEGER), 1) FROM meta WHERE key = 'inhouse_season' UNION ALL SELECT 1 LIMIT 1) AND wins + losses > 0 ORDER BY rating DESC`, user.id).catch(() => []),
     rows<{ image: number }>('SELECT image FROM consents WHERE user_id = ?', user.id).catch(() => []),
+    rows<{ body: string }>('SELECT body FROM carnet WHERE user_id = ?', user.id).catch(() => []),
   ]);
   espace = {
     next: all.slice(0, 5),
     todo,
     goals: R.map((r) => ({ roster: r, items: goals.filter((x) => Number(x.roster_id) === Number(r.id) && x.user_id === user.id).map((x) => ({ title: x.title, progress: Number(x.progress) || 0, due: x.due ? Number(x.due) : null })) })).filter((x) => x.items.length),
     cards: R.map((r, i) => ({ r, next: all.find((x) => x.roster === r) ?? null, members: members[i], team: goals.filter((x) => Number(x.roster_id) === Number(r.id) && !x.user_id).length })),
-    accounts: accList, elo, sync: sync[0] ?? null, image: Number(consent[0]?.image) === 1,
+    accounts: accList, elo, sync: sync[0] ?? null, image: Number(consent[0]?.image) === 1, carnet: carnet[0]?.body ?? '',
     trial: trial ? { roster: byId.get(Number(trial.roster_id))?.name ?? '', until: trial.trial_end ? Number(trial.trial_end) : null, retour: trial.retour } : null,
   };
 }
@@ -287,6 +288,15 @@ if (!roster) {
           </ul>
         </section>
       )}
+
+      <details class="qg-card me-carnet" open={!!espace.carnet}>
+        <summary><h2>Mon carnet</h2><small>privé : toi seul le lis</small></summary>
+        <form method="post" action="/api/equipe/outils">
+          <input type="hidden" name="action" value="carnet" /><input type="hidden" name="back" value="/equipe/" />
+          <textarea name="body" rows="6" maxlength="20000" placeholder="Ce que tu travailles, tes réglages, ce que le coach t’a dit, tes idées de strat…">{espace.carnet}</textarea>
+          <button class="btn btn--ghost">Enregistrer</button>
+        </form>
+      </details>
 
       <section class="qg-card ac-card me-acc" aria-labelledby="me-acc-h">
         <h2 id="me-acc-h">Mes comptes et inhouses</h2>
@@ -569,6 +579,12 @@ if (!roster) {
   .me-kv span { color: var(--qg-muted); flex: 1; }
   .me-kv small { color: var(--qg-muted); }
   .me-sync { margin: 0; font-size: var(--text-sm); }
+  .me-carnet summary { display: flex; align-items: baseline; gap: .6rem; cursor: pointer; list-style: none; }
+  .me-carnet summary h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; }
+  .me-carnet summary small { color: var(--qg-muted); }
+  .me-carnet form { display: grid; gap: .5rem; margin-top: .75rem; }
+  .me-carnet textarea { width: 100%; box-sizing: border-box; padding: .6rem .7rem; border: 1px solid var(--qg-rule); background: var(--qg-paper); color: var(--qg-ink); font: 400 .95rem / 1.5 var(--font-body); }
+  .me-carnet .btn { justify-self: start; }
   .me-consent label { display: flex; gap: .5rem; align-items: flex-start; font-size: var(--text-sm); line-height: 1.4; }
   .me-consent input { margin-top: .2rem; }
   .me-note { margin: -.25rem 0 .75rem; color: var(--qg-muted); font-size: var(--text-sm); }

@@ -11,6 +11,8 @@ export interface Jeu {
   account: [string, string];
   /** outil propre au jeu : clé de page, nom dans le menu, adresse */
   tool: [string, string, string];
+  /** autres outils du jeu, rangés après le premier dans Préparer */
+  more?: [string, string, string][];
   /** tableau blanc : null = pas de tableau pour ce jeu ; sinon le fond par défaut et les éléments du jeu (chacun son écosystème :
    *  pas de balises de vision en Rocket League, pas de ballon en LoL) */
   board: { map: string; kit: Kit } | null;
@@ -28,7 +30,7 @@ export const KIT_NEUTRE: Kit = { players: ['1', '2', '3', '4', '5'], ally: { nam
 
 export const JEUX: Record<GameKey, Jeu> = {
   rl: {
-    label: 'Rocket League', code: 'RL', color: '#2f6bff', account: ['rl', 'ton pseudo Rocket League'], tool: ['rl', 'Tracker', '/equipe/rl/'],
+    label: 'Rocket League', code: 'RL', color: '#2f6bff', account: ['rl', 'ton pseudo Rocket League'], tool: ['rl', 'Tracker', '/equipe/rl/'], more: [['packs', 'Packs d’entraînement', '/equipe/packs/']],
     board: { map: 'Terrain', kit: { players: ['1', '2', '3'], ally: { name: 'Bleu', color: '#2f6bff' }, enemy: { name: 'Orange', color: '#ff8a1f' }, pings: [
       { key: 'balle', sym: '●', label: 'Ballon', bg: '#eeeeee', fg: '#555' }, { key: 'boost', sym: '100', label: 'Grosse pastille (100)', bg: '#ff9f1a', fg: '#111' },
       { key: 'demo', sym: 'D', label: 'Démolition', bg: '#2a2a2a', fg: '#fff' }, { key: 'rotation', sym: '↻', label: 'Point de rotation', bg: '#2fbf71', fg: '#111' }, DANGER, CHECK] } },
@@ -39,7 +41,7 @@ export const JEUX: Record<GameKey, Jeu> = {
     },
   },
   lol: {
-    label: 'League of Legends', code: 'LoL', color: '#0f8a9b', account: ['riot', 'ton Riot ID'], tool: ['lol', 'Drafter', '/equipe/lol/'],
+    label: 'League of Legends', code: 'LoL', color: '#0f8a9b', account: ['riot', 'ton Riot ID'], tool: ['lol', 'Drafter', '/equipe/lol/'], more: [['pools', 'Pools de champions', '/equipe/pools/']],
     board: { map: 'Faille', kit: { players: ['T', 'J', 'M', 'B', 'S'], ally: { name: 'Bleu', color: '#2f6bff' }, enemy: { name: 'Rouge', color: '#e5251f' }, pings: [
       { key: 'ward', sym: '◉', label: 'Balise (portée)', bg: '#ffd23f', fg: '#111' }, { key: 'controle', sym: '◉', label: 'Balise de contrôle (portée)', bg: '#ff4fa3', fg: '#111' },
       { key: 'dragon', sym: 'Dr', label: 'Dragon', bg: '#ff8a1f', fg: '#111' }, { key: 'nashor', sym: 'N', label: 'Nashor', bg: '#8b5cf6', fg: '#fff' }, DANGER, CHECK] } },
@@ -50,7 +52,7 @@ export const JEUX: Record<GameKey, Jeu> = {
     },
   },
   valo: {
-    label: 'Valorant', code: 'VAL', color: '#ff4655', account: ['riot', 'ton Riot ID'], tool: ['valo', 'Lineups', '/equipe/valo/'],
+    label: 'Valorant', code: 'VAL', color: '#ff4655', account: ['riot', 'ton Riot ID'], tool: ['valo', 'Lineups', '/equipe/valo/'], more: [['compos', 'Compos et agents', '/equipe/compos/']],
     board: { map: '', kit: { players: ['1', '2', '3', '4', '5'], ally: { name: 'Nous', color: '#2f6bff' }, enemy: { name: 'Eux', color: '#e5251f' }, pings: [
       { key: 'spike', sym: 'S', label: 'Spike', bg: '#e8e8e8', fg: '#c81e19' }, { key: 'info', sym: 'i', label: 'Info (caméra, drone, flèche)', bg: '#22c3d6', fg: '#111' },
       { key: 'entree', sym: '➜', label: 'Point d’entrée', bg: '#2fbf71', fg: '#111' }, DANGER, CHECK] } },

@@ -38,7 +38,11 @@ Colonne « écrit » : qui crée les lignes. « Lit » : qui s'en sert.
 | `docs` | docs du roster, du jeu ou du club (`level`, `game` ; `roster_id` nul hors roster) | site | site |
 | `drafts` | drafts LoL sauvegardés | site | site |
 | `lineups` | lineups Valorant (position, impact, vidéo) | site | site |
-| `boards` | tableaux blancs (état complet en JSON) | site | site |
+| `boards` | tableaux blancs (état complet en JSON ; `owner` : brouillon privé) | site | site |
+| `pools` | pools des joueurs (champions LoL, agents Valorant) par niveau | site | site |
+| `comps` | compos Valorant par carte | site | site |
+| `rl_packs` | packs d'entraînement Rocket League (codes) | site | site |
+| `carnet` | carnet perso de chacun (privé) | site | site |
 | `opponents` | fiches de scouting | site | site |
 | `vods`, `vod_marks` | VOD et repères horodatés | site | site |
 | `setups` | réglages et matériel par joueur et par jeu | site | site |

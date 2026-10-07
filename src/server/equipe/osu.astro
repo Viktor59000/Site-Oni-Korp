@@ -17,7 +17,7 @@ const osuRosters = sc.list.filter((r) => r.game === 'osu' || (me.staff && !sc.ac
 const back = `/equipe/osu/${sc.active ? `?r=${sc.active}` : ''}`;
 const erreur = Astro.url.searchParams.get('erreur');
 const names = new Map((await rows<{ id: string; name: string; avatar: string }>('SELECT id, name, avatar FROM guild_members')).map((m) => [m.id, m]));
-type Mp = { id: number; roster_id: number; beatmap_id: number; note: string | null; challenge: number; ends: number | null; meta: string | null; added_by: string; at: number };
+type Mp = { id: number; roster_id: number; beatmap_id: number; note: string | null; challenge: number; ends: number | null; meta: string | null; added_by: string; at: number; slot?: string | null };
 const maps = osuRosters.length ? await rows<Mp>(`SELECT * FROM osu_maps WHERE roster_id IN (${osuRosters.map(() => '?').join(',')}) ORDER BY challenge DESC, at DESC`, ...osuRosters.map((r) => r.id)) : [];
 const challenges = await Promise.all(maps.filter((m) => Number(m.challenge) && (!m.ends || Number(m.ends) > Date.now() - 7 * 86400_000)).map(async (c) => ({
   c, meta: c.meta ? JSON.parse(c.meta) : null,
@@ -39,7 +39,10 @@ const weekMaps = (week?.maps ?? [])
   .sort((a, b) => (level === null ? b.stars - a.stars : Math.abs(a.stars - level) - Math.abs(b.stars - level)))
   .filter((m, i, all) => all.findIndex((x) => x.set === m.set) === i)
   .sort((a, b) => b.plays - a.plays).slice(0, 8);
-const training = maps.filter((m) => !Number(m.challenge)).map((m) => ({ m, meta: m.meta ? JSON.parse(m.meta) : null }));
+const training = maps.filter((m) => !Number(m.challenge) && !m.slot).map((m) => ({ m, meta: m.meta ? JSON.parse(m.meta) : null }));
+// Mappool de tournoi, dans l'ordre officiel (NM, HD, HR, DT, FM, TB)
+const SLOTS = ['NM1', 'NM2', 'NM3', 'NM4', 'NM5', 'NM6', 'HD1', 'HD2', 'HD3', 'HR1', 'HR2', 'HR3', 'DT1', 'DT2', 'DT3', 'FM1', 'FM2', 'FM3', 'TB'];
+const mappool = maps.filter((m) => m.slot).sort((a, b) => SLOTS.indexOf(a.slot!) - SLOTS.indexOf(b.slot!)).map((m) => ({ m, meta: m.meta ? JSON.parse(m.meta) : null }));
 // Outils recommandés par Yuzuctus pour l'environnement osu!
 const KIT: [string, [string, string, string, string?][]][] = [
   ['Tablette', [
@@ -76,6 +79,7 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
               <label class="ou-wide">Lien de la map<input name="map" required placeholder="https://osu.ppy.sh/beatmapsets/…#osu/…" /></label>
               <label>Roster<select name="roster">{osuRosters.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
               <label class="ou-wide">Pourquoi cette map<input name="note" maxlength="300" placeholder="Ex. : streams 200 BPM, lecture AR10, endurance" /></label>
+              <label>Mappool de tournoi <small>(facultatif)</small><select name="slot"><option value="">Pas dans le mappool</option>{SLOTS.map((s) => <option>{s}</option>)}</select></label>
               {manage && <label class="ou-check"><input type="checkbox" name="challenge" value="1" /> Défi de la semaine, pendant <input name="days" type="number" min="1" max="30" value="7" /> jours</label>}
               <button class="btn">Ajouter</button>
             </form>
@@ -140,6 +144,24 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
             ) : <p class="eq-note">{week ? 'Aucune map classée cette semaine à ce niveau.' : 'Oni Bot relève les maps de la semaine toutes les 6 heures : elles arrivent bientôt.'}</p>}
           </section>
 
+          {mappool.length > 0 && (
+            <section>
+              <h2 class="ou-h">Mappool de tournoi</h2>
+              <ul class="ou-pool">
+                {mappool.map(({ m, meta }) => (
+                  <li class={`is-${m.slot!.slice(0, 2).toLowerCase()}`}>
+                    <b>{m.slot}</b>
+                    <a href={`https://osu.ppy.sh/b/${m.beatmap_id}`} rel="noopener" target="_blank"><strong>{meta ? meta.title : `Map #${m.beatmap_id}`}</strong>{meta && <span> [{meta.version}]</span>}</a>
+                    <span class="ou-meta">{meta ? `${r1(meta.stars, 2)}★ · ${Math.round(meta.bpm)} BPM · ${len(meta.length)}` : ''}{m.note ? ` · ${m.note}` : ''}</span>
+                    {(m.added_by === user.id || canLead(me, m.roster_id)) && (
+                      <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="osu_maps" /><input type="hidden" name="id" value={m.id} /><input type="hidden" name="back" value={back} /><button class="ou-x" aria-label={`Retirer ${m.slot}`}>×</button></form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section>
             <h2 class="ou-h">Maps d'entraînement</h2>
 
@@ -181,6 +203,12 @@ const left = (ms: number) => { const h = Math.round((ms - Date.now()) / 3600_000
   .eq-mini { padding-block: 2.5rem 1.5rem; }
   .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
   .eq-note { color: var(--muted); font-size: var(--step--1); }
+  .ou-pool { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+  .ou-pool li { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto auto; gap: .6rem; align-items: center; padding: .45rem .7rem; background: var(--qg-surface, rgb(255 255 255 / .04)); border-left: 4px solid #9aa0a6; }
+  .ou-pool li.is-hd { border-left-color: #ffd23f; } .ou-pool li.is-hr { border-left-color: #ff4655; } .ou-pool li.is-dt { border-left-color: #8b5cf6; } .ou-pool li.is-fm { border-left-color: #2fbf71; } .ou-pool li.is-tb { border-left-color: #ff66aa; }
+  .ou-pool b { font: 700 .85rem var(--qg-mono, ui-monospace, monospace); }
+  .ou-pool a { color: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 640px) { .ou-pool li { grid-template-columns: 3rem minmax(0, 1fr) auto; } .ou-pool .ou-meta { grid-column: 2 / -1; } }
   .ou { display: grid; gap: 2.75rem; }
   .ou-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
   .ou-h small { font-family: var(--font-body); font-size: var(--step--1); font-weight: 400; color: var(--muted); margin-left: .5rem; }

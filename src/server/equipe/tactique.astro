@@ -20,10 +20,12 @@ if (askedR?.game === 'osu') return Astro.redirect(`/equipe/osu/?r=${askedR.slug}
 const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game !== 'osu', await ownerOf(Astro.url, 'boards', 'b'));
 const usable = sc.list.filter((r) => r.game !== 'osu');
 const boardId = Number(Astro.url.searchParams.get('b')) || null;
-type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null };
-const list = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.map, b.title, b.updated_at, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by
-  WHERE b.roster_id IN (${usable.map(() => '?').join(',')}) ORDER BY b.updated_at DESC`, ...usable.map((r) => r.id)) : [];
-const current = boardId ? list.find((b) => Number(b.id) === boardId) : null;
+type B = { id: number; roster_id: number; game: string; map: string; title: string; updated_at: number; name: string | null; owner: string | null };
+// Tableaux du roster, plus mes brouillons (owner) ; les brouillons des autres ne sortent jamais
+const all = usable.length ? await rows<B>(`SELECT b.id, b.roster_id, b.game, b.map, b.title, b.updated_at, b.owner, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by
+  WHERE b.roster_id IN (${usable.map(() => '?').join(',')}) AND (b.owner IS NULL OR b.owner = ?) ORDER BY b.updated_at DESC`, ...usable.map((r) => r.id), user.id) : [];
+const list = all.filter((b) => !b.owner), drafts = all.filter((b) => b.owner);
+const current = boardId ? all.find((b) => Number(b.id) === boardId) : null;
 // État du tableau envoyé avec la page : personne ne part d'un tableau vide (et ne l'écrase) avant la première synchro
 const initial = current ? (await rows<{ state: string; updated_at: number }>('SELECT state, updated_at FROM boards WHERE id = ?', current.id))[0] : null;
 // Fond d'une carte Valorant connu dès le HTML (sinon l'image n'arrive qu'après deux appels du navigateur) ; liste gardée 6 h
@@ -78,6 +80,7 @@ const PINGS = KIT.pings;
               <optgroup label="Autre"><option value="url">Image (lien)…</option></optgroup>
             </select></label>
             <label data-url hidden>Lien de l'image<input name="url" type="url" placeholder="https://…" /></label>
+            <label class="tb-check"><input type="checkbox" name="brouillon" value="1" /> Brouillon perso <small>(toi seul le vois, tu le partages quand il est prêt)</small></label>
             <button class="btn">Créer et ouvrir</button>
           </form>
       </div>
@@ -107,6 +110,25 @@ const PINGS = KIT.pings;
             </form>
           </section>
         )}
+        {drafts.length > 0 && (
+          <section class="tb-list" aria-labelledby="tb-drafts-h">
+            <h2 id="tb-drafts-h">Mes brouillons · {drafts.length} <small>toi seul les vois</small></h2>
+            <ul>
+              {drafts.map((b) => {
+                const im = thumb(b.map);
+                return (
+                  <li>
+                    <a href={`/equipe/tactique/?b=${b.id}${q}`} class="is-draft">
+                      <span class:list={['tb-list__img', { 'is-grid': b.map === 'grille', 'is-blank': !im && b.map !== 'grille' }]} style={im ? `background-image:url("${im}")` : undefined} aria-hidden="true"></span>
+                      <strong>{b.title}</strong>
+                      <span class="tb-list__meta">Brouillon · {ago(Number(b.updated_at))}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
         {list.length > 0 && (
           <section class="tb-list" aria-labelledby="tb-list-h">
             <h2 id="tb-list-h">Tableaux de {team?.name ?? 'l’équipe'} · {list.length}</h2>
@@ -132,6 +154,10 @@ const PINGS = KIT.pings;
         <div class="wb-bar">
           <a class="wb-back" href={listUrl}>← Tableaux</a>
           <h2>{current.title}</h2>
+          {current.owner && (
+            <form method="post" action="/api/equipe/outils" class="wb-draft"><input type="hidden" name="action" value="tableau-partager" /><input type="hidden" name="id" value={current.id} /><input type="hidden" name="back" value={`/equipe/tactique/?b=${current.id}${q}`} />
+              <span>Brouillon : toi seul le vois.</span> <button class="btn btn--ghost">Partager avec le roster</button></form>
+          )}
           <p class="wb-live" data-live><span aria-hidden="true"></span><em>En direct</em></p>
           <div class="wb-export">
             <button type="button" class="btn" data-present>Présenter</button>
@@ -388,4 +414,9 @@ const PINGS = KIT.pings;
   .wb-frames :global(.wb-anim button[aria-pressed="true"]) { background: var(--ink); color: var(--paper); }
   .wb:global(.is-animating) :global([data-stage]) { pointer-events: none; }
   .wb-group [data-dash] .wb-dash { display: block; width: 18px; height: 3px; background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 8px); }
+  .tb-check { display: flex !important; align-items: center; gap: .45rem; font-weight: 400 !important; grid-column: 1 / -1; }
+  .tb-check small { color: var(--muted); }
+  .tb-list h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; }
+  .tb-list a.is-draft { border-style: dashed; }
+  .wb-draft { display: flex; align-items: center; gap: .6rem; margin: 0; font-size: .9rem; color: var(--muted); }
 </style>

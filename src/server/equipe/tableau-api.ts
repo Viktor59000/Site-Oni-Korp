@@ -16,9 +16,10 @@ async function board(id: number, cookies: Parameters<APIRoute>[0]['cookies']) {
   const t = await teamUser(cookies);
   if (!t) return null;
   await ensureBoards();
-  const [b] = await rows<{ id: number; roster_id: number; state: string; updated_at: number; updated_by: string; name: string | null }>(
-    `SELECT b.id, b.roster_id, b.state, b.updated_at, b.updated_by, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by WHERE b.id = ?`, id);
-  if (!b || !canSee(t.me, b.roster_id)) return null;
+  const [b] = await rows<{ id: number; roster_id: number; state: string; updated_at: number; updated_by: string; name: string | null; owner: string | null }>(
+    `SELECT b.id, b.roster_id, b.state, b.updated_at, b.updated_by, b.owner, g.name FROM boards b LEFT JOIN guild_members g ON g.id = b.updated_by WHERE b.id = ?`, id);
+  // Un brouillon n'est lisible et modifiable que par son auteur
+  if (!b || !canSee(t.me, b.roster_id) || (b.owner && b.owner !== t.user.id)) return null;
   return { t, b };
 }
 

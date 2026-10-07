@@ -14,6 +14,7 @@
 - Inside v3 (7 oct.) : Mon espace, un roster à la fois, rubrique Préparer avec les Docs, tableaux avec aperçus et modèles, terrain RL réaliste, zoom des captures de lineups, Oni Sync v2 (icône près de l'horloge, correction de la config du jeu).
 - Analyse du club (PESTEL, SWOT, 20 profils, architecture d'Inside, plan d'action) : `notes/strategie/ANALYSE-CLUB.md`.
 - Plan d'action de l'analyse, partie code (7 oct.) : docs à trois niveaux, objectifs privés, Espace jeu, Espace Communauté, bloc « À gérer » et relance groupée, plan de séance, fiche de cast, accord d'image, rappel des jeux.
+- Outils par jeu (7 oct.) : packs RL, pools LoL, compos Valorant, mappool osu!, carnet perso, brouillons de tableau, Mes contributions ; tableau blanc animé avec export vidéo ; soirée inhouse en événement Discord ; Oni Sync v4 sans aucune fenêtre.
 - Bilan mensuel du staff (le 1er du mois dans #🔒・staff, `/bilan periode:`).
 - Page de confidentialité complétée (comptes de jeu, Oni Sync, inhouses, sondage, avis, page Staff, modération, sauvegardes) et purges alignées sur ses promesses.
 - Refactorisation sans changement de résultat (bot et site, dont les actions d'Inside rangées par domaine), tests de non-régression, vérification des types (`npm run check`, qui a trouvé deux actions cassées), base de démonstration, cette documentation.

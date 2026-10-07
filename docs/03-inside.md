@@ -48,6 +48,9 @@ Inside a deux étages (décision du 7 oct. 2026) :
 | | Lineups Valorant | `/equipe/valo/` | `valo.astro` |
 | | osu! (défi de la semaine, maps) | `/equipe/osu/` | `osu.astro` |
 | | Tracker Rocket League (Oni Sync) | `/equipe/rl/` | `rl.astro` + `rl-sync.ts` |
+| | Packs d'entraînement RL (codes à copier) | `/equipe/packs/` | `packs.astro` |
+| | Pools de champions LoL (main, jouable, en apprentissage) | `/equipe/pools/` | `pools.astro` + `PoolBoard.astro` |
+| | Compos Valorant par carte et agents de chaque joueur | `/equipe/compos/` | `compos.astro` + `PoolBoard.astro` |
 | | Docs du roster (routines, règles, appels) | `/equipe/docs/` | `docs.astro` |
 | Équipe | Joueurs (comptes de jeu, statut titulaire/remplaçant/essai) | `/equipe/joueurs/` | `joueurs.astro` |
 | | Setups | `/equipe/setup/` | `setup.astro` |
@@ -73,6 +76,10 @@ Inside a deux étages (décision du 7 oct. 2026) :
 **Fiche de cast** (`/equipe/contenu/?cast=<match>`) : pour chaque match public, ce que le casteur doit savoir, uniquement des infos publiques (compo annoncée, postes, rangs, accord d'image, historique contre l'adversaire, derniers résultats). Imprimable.
 
 **Accord d'image** : case dans Mon espace (table `consents`), affichée sur la fiche de cast ; effacé au départ du serveur.
+
+**Tableau blanc** : éléments propres au jeu (`jeux.ts`, `board.kit` : pions, couleurs des deux équipes, repères ; RL ballon, grosse pastille, démolition, rotation ; LoL balises, dragon, Nashor ; Valorant spike, info, entrée), **animation** entre les étapes (les éléments de même identifiant glissent, vitesse 0,5 à 2×, répétition), **export vidéo** (MP4 ou WebM, `MediaRecorder`), traits en pointillés, **brouillons** privés (`boards.owner`, partagés au roster d'un clic). Idées reprises de tactical-board.com (l'outil d'un ami de Viktor).
+
+**Mappool osu!** : une place facultative (NM1 à TB) sur chaque map (`osu_maps.slot`), section « Mappool de tournoi ». **Carnet perso** dans Mon espace (table `carnet`, privé). **Mes contributions** dans Contenu (tâches livrées, copiables en portfolio).
 
 **Mes rosters et rosters suivis.** `access()` marque chaque roster `mine` (la personne a son rôle). L'encadrement voit aussi les autres rosters, mais ils sont rangés à part (« Suivis en encadrement ») et n'ajoutent ni échéances ni tâches dans Mon espace. L'en-tête d'un roster suivi le rappelle.
 

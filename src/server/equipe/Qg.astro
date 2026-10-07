@@ -27,9 +27,12 @@ const PATH: Record<string, string> = {
   valo: '/equipe/valo/', osu: '/equipe/osu/', rl: '/equipe/rl/', joueurs: '/equipe/joueurs/', setup: '/equipe/setup/', docs: '/equipe/docs/', contenu: '/equipe/contenu/', tournois: '/equipe/tournois/',
 };
 const GAME_TOOL: Record<string, [string, string]> = Object.fromEntries(Object.entries(JEUX).map(([k, j]) => [k, [j.tool[0], j.tool[1]]]));
+// Toutes les pages propres à un jeu (outil principal et outils en plus) : clé de page → jeu
+const GAME_PAGES: Record<string, string> = Object.fromEntries(Object.entries(JEUX).flatMap(([k, j]) => [j.tool, ...(j.more ?? [])].map((t) => [t[0], k])));
+for (const j of Object.values(JEUX)) for (const t of j.more ?? []) PATH[t[0]] = t[2];
 const q = activeRoster && active ? `?r=${activeRoster.slug}` : '';
 // Outil propre au jeu : seulement celui du roster choisi (un roster osu! ne voit pas le drafter LoL)
-const gameTools = game && GAME_TOOL[game] ? [GAME_TOOL[game]] : [];
+const gameTools: [string, string][] = game && GAME_TOOL[game] ? [GAME_TOOL[game], ...(JEUX[game as keyof typeof JEUX].more ?? []).map((t) => [t[0], t[1]] as [string, string])] : [];
 // Tableau blanc : pas pour osu! (retour des joueurs, 06/10) ; affiché si le roster choisi, ou l'un des rosters, joue à un autre jeu
 const hasBoard = (g: string) => !!JEUX[g as keyof typeof JEUX]?.board;
 const withBoard = game ? hasBoard(game) : staff || rosters.some((r) => hasBoard(r.game));
@@ -43,10 +46,10 @@ const SECTIONS: { key: string; label: string; pages: [string, string][] }[] = on
   { key: 'outils', label: 'Préparer', pages: [...(withBoard ? [['tactique', 'Tableau blanc']] : []), ...gameTools, ['docs', 'Docs']] as [string, string][] },
   { key: 'equipe', label: 'Équipe', pages: [['joueurs', 'Joueurs'], ['setup', 'Setups']] },
 ];
-const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current)) ?? (GAME_TOOL[current] ? SECTIONS.find((x) => x.key === 'outils') : undefined);
+const section = SECTIONS.find((x) => x.pages.some(([k]) => k === current)) ?? (GAME_PAGES[current] ? SECTIONS.find((x) => x.key === 'outils') : undefined);
 // Changer de roster en restant sur le même outil (sauf outil propre à un autre jeu)
 const switchTo = (r: RosterRow) => {
-  const tool = PATH[current] && !(GAME_TOOL[current] && current !== r.game) ? PATH[current] : '/equipe/';
+  const tool = PATH[current] && !(GAME_PAGES[current] && GAME_PAGES[current] !== r.game) ? PATH[current] : '/equipe/';
   return `${tool}?r=${r.slug}`;
 };
 const accent = activeRoster ? GAMES[activeRoster.game]?.color ?? '#e5251f' : '#e5251f';

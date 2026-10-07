@@ -1,0 +1,104 @@
+---
+// Pools par joueur (07/10), communs à LoL (champions) et Valorant (agents) : trois niveaux, main / jouable / en apprentissage.
+// Chacun gère le sien ; capitaine, coach et responsable gèrent ceux du roster. « Joués récemment » propose d'ajouter en un clic.
+interface Props {
+  game: 'lol' | 'valo'; rosterId: number; back: string; canEditAll: boolean; meId: string;
+  members: { id: string; name: string; avatar: string | null; poste?: string | null }[];
+  pools: { user_id: string; item: string; tier: string }[];
+  catalogue: { key: string; name: string; icon: string }[];
+  recent?: Record<string, string[]>;
+}
+const { game, rosterId, back, canEditAll, meId, members, pools, catalogue, recent = {} } = Astro.props;
+const TIERS: [string, string, string][] = [['main', 'Main', 'joué en match'], ['jouable', 'Jouable', 'sorti si besoin'], ['apprentissage', 'En apprentissage', 'travaillé en ce moment']];
+const byKey = new Map<string, { key: string; name: string; icon: string }>(catalogue.map((c) => [c.key, c]));
+const listId = `pool-cat-${game}`;
+const word = game === 'lol' ? 'champion' : 'agent';
+---
+<datalist id={listId}>{catalogue.map((c) => <option value={c.name} />)}</datalist>
+<div class="pb">
+  {members.map((m) => {
+    const mine = pools.filter((p) => p.user_id === m.id);
+    const editable = m.id === meId || canEditAll;
+    const sugg = (recent[m.id] ?? []).filter((k) => !mine.some((p) => p.item === k) && byKey.has(k)).slice(0, 5);
+    return (
+      <section class="pb-player" aria-label={`Pool de ${m.name}`}>
+        <header>
+          {m.avatar ? <img src={m.avatar} alt="" width="32" height="32" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="pb-av">{m.name.slice(0, 1)}</span>}
+          <strong>{m.name}</strong>{m.poste && <small>{m.poste}</small>}
+        </header>
+        {TIERS.map(([t, label, hint]) => {
+          const items = mine.filter((p) => p.tier === t);
+          return (
+            <div class:list={['pb-tier', `is-${t}`]}>
+              <p class="pb-label">{label} <small>{hint}</small></p>
+              {items.length ? (
+                <ul>
+                  {items.map((p) => {
+                    const c = byKey.get(p.item);
+                    return (
+                      <li title={c?.name ?? p.item}>
+                        <img src={c?.icon} alt={c?.name ?? p.item} width="40" height="40" loading="lazy" />
+                        {editable && (
+                          <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="pool" /><input type="hidden" name="roster" value={rosterId} /><input type="hidden" name="user" value={m.id} /><input type="hidden" name="game" value={game} /><input type="hidden" name="item" value={p.item} /><input type="hidden" name="tier" value="" /><input type="hidden" name="back" value={back} /><button aria-label={`Retirer ${c?.name ?? p.item}`}>×</button></form>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : <p class="pb-empty">—</p>}
+            </div>
+          );
+        })}
+        {editable && (
+          <form method="post" action="/api/equipe/outils" class="pb-add" data-pool-add>
+            <input type="hidden" name="action" value="pool" /><input type="hidden" name="roster" value={rosterId} /><input type="hidden" name="user" value={m.id} /><input type="hidden" name="game" value={game} /><input type="hidden" name="back" value={back} />
+            <input type="hidden" name="item" data-item />
+            <input list={listId} placeholder={`Ajouter un ${word}`} aria-label={`Ajouter un ${word} au pool de ${m.name}`} data-name required />
+            <select name="tier" aria-label="Niveau">{TIERS.map(([t, l]) => <option value={t}>{l}</option>)}</select>
+            <button class="btn btn--ghost">Ajouter</button>
+          </form>
+        )}
+        {editable && sugg.length > 0 && (
+          <div class="pb-sugg"><span>Joués récemment :</span>
+            {sugg.map((k) => (
+              <form method="post" action="/api/equipe/outils"><input type="hidden" name="action" value="pool" /><input type="hidden" name="roster" value={rosterId} /><input type="hidden" name="user" value={m.id} /><input type="hidden" name="game" value={game} /><input type="hidden" name="item" value={k} /><input type="hidden" name="tier" value="jouable" /><input type="hidden" name="back" value={back} /><button title={`Ajouter ${byKey.get(k)!.name} en jouable`}><img src={byKey.get(k)!.icon} alt="" width="24" height="24" loading="lazy" />{byKey.get(k)!.name}</button></form>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  })}
+</div>
+<script define:vars={{ names: Object.fromEntries(catalogue.map((c) => [c.name.toLowerCase(), c.key])) }}>
+  // Le nom tapé (liste proposée) devient l'identifiant du jeu ; un nom inconnu est refusé
+  document.querySelectorAll('[data-pool-add]').forEach((f) => f.addEventListener('submit', (e) => {
+    const n = f.querySelector('[data-name]'), key = names[n.value.trim().toLowerCase()];
+    if (!key) { e.preventDefault(); n.setCustomValidity('Choisis un nom dans la liste'); n.reportValidity(); setTimeout(() => n.setCustomValidity(''), 2000); return; }
+    f.querySelector('[data-item]').value = key;
+  }));
+</script>
+
+<style>
+  .pb { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+  .pb-player { display: grid; gap: .55rem; align-content: start; padding: 1rem; border: 1px solid var(--line); }
+  .pb-player header { display: flex; align-items: center; gap: .5rem; }
+  .pb-player header img, .pb-av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-sunk, rgb(0 0 0 / .1)); font-weight: 700; }
+  .pb-player header small { color: var(--muted); }
+  .pb-tier { display: grid; gap: .25rem; padding-left: .6rem; border-left: 3px solid var(--line); }
+  .pb-tier.is-main { border-left-color: #2fbf71; } .pb-tier.is-jouable { border-left-color: #ffd23f; } .pb-tier.is-apprentissage { border-left-color: #8b5cf6; }
+  .pb-label { margin: 0; font-weight: 700; font-size: .82rem; }
+  .pb-label small { font-weight: 400; color: var(--muted); }
+  .pb-tier ul { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+  .pb-tier li { position: relative; }
+  .pb-tier li img { display: block; width: 40px; height: 40px; border: 1px solid var(--line); }
+  .pb-tier li form { position: absolute; top: -6px; right: -6px; margin: 0; }
+  .pb-tier li button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: #111; color: #fff; font-size: .8rem; cursor: pointer; opacity: 0; }
+  .pb-tier li:hover button, .pb-tier li button:focus-visible { opacity: 1; }
+  .pb-empty { margin: 0; color: var(--muted); font-size: .85rem; }
+  .pb-add { display: grid; grid-template-columns: minmax(7rem, 1fr) minmax(0, 8.5rem) auto; gap: .35rem; }
+  .pb-add :is(input, select) { min-height: 38px; padding: .3rem .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .9rem var(--font-body); min-width: 0; }
+  .pb-sugg { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin: 0; color: var(--muted); font-size: .82rem; }
+  .pb-sugg form { margin: 0; }
+  .pb-sugg button { display: inline-flex; background: none !important; align-items: center; gap: .3rem; min-height: 32px; padding: .15rem .5rem .15rem .2rem; border: 1px dashed var(--line); background: none; color: var(--ink); font: 400 .8rem var(--font-body); cursor: pointer; }
+  @media (hover: none) { .pb-tier li button { opacity: 1; } }
+</style>

@@ -33,6 +33,15 @@ const steps = [
   ['replay', { match: '1', replays: 'https://ballchasing.com/replay/12345678-1234-1234-1234-123456789abc' }],
   ['adversaire', { roster: '2', name: `${T} adversaire`, style: 's', forces: 'f', faiblesses: 'w', plan: 'p' }],
   ['compo', { match: '1', titulaires: '2', remplacant: '3' }],
+  // Outils ajoutés le 07/10
+  ['pool', { roster: '2', game: 'lol', item: 'Ahri', tier: 'main' }],
+  ['compo-carte', { roster: '3', map: 'Ascent', agents: 'Sova', note: `${T} compo` }],
+  ['pack', { roster: '1', code: 'A1B2-C3D4-E5F6-G7H8', title: `${T} pack`, kind: 'aerien' }],
+  ['carnet', { body: `${T} carnet` }],
+  ['accord-image', { image: '1' }],
+  ['plan-seance', { training: '1', plan: `${T} plan` }],
+  ['relance', { training: '1' }],
+  ['tableau', { roster: '2', game: 'lol', map: 'Faille', title: `${T} brouillon`, brouillon: '1' }],
   ['suppr', { table: 'drafts', id: '1' }],
   ['inconnue', {}],
 ];
@@ -47,7 +56,8 @@ const mask = (rows) => JSON.stringify(rows.map((r) => Object.fromEntries(Object.
 for (const [t, where] of [['accounts', "user_id = '100000000000000001'"], ['setups', "user_id = '100000000000000001'"], ['staff_public', '1'], ['metrics', "day = '2026-10-01'"],
   ['competitions', "name LIKE 'NR%'"], ['content_tasks', "title LIKE 'NR%' OR id = 1"], ['roster_status', "retour LIKE 'NR%'"], ['goals', "title LIKE 'NR%' OR id = 1"], ['docs', "title LIKE 'NR%'"],
   ['osu_maps', "note LIKE 'NR%'"], ['boards', "title LIKE 'NR%'"], ['match_notes', "good LIKE 'NR%'"], ['drafts', '1'], ['lineups', "title LIKE 'NR%'"], ['match_stats', 'match_id = 1'],
-  ['vods', "title LIKE 'NR%'"], ['vod_marks', "text LIKE 'NR%'"], ['match_replays', 'match_id = 1'], ['opponents', "name LIKE 'NR%'"]]) {
+  ['vods', "title LIKE 'NR%'"], ['vod_marks', "text LIKE 'NR%'"], ['match_replays', 'match_id = 1'], ['opponents', "name LIKE 'NR%'"],
+  ['pools', "item = 'Ahri'"], ['comps', "note LIKE 'NR%'"], ['rl_packs', "title LIKE 'NR%'"], ['carnet', "body LIKE 'NR%'"], ['consents', '1'], ['trainings', "plan LIKE 'NR%'"]]) {
   out[`table ${t}`] = mask((await db.execute(`SELECT * FROM ${t} WHERE ${where} ORDER BY 1`).catch((e) => ({ rows: [{ erreur: e.message }] }))).rows);
 }
 out['matches.lineup'] = mask((await db.execute('SELECT lineup FROM matches WHERE id = 1')).rows);

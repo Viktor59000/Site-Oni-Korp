@@ -52,6 +52,10 @@ const myRoles = new Set(me.content);
 const late = (x: Task) => x.status !== 'fait' && x.status !== 'a-valider' && Number(x.due) < now;
 const label = (x: Task) => x.title || TASK_KINDS[x.kind]?.label || x.kind;
 const matchOf = (x: Task) => matches.find((m) => m.id === x.match_id);
+// Mes contributions (07/10) : ce que j'ai livré et qui a été validé, avec les liens ; copiable comme portfolio
+const contributions = await rows<Task>(`SELECT * FROM content_tasks WHERE assignee = ? AND status = 'fait' ORDER BY due DESC LIMIT 60`, user.id).catch(() => [] as Task[]);
+const fmtDay = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' });
+const portfolio = contributions.map((x) => `- ${fmtDay.format(new Date(Number(x.due)))} · ${label(x)}${x.url ? ` : ${x.url}` : ''}`).join(String.fromCharCode(10));
 
 // Calendrier par semaine (lundi)
 const weekOf = (ms: number) => { const d = new Date(Number(ms)); const day = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - day); return d.getTime(); };
@@ -202,6 +206,14 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
     ) : <p class="eq-note">Aucun match public dans les 30 prochains jours. L'encadrement les ajoute sur Discord avec <code>/match ajouter</code> ; les tâches de contenu se créent toutes seules.</p>}
     {scrims.length > 0 && <p class="eq-note">Et {scrims.length} scrim{scrims.length > 1 ? 's' : ''} interne{scrims.length > 1 ? 's' : ''} à venir (rien à publier).</p>}
 
+    {contributions.length > 0 && (
+      <details class="ct-contrib">
+        <summary><h2>Mes contributions <small>{contributions.length}</small></h2></summary>
+        <ul>{contributions.map((x) => <li><time>{fmtDay.format(new Date(Number(x.due)))}</time><span>{label(x)}</span>{x.url && <a href={x.url} rel="noopener" target="_blank">voir</a>}</li>)}</ul>
+        <button type="button" class="btn btn--ghost" data-portfolio={portfolio}>Copier la liste (portfolio)</button>
+      </details>
+    )}
+
     <h2>Calendrier éditorial <small>hors matchs</small></h2>
     {weeks.length ? weeks.map(({ w, list }) => (
       <div class="ct-week">
@@ -257,6 +269,14 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
     <p class="eq-note ct-foot">Charte éditoriale et kit de marque : <a href="/marque/">page Marque</a>. Les textes suivent la charte : 0 à 2 emojis, pas de tics d'IA.</p>
   </section>
 </Qg>
+
+<script>
+  document.querySelector<HTMLButtonElement>('[data-portfolio]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    try { await navigator.clipboard.writeText(b.dataset.portfolio ?? ''); b.textContent = 'Copiée !'; } catch { b.textContent = 'Copie impossible'; }
+    setTimeout(() => (b.textContent = 'Copier la liste (portfolio)'), 2000);
+  });
+</script>
 
 <script is:inline>
   // Copier les chiffres du club en texte simple, une phrase par ligne
@@ -338,5 +358,10 @@ const row = (x: Task, withMatch = false) => renderTask(x, ctx, withMatch ? match
   .ct-img.is-no { color: var(--danger, #b3241e) !important; }
   .ct-print { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
   @media print { :global(.qg-top), :global(.qg-nav), :global(.qg-tabs), :global(.qg-head), .ct, .ct-cast__nav { display: none !important; } .ct-cast { border: 0; } }
+  .ct-contrib { margin-bottom: 2rem; }
+  .ct-contrib summary { cursor: pointer; list-style: none; }
+  .ct-contrib ul { display: grid; gap: .3rem; margin: .5rem 0 .75rem; padding: 0; list-style: none; }
+  .ct-contrib li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; gap: .6rem; font-size: .9rem; }
+  .ct-contrib time { color: var(--muted); }
 </style>
 

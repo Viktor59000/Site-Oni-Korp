@@ -1,0 +1,37 @@
+---
+// Pools de champions (07/10) : pour chaque joueur du roster LoL, ses champions par niveau (main, jouable, en apprentissage).
+// Les champions joués ces 90 derniers jours (parties relevées par Oni Bot) sont proposés en un clic.
+import Qg from './Qg.astro';
+import PoolBoard from './PoolBoard.astro';
+import { canLead, rosterMembers, scope, teamUser } from './outils';
+import { rows } from '../db';
+import { lolChampions } from './catalogues';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'lol');
+const roster = sc.list[0] ?? null;
+const back = `/equipe/pools/${roster ? `?r=${roster.slug}` : ''}`;
+const members = roster ? await rosterMembers(roster.role_id) : [];
+const pools = roster ? await rows<{ user_id: string; item: string; tier: string }>(`SELECT user_id, item, tier FROM pools WHERE roster_id = ? AND game = 'lol'`, roster.id).catch(() => []) : [];
+const champs = roster ? await lolChampions() : [];
+const postes = roster ? await rows<{ user_id: string; poste: string }>('SELECT user_id, poste FROM roster_postes WHERE roster_id = ?', roster.id).catch(() => []) : [];
+const posteOf = new Map(postes.map((p) => [String(p.user_id), p.poste]));
+// Champions les plus joués ces 90 jours, par joueur
+const recent: Record<string, string[]> = {};
+for (const m of members) {
+  const games = await rows<{ data: string }>(`SELECT data FROM perf WHERE user_id = ? AND game = 'lol' AND at > ?`, m.id, Date.now() - 90 * 86400_000).catch(() => []);
+  const n: Record<string, number> = {};
+  for (const g of games) { try { const c = JSON.parse(g.data).champ; if (c) n[c] = (n[c] ?? 0) + 1; } catch {} }
+  recent[m.id] = Object.entries(n).sort((a, b) => b[1] - a[1]).map(([c]) => c);
+}
+---
+<Qg title="Pools de champions · Inside" heading="Pools de champions" lead="Ce que chacun joue en match, peut sortir, ou travaille en ce moment." current="pools" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  {!roster ? <p class="eq-note">Aucun roster League of Legends pour l’instant.</p> : !members.length ? <p class="eq-note">Aucun joueur dans ce roster pour l’instant.</p> : (
+    <PoolBoard game="lol" rosterId={roster.id} back={back} canEditAll={canLead(me, roster.id)} meId={user.id}
+      members={members.map((m) => ({ ...m, poste: posteOf.get(m.id) ?? null }))} pools={pools} catalogue={champs.map((c) => ({ key: c.id, name: c.name, icon: c.icon }))} recent={recent} />
+  )}
+</Qg>
+<style>.eq-note { color: var(--muted); }</style>
