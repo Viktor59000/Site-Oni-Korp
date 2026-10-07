@@ -46,7 +46,7 @@ const STARTERS = [
   ['Appels et vocabulaire', '# Appels\n- **Nom** : ce que ça veut dire\n'],
 ];
 ---
-<Qg title="Docs · Inside" heading="Docs" lead="Routines, règles, appels, guides : ce que tout le roster doit savoir." current="docs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Docs · Inside" heading="Docs" lead="Routines, règles, appels, guides : ce que tout le roster doit savoir." current="docs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     {editing && edit ? (
       <form method="post" action="/api/equipe/outils" class="dc-form">
         <input type="hidden" name="action" value="doc" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} />

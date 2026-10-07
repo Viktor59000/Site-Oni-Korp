@@ -12,7 +12,7 @@ const between = (src, start, end = '\n') => { const i = src.indexOf(start); if (
 
 const access = read(SITE, 'server/equipe/access.ts');
 const postuler = read(SITE, 'server/recrutement/postuler.ts');
-const qg = read(SITE, 'server/equipe/Qg.astro');
+const jeux = read(SITE, 'server/equipe/jeux.ts');
 const config = read(BOT, 'config.ts');
 const util = read(BOT, 'util.ts');
 const recrutement = read(BOT, 'modules/recrutement.ts');
@@ -46,9 +46,9 @@ same('Postes de candidature (postuler.ts ↔ recrutement.ts)', strings(between(p
 // Rôles du pôle contenu : chacun doit être un poste de candidature côté bot
 included('Rôles du pôle contenu (access.ts → postes du bot)', strings(between(access, 'export const CONTENT_ROLES = [', ']')), strings(between(recrutement, 'const POSTES = [', ']')));
 // Couleurs des jeux (RL : bleu plus clair sur le site, plus profond sur les cartes du bot, voulu)
-const siteColors = Object.fromEntries([...between(qg, 'const GAME', '};').matchAll(/(\w+):\s*\{[^}]*color:\s*'(#[0-9a-f]{6})'/gi)].map((m) => [m[1], m[2].toLowerCase()]));
+const siteColors = Object.fromEntries([...jeux.matchAll(/^ {2}(\w+): \{\s*label: '[^']*', code: '[^']*', color: '(#[0-9a-f]{6})'/gim)].map((m) => [m[1], m[2].toLowerCase()]));
 const botColors = Object.fromEntries([...between(cards, 'export const POLE', '};').matchAll(/(\w+):\s*'(#[0-9A-F]{6})'/gi)].map((m) => [m[1], m[2].toLowerCase()]));
-for (const g of ['lol', 'valo', 'osu']) checks.push({ label: `Couleur ${g} (Qg.astro ↔ cards.ts)`, ok: siteColors[g] === botColors[g], detail: `${siteColors[g]} / ${botColors[g]}` });
+for (const g of ['lol', 'valo', 'osu']) checks.push({ label: `Couleur ${g} (jeux.ts ↔ cards.ts)`, ok: siteColors[g] === botColors[g], detail: `${siteColors[g]} / ${botColors[g]}` });
 
 for (const c of checks) console.log(`${c.ok ? '✓' : '✗'} ${c.label}${c.ok ? '' : ` : ${c.detail}`}`);
 const bad = checks.filter((c) => !c.ok).length;

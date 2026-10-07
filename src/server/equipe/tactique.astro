@@ -56,7 +56,7 @@ const TOOLS: [string, string, string][] = [
 const VISION: [string, string, string][] = current?.game === 'lol' ? [['ward', '◉', 'Balise (portée)'], ['controle', '◉', 'Balise de contrôle (portée)']] : [['vision', '◉', 'Vision']];
 const PINGS: [string, string, string][] = [['danger', '!', 'Danger'], ['objectif', '★', 'Objectif'], ['question', '?', 'À vérifier'], ...VISION, ...(current?.game === 'lol' ? [] : [['balle', '●', current?.game === 'valo' ? 'Spike' : 'Balle'] as [string, string, string]])];
 ---
-<Qg title="Tableau blanc · Inside" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Tableau blanc · Inside" heading="Tableau blanc" lead="Carte, éléments, crayon, post-it et étapes : la strat se construit à plusieurs, en direct." current="tactique" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {!current && usable.length > 0 && (
     <details class="qg-drawer" slot="actions">
       <summary class="btn">+ Nouveau tableau</summary>

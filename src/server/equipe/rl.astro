@@ -58,7 +58,7 @@ const cle = Astro.url.searchParams.get('cle');
 const roster = people.map((p) => { const l = (games.get(p.id) ?? []).slice(0, 20); return { p, n: l.length, win: l.length ? (l.filter((x) => x.win).length / l.length) * 100 : null, score: mean(l, 'score'), buts: mean(l, 'buts'), arrets: mean(l, 'arrets'), passes: mean(l, 'passes'), trend: spark(l.slice().reverse().map((x) => Number(x.score))), lastAt: l[0]?.at ?? null }; }).sort((a, b) => b.n - a.n);
 const initial = (s: string) => s.slice(0, 1).toUpperCase();
 ---
-<Qg title="Tracker RL · Inside" heading="Tracker Rocket League" lead="Chaque partie, la forme et la progression de chacun, relevées automatiquement." current="rl" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+<Qg title="Tracker RL · Inside" heading="Tracker Rocket League" lead="Chaque partie, la forme et la progression de chacun, relevées automatiquement." current="rl" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
   <div class="rl">
     {people.length > 1 && (
       <nav class="rl-who" aria-label="Joueur">

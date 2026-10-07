@@ -28,24 +28,25 @@ const OUTILS = [
   ['Planning', 'Séances à venir avec réponses, disponibilités de la semaine, présence sur 30 jours.', '/entrainement, /dispos, /presences'],
   ['Calendrier', 'Le mois du roster : séances (avec ta réponse), matchs, scrims, échéances.', ''],
   ['Avant-match', 'Une page par match : horaires, compo, plan contre l\'adversaire, strats, checklist, puis débrief et stats.', '/match compo'],
-  ['Stats', 'Mesures en jeu par joueur avec tendances : LoL, Valorant et osu! automatiques, Rocket League via ballchasing ou saisie.', ''],
-  ['Objectifs', 'Ce qu\'on vise et où on en est. Annoncés sur Discord à la création.', ''],
+  ['Stats', 'Mesures en jeu par joueur avec tendances : LoL, Valorant et osu! automatiques, Rocket League via Oni Sync (ou ballchasing, ou saisie).', ''],
+  ['Objectifs', 'Ce qu\'on vise et où on en est. Un objectif fixé à un joueur est privé (lui et l\'encadrement), sauf si on le rend visible à tout le roster.', ''],
   ['Notes de match', 'Débriefs écrits ; le bot les demande 2 h après chaque match.', ''],
   ['VOD', 'Vidéos commentées avec des repères horodatés, un clic saute au moment.', ''],
   ['Scouting', 'Fiches des adversaires avec l\'historique contre nous.', ''],
   ['Tableau blanc', 'Carte, éléments, crayon, post-it et étapes, en direct ; mode présentation et export en image pour Discord.', ''],
   ['Drafter LoL · Lineups Valorant · Défis osu!', 'Les outils propres à chaque jeu.', ''],
-  ['Setups · Joueurs · Docs', 'Réglages de chacun, comptes de jeu et profils, documents du roster (routines, règles, appels).', ''],
+  ['Docs', 'Dans Préparer : les docs du roster (routines, règles, appels), ceux du jeu (écrits par le responsable du jeu) et ceux du club (fiches de poste, règlement).', ''],
+  ['Setups · Joueurs', 'Réglages de chacun, comptes de jeu et profils.', ''],
 ];
 // Les rôles et ce qu'ils ouvrent (SWOT-ROLES.md, chantier 1)
 const ROLES: [string, string][] = [
   ['Joueur', 'Ton roster : planning, matchs, stats, objectifs, outils du jeu. Titulaire, remplaçant ou en essai (avec une date de fin et un retour écrit).'],
   ['Capitaine', 'Gère son roster : séances, compo, objectifs, épingles, statuts des joueurs. Sur Discord : /match, /entrainement, /dispos, /presences pour son roster.'],
   ['Analyste', 'Suit un roster (scouting, drafter, VOD) sans compter comme joueur.'],
-  ['Responsable d\'un jeu', 'Tous les rosters de son jeu, la vue d\'ensemble de ce jeu (candidatures, essais, tournois) et les commandes du bot pour ces rosters.'],
+  ['Responsable d\'un jeu', 'Tous les rosters de son jeu, l\'Espace de ce jeu (candidatures, essais, tournois), les docs du jeu et les commandes du bot pour ces rosters.'],
   ['Coach, manager', 'Encadrement : tous les rosters, tout gérer.'],
   ['Pôle contenu', 'Casteur, graphiste, monteur, community manager, créateur, marketing : l\'onglet Contenu (matchs à couvrir, tâches, calendrier éditorial, indicateurs). Rien n\'est publié sans validation de la direction.'],
-  ['Modération, accueil, organisation', 'La vie du serveur : règlement, nouveaux, soirées et tournois communautaires.'],
+  ['Modération, accueil, organisation', 'L\'espace Communauté d\'Inside : arrivées, soirées et tournois communautaires ; la modération (tickets, avertissements) pour les modérateurs.'],
 ];
 // Fiches de poste (NUIT-2026-10-07.md, § 1.3) : [titre, mission, semaine type, ce que le club donne, première semaine, interlocuteur]
 const FICHES: [string, string, string, string, string, string][] = [
@@ -58,7 +59,7 @@ const FICHES: [string, string, string, string, string, string][] = [
   ['Graphiste', 'Les visuels d\'annonce et de résultat, les demandes du calendrier.', 'Les visuels des matchs publics (tâches créées toutes seules), les demandes ponctuelles.', 'Les tâches dans Contenu, le kit de marque, le crédit sur la page Staff.', 'Prendre une tâche « Visuel », déposer le lien du livrable : la direction valide.', 'Le community manager, sinon la direction.'],
   ['Monteur vidéo', 'Les clips des temps forts et les formats courts.', 'Le clip de chaque match casté (J+3), les vidéos du calendrier.', 'Les VOD des casts, les repères horodatés, la tâche « Clip » de chaque match.', 'Prendre la tâche « Clip » du prochain match casté.', 'Le community manager, sinon la direction.'],
   ['Community manager', 'La voix du club sur les réseaux.', 'Annonces, rappels et résultats (tâches automatiques), calendrier éditorial, un chiffre d\'abonnés par semaine dans Contenu.', 'La charte éditoriale, le calendrier éditorial, les indicateurs.', 'Remplir le calendrier de la semaine et saisir les abonnés de chaque réseau. Rien n\'est publié sans validation de la direction.', 'La direction.'],
-  ['Modérateur', 'Un serveur sain.', 'Suivre les tickets, appliquer le règlement et la procédure de médiation.', 'La modération automatique par paliers, les tickets, le journal, et la vue d’ensemble d’Inside (sans les stratégies des rosters).', 'Relire le règlement et la procédure. Une exclusion ne se décide jamais seul.', 'La direction.'],
+  ['Modérateur', 'Un serveur sain.', 'Suivre les tickets, appliquer le règlement et la procédure de médiation.', 'La modération automatique par paliers, les tickets, le journal, et l’espace Communauté d’Inside (tickets, avertissements, sanctions ; jamais les stratégies des rosters).', 'Relire le règlement et la procédure. Une exclusion ne se décide jamais seul.', 'La direction.'],
   ['Accueil', 'Que personne n\'arrive sans qu\'on lui parle.', 'Saluer les arrivées, proposer un inhouse, orienter vers le bon salon.', 'Un message privé d’Oni Bot à chaque arrivée (pseudo, jeux choisis, quoi proposer), la carte de bienvenue et le parcours d’arrivée (relances à 3 et 7 jours).', 'Répondre aux 5 prochaines arrivées dans l’heure : un bonjour dans #général, un inhouse ou un vocal à proposer.', 'Le modérateur, sinon la direction.'],
   ['Organisateur', 'Une soirée ou un tournoi communautaire par semaine.', 'Choisir le format, annoncer, lancer, annoncer le résultat.', '/tournoi, les inhouses, l\'agenda public.', 'Organiser une soirée inhouse.', 'La direction.'],
 ];
@@ -78,7 +79,7 @@ const SANCTIONS: [string, string][] = [
   ['Réexamen', 'Un ticket dans #🎫・support (motif « Contester une sanction ») dans les 7 jours, examiné par deux personnes de la direction qui n\'ont pas pris la décision.'],
 ];
 ---
-<Qg title="Guide · Inside" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Guide · Inside" heading="Guide" lead="Tout le roster au même endroit. Voici comment s'en servir." current="guide" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="gd">
       <section>
         <h2 class="gd-h">Joueur : démarrer en 5 minutes</h2>

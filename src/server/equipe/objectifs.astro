@@ -31,7 +31,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
 }));
 const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (!g.user_id && me.rosterIds.includes(Number(g.roster_id)));
 ---
-<Qg title="Objectifs · Inside" heading="Objectifs" lead="Ce qu'on vise, joueur par joueur, et où on en est." current="objectifs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Objectifs · Inside" heading="Objectifs" lead="Ce qu'on vise, joueur par joueur, et où on en est." current="objectifs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ob">
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map(({ r, members, groups }) => (

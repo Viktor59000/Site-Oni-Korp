@@ -149,7 +149,7 @@ if (oldTickets.length) clubAlerts.push([`${oldTickets.length} candidature(s) ouv
 if (Number(contacts?.n ?? 0)) clubAlerts.push([`${contacts.n} message(s) du formulaire de contact à traiter (salon staff sur Discord)`, 'action']);
 ---
 <Qg title={focus ? `Espace ${JEUX[focus as keyof typeof JEUX].label} · Inside` : "Vue d'ensemble · Inside"} heading={focus ? `Espace ${JEUX[focus as keyof typeof JEUX].label}` : "Vue d'ensemble"}
-  lead={focus ? 'Les rosters du jeu, le recrutement, les essais et les matchs : ce qui va, ce qui demande une action.' : 'Tout le club en un écran : ce qui va, ce qui demande une action.'} current="vue" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+  lead={focus ? 'Les rosters du jeu, le recrutement, les essais et les matchs : ce qui va, ce qui demande une action.' : 'Tout le club en un écran : ce qui va, ce qui demande une action.'} current="vue" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
     <div class="ov">
       {tabs.length > 0 && (
         <nav class="ov-tabs" aria-label="Espaces de jeu">

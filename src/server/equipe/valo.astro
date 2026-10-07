@@ -14,7 +14,7 @@ const valoRosters = sc.list.filter((r) => r.game === 'valo' || (me.staff && !sc.
 // Cartes de compétition (celles qui ont des sites et une minicarte), envoyées avec la page
 const maps = valoRosters.length ? (await valoMaps()).filter((m) => m.competitive) : [];
 ---
-<Qg title="Lineups Valorant · Inside" heading="Lineups Valorant" lead="Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une." current="valo" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Lineups Valorant · Inside" heading="Lineups Valorant" lead="Les lineups du roster, posées sur la carte. Deux clics pour en ajouter une." current="valo" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   <section class="lu" data-lineups>
     <div>
       {!valoRosters.length ? <p class="eq-note">Aucun roster Valorant pour l'instant : la bibliothèque s'ouvrira dès sa création sur Discord.</p> : (

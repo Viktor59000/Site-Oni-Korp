@@ -47,7 +47,7 @@ const keys = { riot: !!process.env.RIOT_API_KEY || seen.some((k) => k.key.starts
 const jeuParam = Astro.url.searchParams.get('jeu');
 const focus = jeuParam === 'lol' || jeuParam === 'valo' ? 'riot' : jeuParam === 'rl' || jeuParam === 'osu' ? jeuParam : null;
 ---
-<Qg title="Joueurs · Inside" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
+<Qg title="Joueurs · Inside" heading="Joueurs" lead="Relie tes comptes : ton roster voit tes profils et ton rang, sans rien demander." current="joueurs" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
   {true && (
     <details class="qg-drawer" slot="actions" open={!!focus}>
       <summary class="btn btn--ghost">Relier mes comptes</summary>
