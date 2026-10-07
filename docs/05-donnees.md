@@ -33,6 +33,7 @@ Colonne « écrit » : qui crée les lignes. « Lit » : qui s'en sert.
 | `availability` | ancien format des disponibilités (plus utilisé, gardé) | — | — |
 | `rl_replays` | replays envoyés par Oni Sync : fichier (effacé dès l'envoi à ballchasing), statut `attente` → `envoye` → `ok` / `echec` / `refuse`, identifiant ballchasing | site (réception), bot (envoi, analyse) | les deux |
 | `voice_consent`, `voice_sessions`, `voice_lines` | écoute des scrims : accord de chaque joueur, écoutes (roster, adversaire, statut, doc du rapport), phrases transcrites (joueur, instant, durée, texte) | bot | site (via le doc) |
+| `day_plan` | programme de chaque jour d'une semaine de roster (type, heure, qui l'a choisi) | site (Planning) | bot (message des dispos) |
 | `matches` | matchs et scrims (adversaire, format, date, score, événement Discord) | bot (`/match`) | les deux |
 | `match_notes` | notes de match des joueurs | site | site, bot |
 | `match_stats`, `match_replays` | stats par joueur d'un match, replays à importer | bot | site |
