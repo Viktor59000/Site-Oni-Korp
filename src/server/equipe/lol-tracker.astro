@@ -4,6 +4,9 @@
 // comparés au roster et à ses 10 parties précédentes), phase de lane, combat, vision, objectifs, jungle, pool de champions,
 // matchups, dernières parties ; puis le roster côte à côte. Stats reste la vue d'ensemble du roster.
 import Qg from './Qg.astro';
+import TrackerInsights from './TrackerInsights.astro';
+import { metricValue } from './mesure-objectif';
+import './tracker.css';
 import { rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { avg, ddragon, pct, r1, spark } from './ui';
@@ -43,8 +46,9 @@ const fmtD = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: '
 
 // Mesures : clé, libellé, décimales, sens (1 = plus c'est haut mieux c'est, -1 = l'inverse, 0 = neutre), unité, aide
 type M = [string, string, number, 1 | -1 | 0, string, string];
-const kda = (l: G[]) => { const d = l.reduce((s, x) => s + (x.d ?? 0), 0); return l.length ? l.reduce((s, x) => s + (x.k ?? 0) + (x.a ?? 0), 0) / Math.max(1, d) : null; };
-const val = (l: G[], k: string) => (k === 'kda' ? kda(l) : k === 'win' ? (l.length ? (l.filter((x) => x.win).length / l.length) * 100 : null) : k === 'fb' ? avg(l.filter((x) => x.fb !== undefined).map((x) => x.fb * 100)) : avg(l.map((x) => x[k])));
+// Mêmes définitions que la mesure des objectifs (mesure-objectif.ts) : un objectif mesure exactement ce que montre le Tracker
+const kda = (l: G[]) => metricValue('kda', l);
+const val = (l: G[], k: string): number | null => metricValue(k, l);
 const GROUPS: { id: string; title: string; lead: string; keys: M[]; only?: string }[] = [
   { id: 'lane', title: 'Phase de lane', lead: 'Les 15 premières minutes, face à l’adversaire du même poste', keys: [
     ['cs10', 'CS à 10 min', 0, 1, '', 'sbires et monstres tués à 10 minutes'], ['csMin', 'CS par minute', 1, 1, '', 'sur toute la partie'],
@@ -174,30 +178,9 @@ const fresh = g.filter((x) => x.v === 2).length;
           </article>
         </section>
 
-        {objectifOk && <p class="rl-ok">Objectif ajouté : retrouve-le dans <a href={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}>Objectifs</a> (privé : toi et l’encadrement).</p>}
-        {(strengths.length > 0 || weak.length > 0) && (
-          <section class="lt-insight" aria-labelledby="lt-ins">
-            <h3 id="lt-ins" class="rl-h">Ce qui ressort <small>20 dernières parties, {refLabel}</small></h3>
-            <div class="lt-cols">
-              <div>
-                <p class="rl-tag">Points forts</p>
-                {strengths.length ? <ul>{strengths.map((x) => <li><b>{x.m[1]}</b> : {fmt(x.m, x.me)} <span>({x.group.toLowerCase()}, {x.ref !== null ? `${fmt(x.m, x.ref)} ${refLabel}` : ''})</span></li>)}</ul> : <p class="rl-note">Rien qui se détache pour l’instant.</p>}
-              </div>
-              <div>
-                <p class="rl-tag">À travailler</p>
-                {weak.length ? <ul>{weak.map((x) => <li><b>{x.m[1]}</b> : {fmt(x.m, x.me)} <span>({x.group.toLowerCase()}, {x.ref !== null ? `${fmt(x.m, x.ref)} ${refLabel}` : ''})</span>{canGoal && (
-                  <form method="post" action="/api/equipe/outils" class="lt-goal">
-                    <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goalRoster!.id} /><input type="hidden" name="user" value={focus.id} />
-                    <input type="hidden" name="title" value={`${x.m[1]} : passer de ${fmt(x.m, x.me)} à ${fmt(x.m, x.ref)}`} />
-                    <input type="hidden" name="detail" value={`Repéré par le Tracker LoL le ${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })} sur les 20 dernières parties (${x.group.toLowerCase()}, ${fmt(x.m, x.ref)} ${refLabel}).`} />
-                    <input type="hidden" name="metric" value={JSON.stringify({ g: 'lol', k: x.m[0], s: x.me, t: x.ref, d: x.m[3], u: x.m[4] })} /><input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
-                    <button class="lt-goal__btn">En faire un objectif</button>
-                  </form>
-                )}</li>)}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
-              </div>
-            </div>
-          </section>
-        )}
+        <TrackerInsights id="lt-ins" strengths={strengths.map((x) => ({ label: x.m[1], value: fmt(x.m, x.me), ref: fmt(x.m, x.ref), group: x.group.toLowerCase(), metric: { g: 'lol', k: x.m[0], s: x.me, t: x.ref, d: x.m[3], u: x.m[4] } }))} weak={weak.map((x) => ({ label: x.m[1], value: fmt(x.m, x.me), ref: fmt(x.m, x.ref), group: x.group.toLowerCase(), metric: { g: 'lol', k: x.m[0], s: x.me, t: x.ref, d: x.m[3], u: x.m[4] } }))}
+          refLabel={refLabel} tool="Tracker LoL" ok={objectifOk} okNote="privé : toi et l’encadrement" objectifsHref={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}
+          goal={canGoal ? { roster: goalRoster!.id, user: focus.id, due, back: `${here}${here.includes('?') ? '&' : '?'}objectif=ok` } : null} />
         {fresh < g.length && <p class="rl-note">{g.length - fresh} partie{g.length - fresh > 1 ? 's' : ''} ancienne{g.length - fresh > 1 ? 's' : ''} sans le détail complet : le bot les complète au fil des relevés (5 par passage).</p>}
 
         {GROUPS.filter((gr) => !gr.only || mainRole === gr.only).map((gr) => {
@@ -284,62 +267,3 @@ const fresh = g.filter((x) => x.v === 2).length;
     )}
   </div>
 </Qg>
-
-<style>
-  .rl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.25rem; }
-  .rl-tag { margin: 0; font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-accent-text, #b3241e); }
-  .rl h2 { margin: .25rem 0 .5rem; font: 600 1.4rem/1.2 var(--qg-title, sans-serif); }
-  .rl p { margin: 0; }
-  .rl-note { color: var(--qg-muted, #514c46); font-size: .875rem; }
-  .rl-warn { color: var(--qg-accent-text, #b3241e); font-weight: 600; }
-  .rl-ok { color: var(--ok, #1d7a49); font-weight: 600; }
-  .rl-who { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .rl-who a { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .7rem .3rem .3rem; border: 1px solid var(--qg-rule-strong, #7d776f); color: inherit; text-decoration: none; font-weight: 600; font-size: .9rem; }
-  .rl-who a[aria-current] { background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); border-color: var(--qg-ink, #141210); }
-  .rl-who img, .rl-who span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-rule, #d8d3ca); }
-  .rl-who small { font: 500 .72rem var(--qg-mono, monospace); opacity: .7; }
-  .rl-sync { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; padding: 1.25rem; border: var(--rule, 2px) solid var(--qg-ink, #141210); border-left: 6px solid #1450d6; }
-  .rl-sync ol { margin: .75rem 0; padding-left: 1.2rem; display: grid; gap: .4rem; line-height: 1.5; }
-  .rl-sync__act { display: grid; gap: .5rem; justify-items: stretch; }
-  .rl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
-  .rl-id { display: flex; gap: 1rem; align-items: center; }
-  .rl-id img, .rl-id > span { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #1450d6; color: #fff; font: 700 1.6rem var(--qg-title, sans-serif); }
-  .rl-id h2 { margin: 0; }
-  .rl-id p { color: var(--qg-muted, #514c46); font-size: .9rem; }
-  .rl-ranks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
-  .rl-ranks li { display: grid; padding: .5rem .8rem; border: 1px solid var(--qg-rule-strong, #7d776f); min-width: 9rem; }
-  .rl-ranks small, .rl-avg small { font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); }
-  .rl-ranks span { font-size: .8rem; color: var(--qg-muted, #514c46); }
-  .rl-empty { padding: 1.5rem; border: 1px dashed var(--qg-rule-strong, #7d776f); color: var(--qg-muted, #514c46); }
-  .rl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
-  .rl-card { display: grid; gap: .5rem; align-content: start; padding: 1rem; border: 1px solid var(--qg-rule-strong, #7d776f); }
-  .rl-big { font: 600 2rem/1 var(--qg-title, sans-serif); }
-  .rl-big small { font: 400 .85rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); }
-  .rl-form { display: flex; flex-wrap: wrap; gap: 3px; }
-  .rl-form span, .rl-res { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .3rem; font: 600 .72rem var(--qg-mono, monospace); color: #fff; }
-  /* Pastilles V / D : texte blanc, verts et rouges assez foncés pour un contraste de 4,5:1 dans les deux thèmes */
-  .is-w { background: #17703f; } .is-l { background: #c81e19; }
-  .rl-card :global(.spark) { width: 100%; height: 60px; }
-  .rl-h { margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: var(--rule, 2px) solid var(--qg-ink, #141210); font: 600 1.1rem var(--qg-title, sans-serif); }
-  .rl-h small { font: 400 .8rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); margin-left: .5rem; }
-  .rl-auto { margin: .75rem 0; } .rl-auto summary { cursor: pointer; font-weight: 600; } .rl-auto ol { margin: .5rem 0; padding-left: 1.2rem; }
-  .rl-avgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
-  .rl-avg { display: grid; gap: .15rem; padding: .75rem; border: 1px solid var(--qg-rule, #d8d3ca); }
-  .rl-avg b { font: 600 1.5rem var(--qg-title, sans-serif); font-variant-numeric: tabular-nums; }
-  .rl-avg span { font-size: .78rem; } .rl-avg .is-up { color: var(--ok, #1d7a49); } .rl-avg .is-down { color: var(--danger, #b3241e); } .rl-avg .is-flat { color: var(--qg-muted, #514c46); }
-  .rl-scroll { overflow-x: auto; }
-  .rl-table { width: 100%; border-collapse: collapse; font-size: .88rem; white-space: nowrap; }
-  .rl-table th { text-align: left; font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); padding: .45rem .55rem; border-bottom: 1px solid var(--qg-rule-strong, #7d776f); }
-  .rl-table td { padding: .5rem .55rem; border-bottom: 1px solid var(--qg-rule, #d8d3ca); font-variant-numeric: tabular-nums; }
-  .rl-table a { color: inherit; font-weight: 600; }
-  .rl-mates { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
-  .rl-mates li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--qg-rule, #d8d3ca); }
-  .rl-mates span { color: var(--qg-muted, #514c46); font-size: .9rem; }
-  @media (max-width: 700px) { .rl-sync { grid-template-columns: minmax(0, 1fr); } }
-  .lt-roles, .lt-insight ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
-  .lt-roles li { display: flex; justify-content: space-between; gap: .5rem; } .lt-roles span, .lt-insight li span { color: var(--qg-muted, #514c46); font-size: .85rem; }
-  .lt-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
-  .lt-insight > .lt-cols > div { padding: .9rem 1rem; border: 1px solid var(--qg-rule, #d8d3ca); }
-  .lt-champ { display: flex; align-items: center; gap: .45rem; } .lt-champ img { border-radius: 4px; flex: none; }
-  .lt-goal { display: inline; margin-left: .4rem; } .lt-goal__btn { font: inherit; font-size: .78rem; padding: .1rem .5rem; border: 1px solid currentColor; background: none; color: var(--ink, currentColor); cursor: pointer; border-radius: 3px; }
-</style>

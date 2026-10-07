@@ -1,0 +1,49 @@
+---
+// « Ce qui ressort » des Trackers (RL, LoL, Valorant) : points forts et points à travailler d'un joueur, comparés au roster
+// (ou à ses 10 parties précédentes), et « En faire un objectif » sur chaque point à travailler. L'objectif garde sa mesure
+// (metric : jeu, clé, départ, cible, sens, unité) et se mesure ensuite tout seul (mesure-objectif.ts).
+// Chaque Tracker calcule ses mesures et passe ici des valeurs déjà mises en forme.
+export type Insight = { label: string; value: string; ref: string; group?: string; metric?: Record<string, unknown> };
+interface Props {
+  id: string;                 // identifiant du titre (lt-ins, vt-ins, rl-ins)
+  strengths: Insight[];
+  weak: Insight[];
+  refLabel: string;           // « vs roster » ou « vs tes 10 parties d’avant »
+  tool: string;               // « Tracker LoL » : repris dans le détail de l'objectif
+  ok: boolean;                // un objectif vient d'être ajouté
+  okNote: string;             // fin du message de confirmation, entre parenthèses
+  objectifsHref: string;
+  goal: { roster: number | string; user: string; due: string; back: string } | null;
+}
+const { id, strengths, weak, refLabel, tool, ok, okNote, objectifsHref, goal } = Astro.props;
+const why = (x: Insight) => (x.group ? `(${x.group}, ${x.ref} ${refLabel})` : `(${x.ref} ${refLabel})`);
+const today = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+---
+{ok && <p class="rl-ok">Objectif ajouté : retrouve-le dans <a href={objectifsHref}>Objectifs</a> ({okNote}).</p>}
+{(strengths.length > 0 || weak.length > 0) && (
+  <section class="lt-insight" aria-labelledby={id}>
+    <h3 id={id} class="rl-h">Ce qui ressort <small>20 dernières parties, {refLabel}</small></h3>
+    <div class="lt-cols">
+      <div>
+        <p class="rl-tag">Points forts</p>
+        {strengths.length ? <ul>{strengths.map((x) => <li><b>{x.label}</b> : {x.value} <span>{why(x)}</span></li>)}</ul> : <p class="rl-note">Rien qui se détache pour l’instant.</p>}
+      </div>
+      <div>
+        <p class="rl-tag">À travailler</p>
+        {weak.length ? <ul>{weak.map((x) => (
+          <li><b>{x.label}</b> : {x.value} <span>{why(x)}</span>
+            {goal && x.metric && (
+              <form method="post" action="/api/equipe/outils" class="lt-goal">
+                <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goal.roster} /><input type="hidden" name="user" value={goal.user} />
+                <input type="hidden" name="title" value={`${x.label} : passer de ${x.value} à ${x.ref}`} />
+                <input type="hidden" name="detail" value={`Repéré par le ${tool} le ${today} sur les 20 dernières parties ${why(x)}.`} />
+                <input type="hidden" name="metric" value={JSON.stringify(x.metric)} /><input type="hidden" name="due" value={goal.due} /><input type="hidden" name="back" value={goal.back} />
+                <button class="lt-goal__btn">En faire un objectif</button>
+              </form>
+            )}
+          </li>
+        ))}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
+      </div>
+    </div>
+  </section>
+)}

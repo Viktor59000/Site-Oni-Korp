@@ -159,3 +159,9 @@ Sous la grille des dispos, une ligne « Programme » : le capitaine, le coach ou
 - **Écoute rattachée au match** : bouton « Écouter la comm » sur le rappel 30 min avant un match ou un scrim (`voice_sessions.match_id`) ; la page du match affiche le lien vers le rapport.
 - **Annuaire des scrims** (Scouting) : fiches adverses avec niveau, contact, soirs habituels et statut (à contacter, contacté, partenaire, pas intéressé). Section « Scrims » en tête du Scouting avec le bilan contre nous et un message « Proposer un scrim » prêt à copier (nos prochains soirs jouables ou programmés en Scrim). 29 équipes de `notes/strategie/PROSPECTION.md` importées le 07/10 (statut « À contacter »).
 - **Mon espace** : les objectifs perso créés depuis un Tracker affichent leur valeur actuelle et leur avancement mesurés ; ligne « Mes Trackers » sous les cartes des rosters.
+
+## Code commun des Trackers (factorisé le 07/10)
+
+- `tracker.css` : styles communs des Trackers RL, LoL et Valorant (classes `rl-*` et `lt-*`, feuille globale importée par les trois pages).
+- `TrackerInsights.astro` : le bloc « Ce qui ressort » et le bouton « En faire un objectif » ; chaque Tracker lui passe ses points déjà mis en forme et la mesure de l'objectif.
+- `mesure-objectif.ts` > `metricValue()` : **seule** définition des mesures (victoires, KDA, K/D, clutchs, entrées, pistols, côtés, first bloods…). Les Trackers LoL et Valorant l'utilisent pour afficher, la page Objectifs pour mesurer : un objectif mesure exactement ce que montrait le Tracker.

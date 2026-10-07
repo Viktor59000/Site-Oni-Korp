@@ -2,6 +2,8 @@
 // Tracker Rocket League : parties envoyées par Oni Sync (API Stats locale du jeu, voir rl-sync.ts) et replays ballchasing.
 // Par joueur : forme, moyennes comparées au roster, session du jour, courbe, dernières parties, coéquipiers ; puis le roster côte à côte.
 import Qg from './Qg.astro';
+import TrackerInsights from './TrackerInsights.astro';
+import './tracker.css';
 import { rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { avg, pct, r1, spark } from './ui';
@@ -191,35 +193,9 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
           </article>
         </section>
 
-        {objectifOk && <p class="rl-ok">Objectif ajouté : retrouve-le dans <a href={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}>Objectifs</a> (mesuré sur tes parties suivantes).</p>}
-        {(strengths.length > 0 || weak.length > 0) && (
-          <section class="lt-insight" aria-labelledby="rl-ins">
-            <h3 id="rl-ins" class="rl-h">Ce qui ressort <small>20 dernières parties, {refLabel}</small></h3>
-            <div class="lt-cols">
-              <div>
-                <p class="rl-tag">Points forts</p>
-                {strengths.length ? <ul>{strengths.map((x) => <li><b>{x.label}</b> : {ifmt(x, x.me)} <span>({ifmt(x, x.ref)} {refLabel})</span></li>)}</ul> : <p class="rl-note">Rien qui se détache pour l’instant.</p>}
-              </div>
-              <div>
-                <p class="rl-tag">À travailler</p>
-                {weak.length ? <ul>{weak.map((x) => (
-                  <li><b>{x.label}</b> : {ifmt(x, x.me)} <span>({ifmt(x, x.ref)} {refLabel})</span>
-                    {canGoal && (
-                      <form method="post" action="/api/equipe/outils" class="lt-goal">
-                        <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goalRoster!.id} /><input type="hidden" name="user" value={focus.id} />
-                        <input type="hidden" name="title" value={`${x.label} : passer de ${ifmt(x, x.me)} à ${ifmt(x, x.ref)}`} />
-                        <input type="hidden" name="detail" value={`Repéré par le Tracker RL le ${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })} sur les 20 dernières parties (${ifmt(x, x.ref)} ${refLabel}).`} />
-                        <input type="hidden" name="metric" value={JSON.stringify({ g: 'rl', k: x.k, s: x.me, t: x.ref, d: x.dir, u: x.u })} />
-                        <input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
-                        <button class="lt-goal__btn">En faire un objectif</button>
-                      </form>
-                    )}
-                  </li>
-                ))}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
-              </div>
-            </div>
-          </section>
-        )}
+        <TrackerInsights id="rl-ins" strengths={strengths.map((x) => ({ label: x.label, value: ifmt(x, x.me), ref: ifmt(x, x.ref), metric: { g: 'rl', k: x.k, s: x.me, t: x.ref, d: x.dir, u: x.u } }))} weak={weak.map((x) => ({ label: x.label, value: ifmt(x, x.me), ref: ifmt(x, x.ref), metric: { g: 'rl', k: x.k, s: x.me, t: x.ref, d: x.dir, u: x.u } }))}
+          refLabel={refLabel} tool="Tracker RL" ok={objectifOk} okNote="mesuré sur tes parties suivantes" objectifsHref={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}
+          goal={canGoal ? { roster: goalRoster!.id, user: focus.id, due, back: `${here}${here.includes('?') ? '&' : '?'}objectif=ok` } : null} />
 
         <section aria-labelledby="rl-avg">
           <h3 id="rl-avg" class="rl-h">Moyennes par partie <small>20 dernières, comparées au reste du roster</small></h3>
@@ -310,60 +286,3 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
     )}
   </div>
 </Qg>
-
-<style>
-  .rl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.25rem; }
-  .rl-tag { margin: 0; font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-accent-text, #b3241e); }
-  .rl h2 { margin: .25rem 0 .5rem; font: 600 1.4rem/1.2 var(--qg-title, sans-serif); }
-  .rl p { margin: 0; }
-  .rl-note { color: var(--qg-muted, #514c46); font-size: .875rem; }
-  .rl-warn { color: var(--qg-accent-text, #b3241e); font-weight: 600; }
-  .rl-ok { color: var(--ok, #1d7a49); font-weight: 600; }
-  .rl-who { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .rl-who a { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .7rem .3rem .3rem; border: 1px solid var(--qg-rule-strong, #7d776f); color: inherit; text-decoration: none; font-weight: 600; font-size: .9rem; }
-  .rl-who a[aria-current] { background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); border-color: var(--qg-ink, #141210); }
-  .rl-who img, .rl-who span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-rule, #d8d3ca); }
-  .rl-who small { font: 500 .72rem var(--qg-mono, monospace); opacity: .7; }
-  .rl-sync { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; padding: 1.25rem; border: var(--rule, 2px) solid var(--qg-ink, #141210); border-left: 6px solid #1450d6; }
-  .rl-sync ol { margin: .75rem 0; padding-left: 1.2rem; display: grid; gap: .4rem; line-height: 1.5; }
-  .rl-sync__act { display: grid; gap: .5rem; justify-items: stretch; }
-  .rl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
-  .rl-id { display: flex; gap: 1rem; align-items: center; }
-  .rl-id img, .rl-id > span { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #1450d6; color: #fff; font: 700 1.6rem var(--qg-title, sans-serif); }
-  .rl-id h2 { margin: 0; }
-  .rl-id p { color: var(--qg-muted, #514c46); font-size: .9rem; }
-  .rl-ranks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
-  .rl-ranks li { display: grid; padding: .5rem .8rem; border: 1px solid var(--qg-rule-strong, #7d776f); min-width: 9rem; }
-  .rl-ranks small, .rl-avg small { font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); }
-  .rl-ranks span { font-size: .8rem; color: var(--qg-muted, #514c46); }
-  .rl-empty { padding: 1.5rem; border: 1px dashed var(--qg-rule-strong, #7d776f); color: var(--qg-muted, #514c46); }
-  .rl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
-  .rl-card { display: grid; gap: .5rem; align-content: start; padding: 1rem; border: 1px solid var(--qg-rule-strong, #7d776f); }
-  .rl-big { font: 600 2rem/1 var(--qg-title, sans-serif); }
-  .rl-big small { font: 400 .85rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); }
-  .rl-form { display: flex; flex-wrap: wrap; gap: 3px; }
-  .rl-form span, .rl-res { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .3rem; font: 600 .72rem var(--qg-mono, monospace); color: #fff; }
-  /* Pastilles V / D : texte blanc, verts et rouges assez foncés pour un contraste de 4,5:1 dans les deux thèmes */
-  .is-w { background: #17703f; } .is-l { background: #c81e19; }
-  .rl-card :global(.spark) { width: 100%; height: 60px; }
-  .rl-h { margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: var(--rule, 2px) solid var(--qg-ink, #141210); font: 600 1.1rem var(--qg-title, sans-serif); }
-  .rl-h small { font: 400 .8rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); margin-left: .5rem; }
-  .rl-auto { margin: .75rem 0; } .rl-auto summary { cursor: pointer; font-weight: 600; } .rl-auto ol { margin: .5rem 0; padding-left: 1.2rem; }
-  .rl-avgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
-  .rl-avg { display: grid; gap: .15rem; padding: .75rem; border: 1px solid var(--qg-rule, #d8d3ca); }
-  .rl-avg b { font: 600 1.5rem var(--qg-title, sans-serif); font-variant-numeric: tabular-nums; }
-  .rl-avg span { font-size: .78rem; } .rl-avg .is-up { color: var(--ok, #1d7a49); } .rl-avg .is-down { color: var(--danger, #b3241e); } .rl-avg .is-flat { color: var(--qg-muted, #514c46); }
-  .rl-scroll { overflow-x: auto; }
-  .rl-table { width: 100%; border-collapse: collapse; font-size: .88rem; white-space: nowrap; }
-  .rl-table th { text-align: left; font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); padding: .45rem .55rem; border-bottom: 1px solid var(--qg-rule-strong, #7d776f); }
-  .rl-table td { padding: .5rem .55rem; border-bottom: 1px solid var(--qg-rule, #d8d3ca); font-variant-numeric: tabular-nums; }
-  .rl-table a { color: inherit; font-weight: 600; }
-  .rl-mates { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
-  .rl-mates li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--qg-rule, #d8d3ca); }
-  .rl-mates span { color: var(--qg-muted, #514c46); font-size: .9rem; }
-  @media (max-width: 700px) { .rl-sync { grid-template-columns: minmax(0, 1fr); } }
-  .lt-insight ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; } .lt-insight li span { color: var(--qg-muted, #514c46); font-size: .85rem; }
-  .lt-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
-  .lt-insight > .lt-cols > div { padding: .9rem 1rem; border: 1px solid var(--qg-rule, #d8d3ca); }
-  .lt-goal { display: inline; margin-left: .4rem; } .lt-goal__btn { font: inherit; font-size: .78rem; padding: .1rem .5rem; border: 1px solid currentColor; background: none; color: var(--ink, currentColor); cursor: pointer; border-radius: 3px; }
-</style>
