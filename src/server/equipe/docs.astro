@@ -1,7 +1,12 @@
 ---
-// Docs du roster : routines d'entraînement, règles internes, guides, liens utiles. Mise en forme simple (# titre, - liste, **gras**, liens).
+// Docs, en trois niveaux (07/10, ANALYSE-CLUB.md 5.4) dans un seul onglet :
+// - du roster : routines, règles internes, appels (écrits par le roster, lus par lui seul) ;
+// - du jeu : règles de compo, niveaux visés, tournois cibles (écrits par le responsable du jeu, lus par tous les rosters du jeu) ;
+// - du club : fiches de poste, règlement, procédures (écrits par l'encadrement, lus par tout Inside).
+// Mise en forme simple (# titre, - liste, **gras**, liens).
 import Qg from './Qg.astro';
-import { canLead, ownerOf, scope, teamUser } from './outils';
+import { canLead, canWriteDoc, ownerOf, scope, teamUser } from './outils';
+import { jeu } from './jeux';
 import { rows } from '../db';
 import { md } from './ui';
 
@@ -15,13 +20,25 @@ const manage = sc.list.some((r) => canLead(me, r.id));
 const q = sc.active ? `r=${sc.active}` : '';
 const listUrl = `/equipe/docs/${q ? `?${q}` : ''}`;
 const ids = sc.list.map((r) => r.id);
-type D = { id: number; roster_id: number; title: string; body: string; pinned: number; author: string; updated_at: number };
-const docs = ids.length ? await rows<D>(`SELECT * FROM docs WHERE roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY pinned DESC, updated_at DESC`, ...ids) : [];
+type D = { id: number; roster_id: number | null; title: string; body: string; pinned: number; author: string; updated_at: number; level: string | null; game: string | null };
+const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
+const game = sc.list[0]?.game ?? null, J = jeu(game);
+const [rosterDocs, gameDocs, clubDocs] = await Promise.all([
+  ids.length ? rows<D>(`SELECT * FROM docs WHERE COALESCE(level, 'roster') = 'roster' AND roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY pinned DESC, updated_at DESC`, ...ids) : [],
+  game ? rows<D>(`SELECT * FROM docs WHERE level = 'jeu' AND game = ? ORDER BY pinned DESC, updated_at DESC`, game).catch(() => []) : [],
+  rows<D>(`SELECT * FROM docs WHERE level = 'club' ORDER BY pinned DESC, updated_at DESC`).catch(() => []),
+]);
+const docs = [...rosterDocs, ...gameDocs, ...clubDocs];
+const lvlOf = (d: D) => d.level ?? 'roster';
+const canWrite = (d: D) => canWriteDoc(me, lvlOf(d), d.roster_id, d.game);
+// Niveaux où la personne peut créer un doc
+const LEVELS = ([['roster', `Ce roster (${sc.list[0]?.name ?? ''})`], ['jeu', `Tous les rosters ${J?.label ?? ''}`], ['club', 'Tout le club']] as [string, string][])
+  .filter(([l]) => canWriteDoc(me, l, ids[0] ?? null, game));
 const did = Astro.url.searchParams.get('d');
-const editing = did === 'nouveau' ? { id: 0, roster_id: ids[0], title: '', body: '', pinned: 0 } as D : did ? docs.find((d) => String(d.id) === did) ?? null : null;
+const editing = did === 'nouveau' ? { id: 0, roster_id: ids[0], title: '', body: '', pinned: 0, level: 'roster', game } as D : did ? docs.find((d) => String(d.id) === did) ?? null : null;
+const origin = (d: D) => lvlOf(d) === 'club' ? 'Docs du club' : lvlOf(d) === 'jeu' ? `Docs ${J?.label ?? 'du jeu'}` : rosterName.get(Number(d.roster_id)) ?? 'Roster';
 const edit = Astro.url.searchParams.has('modifier') || did === 'nouveau';
 const names = new Map((await rows<{ id: string; name: string }>('SELECT id, name FROM guild_members')).map((m) => [m.id, m.name]));
-const rosterName = new Map(me.rosters.map((r) => [Number(r.id), r.name]));
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 const STARTERS = [
   ['Routine de la semaine', '# Routine de la semaine\n- Lundi : \n- Mercredi : \n- Vendredi : \n\n# Avant chaque match\n- Échauffement 15 min\n- Vocal 20 min avant'],
@@ -36,8 +53,9 @@ const STARTERS = [
         <p><a class="dc-back" href={listUrl}>← Tous les docs</a></p>
         <div class="dc-row">
           <label>Titre<input name="title" required maxlength="100" value={editing.title} data-title /></label>
-          {!editing.id && <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>}
-          {manage && <label class="dc-check"><input type="checkbox" name="pinned" value="1" checked={!!Number(editing.pinned)} /> Épinglé</label>}
+          {!editing.id && <input type="hidden" name="roster" value={ids[0]} />}
+          {!editing.id && LEVELS.length > 1 && <label>Pour qui<select name="level">{LEVELS.map(([v, l]) => <option value={v}>{l}</option>)}</select></label>}
+          {(manage || lvlOf(editing) !== 'roster') && <label class="dc-check"><input type="checkbox" name="pinned" value="1" checked={!!Number(editing.pinned)} /> Épinglé</label>}
         </div>
         {!editing.id && <p class="dc-starters">Partir d'un modèle : {STARTERS.map(([l, b]) => <button type="button" data-starter={b} data-label={l}>{l}</button>)}</p>}
         <label>Contenu <small># titre · - liste · **gras** · *italique* · liens collés tels quels</small><textarea name="body" rows="16" maxlength="20000" data-body>{editing.body}</textarea></label>
@@ -47,11 +65,11 @@ const STARTERS = [
       <article class="dc-view">
         <p><a class="dc-back" href={listUrl}>← Tous les docs</a></p>
         <h2>{editing.title}</h2>
-        <p class="dc-meta">{rosterName.get(Number(editing.roster_id))} · modifié le {fmt.format(new Date(Number(editing.updated_at)))} par {names.get(editing.author) ?? 'un membre'}</p>
+        <p class="dc-meta">{origin(editing)} · modifié le {fmt.format(new Date(Number(editing.updated_at)))} par {names.get(editing.author) ?? 'un membre'}</p>
         <div class="dc-body" set:html={md(editing.body)} />
         <p class="dc-actions">
-          <a class="btn btn--ghost" href={`/equipe/docs/?d=${editing.id}&modifier${q ? `&${q}` : ''}`}>Modifier</a>
-          {(editing.author === user.id || manage) && (
+          {canWrite(editing) && <a class="btn btn--ghost" href={`/equipe/docs/?d=${editing.id}&modifier${q ? `&${q}` : ''}`}>Modifier</a>}
+          {(editing.author === user.id || (lvlOf(editing) === 'roster' ? manage : canWrite(editing))) && (
             <form method="post" action="/api/equipe/outils" onsubmit="return confirm('Supprimer ce doc ?')"><input type="hidden" name="action" value="suppr" /><input type="hidden" name="table" value="docs" /><input type="hidden" name="id" value={editing.id} /><input type="hidden" name="back" value={listUrl} /><button class="dc-link">Supprimer</button></form>
           )}
         </p>
@@ -59,17 +77,27 @@ const STARTERS = [
     ) : (
       <div class="dc">
         {ids.length > 0 && <a class="btn" href={`/equipe/docs/?d=nouveau${q ? `&${q}` : ''}`}>Nouveau doc</a>}
-        {docs.length ? (
-          <ul class="dc-list">
-            {docs.map((d) => (
-              <li><a href={`/equipe/docs/?d=${d.id}${q ? `&${q}` : ''}`}>
-                <strong>{Number(d.pinned) ? '📌 ' : ''}{d.title}</strong>
-                <span>{rosterName.get(Number(d.roster_id))} · {fmt.format(new Date(Number(d.updated_at)))} · {names.get(d.author) ?? 'un membre'}</span>
-                <p>{d.body.replace(/[#*\-]/g, '').slice(0, 140)}</p>
-              </a></li>
-            ))}
-          </ul>
-        ) : <p class="eq-note">Aucun doc pour l'instant. Commence par la routine de la semaine ou les règles du roster.</p>}
+        {([
+          ['roster', `Docs de ${sc.list[0]?.name ?? 'l’équipe'}`, 'Routines, règles, appels : écrits par le roster, lus par lui seul.', rosterDocs, 'Aucun doc pour l’instant. Commence par la routine de la semaine ou les règles du roster.'],
+          ['jeu', `Docs ${J?.label ?? 'du jeu'}`, `Communs à tous les rosters ${J?.label ?? ''}, écrits par le responsable du jeu.`, gameDocs, null],
+          ['club', 'Docs du club', 'Fiches de poste, règlement, procédures : pour tout le monde, écrits par l’encadrement.', clubDocs, null],
+        ] as [string, string, string, D[], string | null][]).filter(([, , , list, empty]) => list.length || empty).map(([lvl, title, lead, list, empty]) => (
+          <section class:list={['dc-sec', `is-${lvl}`]}>
+            <h2>{title}</h2>
+            <p class="dc-lead">{lead}</p>
+            {list.length ? (
+              <ul class="dc-list">
+                {list.map((d) => (
+                  <li><a href={`/equipe/docs/?d=${d.id}${q ? `&${q}` : ''}`}>
+                    <strong>{Number(d.pinned) ? '📌 ' : ''}{d.title}</strong>
+                    <span>{fmt.format(new Date(Number(d.updated_at)))} · {names.get(d.author) ?? 'un membre'}</span>
+                    <p>{d.body.replace(/[#*\-]/g, '').slice(0, 140)}</p>
+                  </a></li>
+                ))}
+              </ul>
+            ) : <p class="eq-note">{empty}</p>}
+          </section>
+        ))}
       </div>
     )}
 </Qg>
@@ -85,7 +113,11 @@ const STARTERS = [
   .eq-mini { padding-block: 2.5rem 1.5rem; }
   .eq-mini h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
   .eq-note { color: var(--muted); font-size: var(--step--1); }
-  .dc { display: grid; gap: 1.5rem; justify-items: start; }
+  .dc { display: grid; gap: 2rem; justify-items: start; }
+  .dc-sec { display: grid; gap: .6rem; width: 100%; }
+  .dc-sec h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .dc-lead { margin: 0; color: var(--muted); font-size: var(--step--1); }
+  .dc-sec:not(.is-roster) .dc-list a { border-style: dashed; }
   .dc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1rem; width: 100%; }
   .dc-list a { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); color: inherit; text-decoration: none; height: 100%; box-sizing: border-box; }
   .dc-list a:hover { border-color: var(--ink); }

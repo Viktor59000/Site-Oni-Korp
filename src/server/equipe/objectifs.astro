@@ -14,13 +14,15 @@ const sc = scope(me.rosters, Astro.url, Astro.cookies);
 // Peut gérer le roster affiché : encadrement, responsable du jeu ou capitaine
 const manage = sc.list.some((r) => canLead(me, r.id));
 const back = `/equipe/objectifs/${sc.active ? `?r=${sc.active}` : ''}`;
-type G = { id: number; roster_id: number; user_id: string | null; title: string; detail: string | null; due: number | null; status: string; progress: number; updated_at: number };
+type G = { id: number; roster_id: number; user_id: string | null; title: string; detail: string | null; due: number | null; status: string; progress: number; updated_at: number; private: number | null };
+// Un objectif privé ne se voit que par le joueur concerné et l'encadrement du roster
+const canView = (g: G) => !Number(g.private) || g.user_id === user.id || canLead(me, g.roster_id);
 const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
 const STATUS: Record<string, string> = { 'en-cours': 'En cours', atteint: 'Atteint', abandonne: 'Abandonné' };
 
 const blocks = await Promise.all(sc.list.map(async (r) => {
   const members = await rosterMembers(r.role_id);
-  const goals = await rows<G>(`SELECT * FROM goals WHERE roster_id = ? AND (status = 'en-cours' OR updated_at > ?) ORDER BY status = 'en-cours' DESC, due IS NULL, due`, r.id, Date.now() - 30 * 86400_000);
+  const goals = (await rows<G>(`SELECT * FROM goals WHERE roster_id = ? AND (status = 'en-cours' OR updated_at > ?) ORDER BY status = 'en-cours' DESC, due IS NULL, due`, r.id, Date.now() - 30 * 86400_000)).filter(canView);
   const groups = [
     { key: 'roster', label: 'Tout le roster', avatar: null as string | null, list: goals.filter((g) => !g.user_id) },
     ...members.map((m) => ({ key: m.id, label: m.name, avatar: m.avatar, list: goals.filter((g) => g.user_id === m.id) })),
@@ -43,6 +45,7 @@ const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (
                 <label>Pour<select name="user"><option value="">Tout le roster</option>{members.map((m) => <option value={m.id}>{m.name}</option>)}</select></label>
                 <label>Objectif<input name="title" required maxlength="120" placeholder="Ex. : passer Diamant 4" /></label>
                 <label>Échéance <small>(facultatif)</small><input name="due" type="date" /></label>
+                <label class="ob-check"><input type="checkbox" name="public" value="1" /> Visible par tout le roster <small>(sinon : le joueur et l’encadrement seulement)</small></label>
                 <label class="ob-wide">Comment on le mesure <small>(facultatif)</small><textarea name="detail" rows="2" maxlength="500"></textarea></label>
                 <button class="btn">Ajouter</button>
               </form>
@@ -57,7 +60,7 @@ const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (
                     {g.list.map((o) => (
                       <li class:list={['ob-goal', `is-${o.status}`]}>
                         <div class="ob-top">
-                          <strong>{o.title}</strong>
+                          <strong>{o.title}</strong>{!!Number(o.private) && <small class="ob-priv" title="Visible du joueur et de l’encadrement seulement">privé</small>}
                           <span class="ob-status">{STATUS[o.status] ?? o.status}{o.due && o.status === 'en-cours' ? ` · avant le ${fmt.format(new Date(Number(o.due)))}` : ''}</span>
                         </div>
                         {o.detail && <p class="ob-detail">{o.detail}</p>}
@@ -115,4 +118,7 @@ const canEdit = (g: G) => canLead(me, g.roster_id) || g.user_id === user.id || (
   .ob-update input { flex: 1; accent-color: var(--lacquer); }
   .ob-btn { min-height: 36px; padding: 0 .75rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .8rem var(--font-body); cursor: pointer; }
   .ob-btn.is-ok { border-color: #1f8f55; color: #1f8f55; }
+  .ob-check { display: flex !important; align-items: center; gap: .45rem; font-weight: 400 !important; }
+  .ob-check small { color: var(--muted); }
+  .ob-priv { margin-left: .5rem; padding: .05rem .4rem; border: 1px dashed var(--muted); color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
 </style>
