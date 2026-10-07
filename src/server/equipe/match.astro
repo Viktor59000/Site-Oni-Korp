@@ -30,6 +30,8 @@ const lineup = m?.lineup ? JSON.parse(m.lineup) as { titulaires: { id: string; n
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]/g, '');
 const fiche = m ? (await rows<{ id: number; name: string; plan: string; forces: string; faiblesses: string }>('SELECT id, name, plan, forces, faiblesses FROM opponents WHERE roster_id = ?', m.roster_id).catch(() => [])).find((o) => norm(o.name) === norm(m.opponent)) : null;
 const boards = m ? await rows<{ id: number; title: string }>('SELECT id, title FROM boards WHERE roster_id = ? AND owner IS NULL AND LOWER(title) LIKE ?', m.roster_id, `%${m.opponent.toLowerCase()}%`).catch(() => []) : [];
+// Rapport de comm de l'écoute du match (bouton « Écouter la comm » du rappel Discord), s'il existe
+const comm = m ? (await rows<{ doc_id: number | null; status: string }>('SELECT doc_id, status FROM voice_sessions WHERE match_id = ? ORDER BY id DESC LIMIT 1', m.id).catch(() => []))[0] ?? null : null;
 const vods = m ? await rows<{ id: number; title: string }>('SELECT id, title FROM vods WHERE match_id = ? OR (roster_id = ? AND LOWER(title) LIKE ?)', m.id, m.roster_id, `%${m.opponent.toLowerCase()}%`).catch(() => []) : [];
 const [notes] = m ? await rows<{ n: number; avg: number }>('SELECT COUNT(*) AS n, AVG(rating) AS avg FROM match_notes WHERE match_id = ?', m.id) : [];
 const [stats] = m ? await rows<{ n: number }>('SELECT COUNT(*) AS n FROM match_stats WHERE match_id = ?', m.id) : [];
@@ -143,6 +145,7 @@ const checklist = m ? CHECK[m.game] ?? CHECK.valo : [];
               <ul class="am-after">
                 <li><a href={`/equipe/notes/?${q ? `${q}` : ''}#match-${m.id}`}>Débrief</a><span>{Number(notes?.n ?? 0) ? `${notes.n} débrief(s) · ${Math.round(Number(notes.avg) * 10) / 10}/10` : 'pas encore écrit'}</span></li>
                 <li><a href={`/equipe/stats/${q ? `?${q}` : ''}`}>Stats du match</a><span>{Number(stats?.n ?? 0) ? `${stats.n} joueur(s) renseigné(s)` : m.game === 'rl' ? 'importer les replays ballchasing' : 'à saisir'}</span></li>
+                <li>{comm?.doc_id ? <a href={`/equipe/docs/?${q ? `${q}&` : ''}d=${comm.doc_id}`}>Comm</a> : <span class="am-off">Comm</span>}<span>{comm?.doc_id ? 'rapport et transcription de l’écoute' : comm ? 'transcription en cours' : 'bouton « Écouter la comm » du rappel Discord'}</span></li>
                 <li><a href={`/equipe/vod/${q ? `?${q}` : ''}`}>VOD</a><span>{vods.length ? vods.map((v) => v.title).join(', ') : 'ajouter la vidéo du match'}</span></li>
               </ul>
             </section>
