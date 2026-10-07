@@ -4,10 +4,11 @@
 //    un BOM devant « [TAGame.MatchStatsExporter_TA] » rend la section illisible pour le jeu et l'API reste coupée (bug de la v1) ;
 // 2. se connecte au jeu en local (127.0.0.1 puis ::1, port de DefaultStatsAPI.ini, 49123 par défaut) ;
 // 3. à chaque fin de partie, envoie le dernier état et l'événement de fin, bruts, au site du club ;
-// 4. signale au site son état (lancé, connecté au jeu, partie quittée avant la fin) : Inside > Tracker l'affiche, ce qui permet d'aider à distance.
+// 4. (v6) envoie au site les replays que le joueur sauvegarde (dossier Demos du jeu) : stats avancées et rang via ballchasing ;
+// 5. signale au site son état (lancé, connecté au jeu, partie quittée avant la fin) : Inside > Tracker l'affiche, ce qui permet d'aider à distance.
 // Aucun accès à la mémoire du jeu, aucune injection : seulement ce que Rocket League publie lui-même.
 // Pas de backtick ni de « ${ » dans ce texte (gabarit TypeScript).
-export const ONI_SYNC_VERSION = '5';
+export const ONI_SYNC_VERSION = '6';
 // Logo Oni Korp (64 px, PNG) pour l'icône de la zone de notification
 export const ONI_ICON = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAEzElEQVR4nO2aT1IbRxjFX0sbFyyMl9iuUm8g2Vk3iHwCkxOgnMC6AfIJIp/A5AQhJ7C4gdglZtNUYbI0LOwdar9v0IgR6p5pofmEMfyqBnXzjd73+s0fTZVk8MB5DIDbg+YxAG4zfGnbjWcjd87hT0dobTMBnG7ZtjHYefHJ9fET8nnb9r3HwctjN+I0YyaAqx38W/77dXGnOpBwm0085bCUzX/dIV9qR/oD/qMx5n3xABtuUyQAeL/ngXOWKkP4/1drAbS8R5vbBjws32uR4dsG/N+CvDg+4duuvXAIf+VnxCFYdPzjGg0cMqwhEpguXvwY8y4awNm23fHe/83hBLPfaOIdBxh7vKITCnHzsBSUce2EAghSWMjnrZbnP0ZcjQMgr6OGwRHHGF9iD/BdTOAZ8PvzT+6Aw4ysWRE2dmzc4vBOuH0ACRhzwvdYFDDcZjibOwtWi2YAN4++kDW7Ca/tzniMfRpocbpSVALgkec9o7sZuGdkzWJUCucYc+Q9znndOb7BgXDueNd3mPDkCUbyGVylqRFArhkiWhCqhNfWzTNZFIfJVGnmZu9FAGXCObycfuPLCU8/B5Kqea8C4CI7/LjZ5c4WxMB3UOQWZu9VABpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYTam6WEu+FV3//l/bsBpRpmm7P/y2G1wGCRrFoMmDmjiDYdBqsxOqSkALub9+jr6xW+kr76X9B85DGPMP+y9w1GQrFmMKvEyszMsGQAXfthsZj9wcJhAb/byEh/mvoi9QaNpXvN9Q0TImpVxumW7bPKBwzlCZoPcNgCAvdEr/qxFfuz47Rvesl8fFTC4P3j676ME6leT/W4IGLBpi9MpM2ZrDoDBt2l+xOGU0227yz4D7rDBaRxjRGQmuBjcLx1ZqPfo8Yx4yunUrPwfNQdQhKc7L0X8iYqf5vGIXxiDQd4rhblmVdCM9WP0vfe7uVmtAKTXeMyFe7/DaSnGmL8MPx02C/eJFKbNFoXmOmw2BKk7gPw6Z8g828pPdx51uUH2cy+LQv3lqTMAb0yXpvrUsyiBC7/gS4/3iX0sAXstz+SI9Wh6j9N5FgggCeqtrWFQfB64LbUEkMPLQq7ZAYN4w+k1NFxLAHyo4VNgj6e7Q03UGkAOg+hMgnjFKbssGYAxR5OFD1EzKgHknP1iewyibwofTYsEINc5Fz7z3F83qgEIcn/4+hWWN6sRp8kBcPFzz/0aqAdwk6oAuHD5WOvydHdYASsPIPZYDT6+8nSXhQ+xQlYeQI48O3g+VnPItV/fI1bNnQUgyP2BL9C+zsu40wB+BB4D4PagefABfAeu9hyMASqlYQAAAABJRU5ErkJggg==';
 export const ONI_SYNC_PS = String.raw`
@@ -210,6 +211,7 @@ function Send-Match($endMsg, $lastMsg) {
   try {
     $res = Invoke-RestMethod -Method Post -Uri $Api -Headers @{ Authorization = ('Bearer ' + $Token) } -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 20
     Log ('Partie envoyée : ' + $res.message); Status ('dernière partie envoyée ' + (Get-Date -Format 'HH:mm'))
+    if (-not (Test-Path $tipFile)) { try { [IO.File]::WriteAllText($tipFile, '1') } catch {}; Tip 'Oni Sync : astuce' 'Clique « Sauvegarder le replay » en fin de partie : Oni Sync l''envoie, et Inside affiche ton rang et des stats avancées (positionnement, boost).' 'Info' }
   } catch {
     $msg = $_.ErrorDetails.Message
     try { $msg = ($msg | ConvertFrom-Json).error } catch {}
@@ -217,6 +219,42 @@ function Send-Match($endMsg, $lastMsg) {
     Log ('Partie pas envoyée : ' + $msg); Tip 'Partie pas envoyée' $msg 'Warning'
   }
 }
+
+# ---------- Replays sauvegardés (v6) ----------
+# En fin de partie, « Sauvegarder le replay » écrit un fichier .replay dans Documents\My Games\Rocket League\TAGame\Demos
+# (DemosEpic selon les versions). Oni Sync l'envoie au site, qui le passe à ballchasing : stats avancées et rang.
+# Liste des fichiers déjà envoyés dans replays-envoyes.txt. Premier lancement : les 10 replays des 7 derniers jours sont envoyés.
+$ReplayApi = $Api -replace '/sync$', '/replay'
+$docs = [Environment]::GetFolderPath('MyDocuments')
+$demoDirs = @((Join-Path $docs 'My Games\Rocket League\TAGame\Demos'), (Join-Path $docs 'My Games\Rocket League\TAGame\DemosEpic'))
+$sentFile = Join-Path $dir 'replays-envoyes.txt'
+$global:sent = New-Object 'System.Collections.Generic.HashSet[string]'
+function All-Replays { foreach ($d in $demoDirs) { if (Test-Path $d) { Get-ChildItem $d -Filter *.replay -ErrorAction SilentlyContinue } } }
+if (Test-Path $sentFile) { foreach ($l in [IO.File]::ReadAllLines($sentFile)) { if ($l) { [void]$global:sent.Add($l) } } }
+elseif (-not $env:ONI_SYNC_TEST) {
+  $recent = @(All-Replays | Sort-Object LastWriteTime -Descending | Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-7) } | Select-Object -First 10 | ForEach-Object { $_.Name })
+  $old = @(All-Replays | Where-Object { $recent -notcontains $_.Name } | ForEach-Object { $_.Name })
+  if ($old.Count) { [IO.File]::WriteAllLines($sentFile, [string[]]$old); foreach ($n in $old) { [void]$global:sent.Add($n) } } else { [IO.File]::WriteAllText($sentFile, '') }
+}
+function Mark-Sent($name) { [void]$global:sent.Add($name); try { [IO.File]::AppendAllText($sentFile, $name + [Environment]::NewLine) } catch {} }
+function Check-Replays {
+  $todo = @(All-Replays | Where-Object { -not $global:sent.Contains($_.Name) -and $_.LastWriteTime -lt (Get-Date).AddSeconds(-5) } | Sort-Object LastWriteTime | Select-Object -First 2)
+  foreach ($f in $todo) {
+    if ($f.Length -gt 4300000) { Mark-Sent $f.Name; Log ('Replay trop gros, pas envoyé : ' + $f.Name); continue }
+    try {
+      $res = Invoke-RestMethod -Method Post -Uri $ReplayApi -Headers @{ Authorization = ('Bearer ' + $Token); 'X-Replay-Name' = $f.Name } -ContentType 'application/octet-stream' -Body ([IO.File]::ReadAllBytes($f.FullName)) -TimeoutSec 60
+      Mark-Sent $f.Name; Log ('Replay envoyé : ' + $f.Name + ' · ' + $res.message)
+    } catch {
+      $code = 0; try { $code = [int]$_.Exception.Response.StatusCode } catch {}
+      Log ('Replay pas envoyé (' + $code + ') : ' + $f.Name)
+      # Refus définitif (fichier invalide, trop gros) : on ne réessaie pas ; panne réseau ou site : nouvel essai plus tard
+      if ($code -ge 400 -and $code -lt 500 -and $code -ne 429 -and $code -ne 401) { Mark-Sent $f.Name }
+      break
+    }
+  }
+}
+# Astuce montrée une seule fois, après la première partie envoyée
+$tipFile = Join-Path $dir 'astuce-replay.txt'
 
 # ---------- 3. Connexion au jeu (minuterie : l'icône reste réactive) ----------
 $global:client = $null; $global:stream = $null; $global:split = $null; $global:last = $null
@@ -245,10 +283,12 @@ function Drop($why) {
 $global:paused = $false
 $global:waitLog = [DateTime]::Now
 $global:iniCheck = [DateTime]::Now
+$global:replayCheck = [DateTime]::MinValue
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 200
 $timer.Add_Tick({
   if ($global:paused) { return }
+  if (([DateTime]::Now - $global:replayCheck).TotalSeconds -ge 10) { $global:replayCheck = [DateTime]::Now; Check-Replays }
   if (-not $global:client) {
     # Une ligne de journal toutes les 10 minutes tant que le jeu ne répond pas (aide au dépannage)
     if (([DateTime]::Now - $global:waitLog).TotalMinutes -ge 10) { $global:waitLog = [DateTime]::Now; $rl = @(Get-Process RocketLeague -ErrorAction SilentlyContinue).Count; Log ('Toujours en attente du jeu (Rocket League ' + $(if ($rl) { 'ouvert, port ' + $port + ' fermé : API Stats coupée ?' } else { 'fermé' }) + ')') }

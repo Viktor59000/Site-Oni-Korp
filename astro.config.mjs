@@ -54,6 +54,7 @@ const api = {
       route('/equipe/compos', './src/server/equipe/compos.astro');
       route('/api/rl/oni-sync', './src/server/equipe/rl-sync.ts');
       route('/api/rl/sync', './src/server/equipe/rl-sync.ts');
+      route('/api/rl/replay', './src/server/equipe/rl-replay.ts');
       route('/equipe/setup', './src/server/equipe/setup.astro');
       route('/equipe/vod', './src/server/equipe/vod.astro');
       route('/equipe/docs', './src/server/equipe/docs.astro');

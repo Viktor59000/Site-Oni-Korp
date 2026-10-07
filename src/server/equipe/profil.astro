@@ -63,7 +63,7 @@ const cards = [
       ['Impact', [['ACS', r1(avg(valo.map((x) => x.acs)), 0)], ['ADR', r1(avg(valo.map((x) => x.adr)), 0)], ['First bloods', r1(avg(valo.map((x) => x.fb)))]]],
       ['Visée', [['Headshots', pct(avg(valo.map((x) => x.hs).filter((v: number | null) => v !== null)))]]],
     ] } : null,
-  // Rocket League : parties d'Oni Sync (ou replays ballchasing) ; le jeu ne publie pas le rang, la carte montre la forme
+  // Rocket League : parties d'Oni Sync, complétées par les replays ballchasing (rang lu dans les replays classés) ; la carte montre la forme
   rl.length || acc('rl') ? { key: 'rl', title: 'Rocket League', rank: rl.length ? `${pct(win(rl))} de victoires` : 'Pas encore de partie', sub: rl.length ? `sur les ${rl.length} dernières parties` : 'Lance Oni Sync (Tracker RL) avant de jouer', emblem: null,
     trend: spark(rl.slice().reverse().map((x) => x.score), { w: 140, h: 36 }),
     groups: rl.length ? [
