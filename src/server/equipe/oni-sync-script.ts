@@ -7,7 +7,9 @@
 // 4. signale au site son état (lancé, connecté au jeu, partie quittée avant la fin) : Inside > Tracker l'affiche, ce qui permet d'aider à distance.
 // Aucun accès à la mémoire du jeu, aucune injection : seulement ce que Rocket League publie lui-même.
 // Pas de backtick ni de « ${ » dans ce texte (gabarit TypeScript).
-export const ONI_SYNC_VERSION = '2';
+export const ONI_SYNC_VERSION = '3';
+// Logo Oni Korp (64 px, PNG) pour l'icône de la zone de notification
+export const ONI_ICON = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAEzElEQVR4nO2aT1IbRxjFX0sbFyyMl9iuUm8g2Vk3iHwCkxOgnMC6AfIJIp/A5AQhJ7C4gdglZtNUYbI0LOwdar9v0IgR6p5pofmEMfyqBnXzjd73+s0fTZVk8MB5DIDbg+YxAG4zfGnbjWcjd87hT0dobTMBnG7ZtjHYefHJ9fET8nnb9r3HwctjN+I0YyaAqx38W/77dXGnOpBwm0085bCUzX/dIV9qR/oD/qMx5n3xABtuUyQAeL/ngXOWKkP4/1drAbS8R5vbBjws32uR4dsG/N+CvDg+4duuvXAIf+VnxCFYdPzjGg0cMqwhEpguXvwY8y4awNm23fHe/83hBLPfaOIdBxh7vKITCnHzsBSUce2EAghSWMjnrZbnP0ZcjQMgr6OGwRHHGF9iD/BdTOAZ8PvzT+6Aw4ysWRE2dmzc4vBOuH0ACRhzwvdYFDDcZjibOwtWi2YAN4++kDW7Ca/tzniMfRpocbpSVALgkec9o7sZuGdkzWJUCucYc+Q9znndOb7BgXDueNd3mPDkCUbyGVylqRFArhkiWhCqhNfWzTNZFIfJVGnmZu9FAGXCObycfuPLCU8/B5Kqea8C4CI7/LjZ5c4WxMB3UOQWZu9VABpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYVZDM0S0IKQKa5jV0AwRLQipwhpmNTRDRAtCqrCGWQ3NENGCkCqsYTam6WEu+FV3//l/bsBpRpmm7P/y2G1wGCRrFoMmDmjiDYdBqsxOqSkALub9+jr6xW+kr76X9B85DGPMP+y9w1GQrFmMKvEyszMsGQAXfthsZj9wcJhAb/byEh/mvoi9QaNpXvN9Q0TImpVxumW7bPKBwzlCZoPcNgCAvdEr/qxFfuz47Rvesl8fFTC4P3j676ME6leT/W4IGLBpi9MpM2ZrDoDBt2l+xOGU0227yz4D7rDBaRxjRGQmuBjcLx1ZqPfo8Yx4yunUrPwfNQdQhKc7L0X8iYqf5vGIXxiDQd4rhblmVdCM9WP0vfe7uVmtAKTXeMyFe7/DaSnGmL8MPx02C/eJFKbNFoXmOmw2BKk7gPw6Z8g828pPdx51uUH2cy+LQv3lqTMAb0yXpvrUsyiBC7/gS4/3iX0sAXstz+SI9Wh6j9N5FgggCeqtrWFQfB64LbUEkMPLQq7ZAYN4w+k1NFxLAHyo4VNgj6e7Q03UGkAOg+hMgnjFKbssGYAxR5OFD1EzKgHknP1iewyibwofTYsEINc5Fz7z3F83qgEIcn/4+hWWN6sRp8kBcPFzz/0aqAdwk6oAuHD5WOvydHdYASsPIPZYDT6+8nSXhQ+xQlYeQI48O3g+VnPItV/fI1bNnQUgyP2BL9C+zsu40wB+BB4D4PagefABfAeu9hyMASqlYQAAAABJRU5ErkJggg==';
 export const ONI_SYNC_PS = String.raw`
 $ErrorActionPreference = 'Continue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -29,16 +31,18 @@ $dir = Join-Path $env:LOCALAPPDATA 'OniSync'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 $journal = Join-Path $dir 'journal.txt'
 if ((Test-Path $journal) -and (Get-Item $journal).Length -gt 300000) { Remove-Item $journal -Force }
-function Log($t) { try { Add-Content -Path $journal -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '  ' + $t) -Encoding UTF8 } catch {} }
+function Log($t) { try { [IO.File]::AppendAllText($journal, ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '  ' + $t + [Environment]::NewLine), (New-Object Text.UTF8Encoding $false)) } catch {} }
 
 # ---------- Icône ----------
-$bmp = New-Object System.Drawing.Bitmap 32, 32
+# Logo Oni Korp centré sur un carré transparent
+$bmp = New-Object System.Drawing.Bitmap 64, 64
 $g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.SmoothingMode = 'AntiAlias'; $g.TextRenderingHint = 'AntiAliasGridFit'
-$g.Clear([System.Drawing.Color]::FromArgb(200, 30, 25))
-$font = New-Object System.Drawing.Font('Segoe UI', 17, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
-$fmt = New-Object System.Drawing.StringFormat; $fmt.Alignment = 'Center'; $fmt.LineAlignment = 'Center'
-$g.DrawString('O', $font, [System.Drawing.Brushes]::White, (New-Object System.Drawing.RectangleF(0, 0, 32, 32)), $fmt)
+$g.InterpolationMode = 'HighQualityBicubic'
+try {
+  $logo = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,[Convert]::FromBase64String('__ICON__'))))
+  $h = [int](64 * $logo.Height / $logo.Width)
+  $g.DrawImage($logo, 0, [int]((64 - $h) / 2), 64, $h)
+} catch { $g.Clear([System.Drawing.Color]::FromArgb(200, 30, 25)) }
 $g.Dispose()
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $tray.Icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
@@ -115,9 +119,42 @@ public class OniSplit {
 }
 '@
 
+# ---------- Stats de la partie ----------
+# feed : événements du jeu (StatfeedEvent : arrêts, démolitions, frappes aériennes…) comptés par joueur
+# samples : mon joueur relevé une fois par seconde (boost, vitesse, supersonique, au sol, au mur…), hors replays de but
+function Reset-Stats { $global:feed = @{}; $global:sn = 0; $global:sum = @{}; $global:yes = @{}; $global:lastSample = [DateTime]::MinValue }
+Reset-Stats
+$global:norm = ($Pseudo.ToLowerInvariant() -replace '\s', '')
+function Note-Feed($m) {
+  try {
+    $o = $m | ConvertFrom-Json; $d = $o.Data; if ($d -is [string]) { $d = $d | ConvertFrom-Json }
+    $ev = $d.EventName; if (-not $ev) { $ev = $d.Type }; $who = $d.MainTarget.Name
+    if (-not $ev -or -not $who) { return }
+    if (-not $global:feed.ContainsKey($who)) { $global:feed[$who] = @{} }
+    $global:feed[$who][$ev] = 1 + [int]$global:feed[$who][$ev]
+  } catch {}
+}
+function Note-State($m) {
+  if (([DateTime]::Now - $global:lastSample).TotalMilliseconds -lt 950) { return }
+  $global:lastSample = [DateTime]::Now
+  try {
+    $o = $m | ConvertFrom-Json; $d = $o.Data; if ($d -is [string]) { $d = $d | ConvertFrom-Json }
+    if ($d.Game.bReplay -or $d.Game.bHasWinner) { return }
+    $me = $d.Players | Where-Object { ($_.Name.ToLowerInvariant() -replace '\s', '') -eq $global:norm } | Select-Object -First 1
+    if (-not $me) { return }
+    $global:sn++
+    foreach ($p in $me.PSObject.Properties) {
+      if ($p.Value -is [bool]) { if ($p.Value) { $global:yes[$p.Name] = 1 + [int]$global:yes[$p.Name] } }
+      elseif ($p.Value -is [int] -or $p.Value -is [double] -or $p.Value -is [long] -or $p.Value -is [decimal]) { $global:sum[$p.Name] = [double]$global:sum[$p.Name] + [double]$p.Value }
+    }
+  } catch {}
+}
+
 function Send-Match($endMsg, $lastMsg) {
-  if (-not $lastMsg) { Log 'Fin de partie sans état reçu : ignorée.'; return }
-  $body = '{"end":' + $endMsg + ',"last":' + $lastMsg + '}'
+  if (-not $lastMsg) { Log 'Fin de partie sans état reçu : ignorée.'; Reset-Stats; return }
+  $extra = @{ feed = $global:feed; samples = @{ n = $global:sn; sum = $global:sum; yes = $global:yes } } | ConvertTo-Json -Compress -Depth 5
+  Reset-Stats
+  $body = '{"end":' + $endMsg + ',"last":' + $lastMsg + ',"extra":' + $extra + '}'
   try { [IO.File]::WriteAllText((Join-Path $dir 'derniere-partie.json'), $body, (New-Object Text.UTF8Encoding $false)) } catch {}
   try {
     $res = Invoke-RestMethod -Method Post -Uri $Api -Headers @{ Authorization = ('Bearer ' + $Token) } -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 20
@@ -154,16 +191,21 @@ function Drop($why) {
   Log ('Déconnecté du jeu (' + $why + ')'); Status 'en attente de Rocket League'
 }
 
+$global:paused = $false
+$global:waitLog = [DateTime]::Now
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 200
 $timer.Add_Tick({
+  if ($global:paused) { return }
   if (-not $global:client) {
+    # Une ligne de journal toutes les 10 minutes tant que le jeu ne répond pas (aide au dépannage)
+    if (([DateTime]::Now - $global:waitLog).TotalMinutes -ge 10) { $global:waitLog = [DateTime]::Now; $rl = @(Get-Process RocketLeague -ErrorAction SilentlyContinue).Count; Log ('Toujours en attente du jeu (Rocket League ' + $(if ($rl) { 'ouvert, port ' + $port + ' fermé : API Stats coupée ?' } else { 'fermé' }) + ')') }
     if ([DateTime]::Now -lt $global:nextTry) { return }
     $global:nextTry = [DateTime]::Now.AddSeconds(5)
     $c = Try-Connect
     if ($c) {
       $global:client = $c; $global:reader = New-Object System.IO.StreamReader($c.GetStream(), [Text.Encoding]::UTF8)
-      $global:split = New-Object OniSplit; $global:last = $null; $global:events = 0; $global:announced = $false
+      $global:split = New-Object OniSplit; $global:last = $null; $global:events = 0; $global:announced = $false; Reset-Stats
       Log ('Connecté à Rocket League (' + $c.Client.RemoteEndPoint + ')'); Status 'connecté au jeu'
       Hello 'connecte' ('port ' + $port)
     }
@@ -182,9 +224,11 @@ $timer.Add_Tick({
         if (-not $global:announced) { $global:announced = $true; Log 'Premiers messages du jeu reçus.'; Status 'connecté, partie suivie' }
         if ($m -match '"Event"\s*:\s*"(\w+)"') {
           switch ($Matches[1]) {
-            'UpdateState' { $global:last = $m }
+            'UpdateState' { $global:last = $m; Note-State $m }
+            'StatfeedEvent' { Note-Feed $m }
+            'MatchCreated' { Reset-Stats }
             'MatchEnded' { Send-Match $m $global:last; $global:last = $null }
-            'MatchDestroyed' { if ($global:last) { Log 'Partie quittée avant la fin : non comptée.'; Hello 'abandon' 'partie quittée avant la fin' }; $global:last = $null }
+            'MatchDestroyed' { if ($global:last) { Log 'Partie quittée avant la fin : non comptée.'; Hello 'abandon' 'partie quittée avant la fin' }; $global:last = $null; Reset-Stats }
           }
         }
       }
@@ -197,6 +241,13 @@ $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $head = $menu.Items.Add('Oni Sync · Oni Korp'); $head.Enabled = $false
 [void]$menu.Items.Add('-')
 $menu.Items.Add('État').Add_Click({ [System.Windows.Forms.MessageBox]::Show(('État : ' + $global:statusText + [Environment]::NewLine + 'Pseudo suivi : ' + $Pseudo + [Environment]::NewLine + 'Config du jeu : ' + $iniNote + [Environment]::NewLine + 'Messages reçus du jeu : ' + $global:events), 'Oni Sync') | Out-Null }) | Out-Null
+# Pause : Oni Sync se déconnecte du jeu et n'envoie plus rien jusqu'à « Reprendre »
+$pause = $menu.Items.Add('Mettre en pause')
+$pause.Add_Click({
+  $global:paused = -not $global:paused
+  if ($global:paused) { if ($global:client) { Drop 'mis en pause' }; Status 'en pause'; $pause.Text = 'Reprendre'; Log 'En pause.' }
+  else { $global:nextTry = [DateTime]::MinValue; Status 'en attente de Rocket League'; $pause.Text = 'Mettre en pause'; Log 'Reprise.' }
+}) | Out-Null
 $menu.Items.Add('Voir mes parties sur Inside').Add_Click({ Start-Process ($Site + '/equipe/rl/') }) | Out-Null
 $menu.Items.Add('Ouvrir le journal').Add_Click({ if (Test-Path $journal) { Start-Process notepad.exe $journal } }) | Out-Null
 $startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'Oni-Sync.cmd'

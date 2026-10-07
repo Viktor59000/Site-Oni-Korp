@@ -408,3 +408,9 @@ body.qg .qg-nav .qg-nav__roster { display: flex; align-items: center; gap: .5rem
 body.qg .qg-nav .qg-nav__roster span { width: .6rem; height: .6rem; background: var(--g, var(--game)); flex: none; }
 body.qg .qg-nav nav > a.qg-nav__team { display: flex; align-items: center; gap: .55rem; }
 body.qg .qg-nav nav > a.qg-nav__team::before { content: ''; width: .55rem; height: .55rem; background: var(--g); flex: none; }
+/* Rosters suivis en encadrement (pas les miens) : distincts au premier coup d'œil */
+body.qg .qg-nav nav > a.qg-nav__team.is-other::before { background: transparent; box-shadow: inset 0 0 0 2px var(--g); }
+body.qg .qg-menu .qg-menu__team { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+body.qg .qg-menu .qg-menu__team small { color: var(--qg-muted); font-size: .72rem; }
+body.qg .qg-menu .qg-menu__team.is-other { color: var(--qg-muted); }
+body.qg .qg-kicker__other { margin-left: .5rem; padding: .05rem .4rem; border: 1px dashed currentColor; font-style: normal; text-transform: none; letter-spacing: 0; }

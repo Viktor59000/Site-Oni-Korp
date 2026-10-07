@@ -56,6 +56,10 @@ Inside a deux étages (décision du 7 oct. 2026) :
 | Sélecteur de roster | Vue d'ensemble (encadrement) : santé des rosters, alertes | `/equipe/vue/` | `vue.astro` |
 | Pôle contenu | Contenu (tâches autour des matchs, calendrier éditorial, indicateurs) | `/equipe/contenu/` | `contenu.astro` + `contenu-taches.ts` |
 
+**Roster ou jeu ?** Le roster porte son écosystème : planning, matchs, adversaires (scouting), docs, objectifs, tableaux. Le jeu porte ses propriétés et ses outils, décrits une seule fois dans `jeux.ts` : couleur et sigle, compte à relier, outil dédié (Drafter, Lineups, Tracker, Défis), fond du tableau blanc (aucun pour osu!), repères et liens de profil du scouting. Ajouter un jeu = une entrée dans `jeux.ts`, puis son outil.
+
+**Mes rosters et rosters suivis.** `access()` marque chaque roster `mine` (la personne a son rôle). L'encadrement voit aussi les autres rosters, mais ils sont rangés à part (« Suivis en encadrement ») et n'ajoutent ni échéances ni tâches dans Mon espace. L'en-tête d'un roster suivi le rappelle.
+
 Le roster affiché vient de `scope()` dans `outils.ts` : celui de `?r=<slug>`, sinon le dernier ouvert (cookie `oni_r`), sinon le premier. **Jamais plusieurs rosters mélangés** : les tableaux, objectifs, docs, notes d'un roster ne s'affichent que dans ce roster. Un outil de jeu ne propose que les rosters de son jeu (4e argument de `scope`). Un lien direct vers un élément (`?b=`, `?d=`, `?v=`, `?o=`, `?m=`) ouvre le roster auquel il appartient (`ownerOf()`). Ce qui traverse les rosters vit dans Mon espace (perso) ou la Vue d'ensemble (encadrement).
 
 ## Comment une page écrit

@@ -5,6 +5,7 @@ import Qg from './Qg.astro';
 import { ownerOf, scope, teamUser } from './outils';
 import { exec, rows } from '../db';
 import { md } from './ui';
+import { jeu } from './jeux';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
@@ -38,9 +39,14 @@ const record = (list: M[]) => {
   const done = list.filter((m) => m.score_us !== null);
   return { w: done.filter((m) => Number(m.score_us) > Number(m.score_them)).length, l: done.filter((m) => Number(m.score_us) < Number(m.score_them)).length, n: list.length };
 };
+// Les repères de la fiche dépendent du jeu du roster (jeux.ts) : une fiche RL ne parle pas de picks ni d'op.gg
+const J = jeu(sc.list[0]?.game);
+// Profils des joueurs adverses : un lien par pseudo de la liste « Joueurs », vers le tracker du jeu
+const profiles = (players: string) => !J?.scouting.profile ? [] : players.split(/\n+/).map((l) => l.replace(/^[-*•\s]+/, '').split(/\s+·\s+|\s+-\s+|,/)[0].trim()).filter((p) => p && p.length <= 40)
+  .map((p) => ({ p, url: J.scouting.profile!(p) })).filter((x): x is { p: string; url: string } => !!x.url).slice(0, 10);
 const SECTIONS: [keyof O, string, string][] = [
-  ['players', 'Joueurs et rôles', '- Pseudo · rôle · ce qu\'il faut savoir'], ['style', 'Style de jeu', 'Agressif ? Lent ? Leurs habitudes, leurs strats favorites'],
-  ['forces', 'Forces', '- …'], ['faiblesses', 'Faiblesses', '- …'], ['plan', 'Notre plan', 'Ce qu\'on fait contre eux : picks, bans, cartes, appels'],
+  ['players', 'Joueurs et rôles', J?.scouting.players ?? '- Pseudo · rôle · ce qu\'il faut savoir'], ['style', 'Style de jeu', J?.scouting.style ?? 'Leurs habitudes, leurs strats favorites'],
+  ['forces', 'Forces', '- …'], ['faiblesses', 'Faiblesses', '- …'], ['plan', 'Notre plan', J?.scouting.plan ?? 'Ce qu\'on fait contre eux'],
 ];
 ---
 <Qg title="Scouting · Inside" heading="Scouting" lead="Une fiche par adversaire : qui ils sont, comment ils jouent, comment on les bat." current="scouting" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: t.me.member?.name ?? t.user.name, avatar: t.me.member?.avatar ?? t.user.avatar }}>
@@ -53,7 +59,7 @@ const SECTIONS: [keyof O, string, string][] = [
           {!current.id && <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>}
         </div>
         {SECTIONS.map(([k, label, ph]) => <label>{label}<textarea name={k} rows="4" maxlength="4000" placeholder={ph}>{current[k]}</textarea></label>)}
-        <label>Liens <small>(op.gg multi, tracker, Twitch, site… un par ligne)</small><textarea name="links" rows="3" maxlength="2000">{current.links}</textarea></label>
+        <label>Liens <small>({J?.scouting.links ?? 'tracker, Twitch, site… un par ligne'})</small><textarea name="links" rows="3" maxlength="2000">{current.links}</textarea></label>
         <button class="btn">Enregistrer la fiche</button>
       </form>
     ) : current ? (
@@ -66,6 +72,7 @@ const SECTIONS: [keyof O, string, string][] = [
         <p class="sc-meta">{rosterName.get(Number(current.roster_id))} · mise à jour le {fmt.format(new Date(Number(current.updated_at)))} par {names.get(current.author) ?? 'un membre'}</p>
         <div class="sc-grid">
           {SECTIONS.map(([k, label]) => current[k] ? <section class:list={['sc-sec', { 'is-plan': k === 'plan' }]}><h3>{label}</h3><div set:html={md(String(current[k]))} /></section> : null)}
+          {profiles(current.players).length > 0 && <section class="sc-sec"><h3>Profils {J?.label}</h3><ul>{profiles(current.players).map((x) => <li><a href={x.url} rel="noopener" target="_blank">{x.p}</a></li>)}</ul></section>}
           {current.links && <section class="sc-sec"><h3>Liens</h3><ul>{current.links.split(/\n+/).filter((l) => /^https?:\/\//.test(l.trim())).map((l) => <li><a href={l.trim()} rel="noopener" target="_blank">{l.trim().replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)}</a></li>)}</ul></section>}
           <section class="sc-sec">
             <h3>Historique contre eux</h3>

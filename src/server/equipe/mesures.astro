@@ -7,6 +7,7 @@ import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { rows } from '../db';
 import { TIERS_FR, valoTierFr } from './stats';
 import { avg, ddragon, pct, r1, spark, SHARED_CSS } from './ui';
+import { rlFeedTotals, rlNorm } from './rl-stats';
 
 export const prerender = false;
 const t = await teamUser(Astro.cookies);
@@ -81,7 +82,7 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
     return { m, lines, averages, trend: spark(lines.slice().reverse().map((l) => Number(l[main]))) };
   });
   // Rocket League : parties classées relevées par Oni Bot via ballchasing.com, et replays de match importés
-  let auto: { m: M; n: number; win: number | null; a: Record<string, number | null>; trend: string; last: any[] }[] = [];
+  let auto: { m: M; n: number; win: number | null; a: Record<string, number | null>; trend: string; last: any[]; feed?: [string, number][] }[] = [];
   let replays: { match_id: number; replay: string; status: string }[] = [];
   if (r.game === 'valo') {
     const perfs = ids.length ? await rows<{ user_id: string; data: string; at: number }>(`SELECT user_id, data, at FROM perf WHERE game = 'valo' AND user_id IN (${inIds}) ORDER BY at DESC`, ...ids) : [];
@@ -99,10 +100,11 @@ const blocks = await Promise.all(sc.list.map(async (r) => {
   if (r.game === 'rl') {
     const perfs = ids.length ? await rows<{ user_id: string; data: string; at: number }>(`SELECT user_id, data, at FROM perf WHERE game = 'rl' AND user_id IN (${inIds}) ORDER BY at DESC`, ...ids) : [];
     auto = members.map((m) => {
-      const g = perfs.filter((p) => p.user_id === m.id).slice(0, 15).map((p) => ({ ...JSON.parse(p.data), at: Number(p.at) }));
-      const keys = ['score', 'buts', 'arrets', 'precision', 'bpm', 'boostMoy', 'sansBoost', 'supersonique', 'defense', 'derriere', 'demos'];
+      const g = perfs.filter((p) => p.user_id === m.id).slice(0, 20).map((p) => rlNorm({ ...JSON.parse(p.data), at: Number(p.at) }));
+      // Les mesures qui aident à progresser (Oni Sync ou ballchasing), en moyenne par partie
+      const keys = ['score', 'buts', 'passes', 'arrets', 'precision', 'demos', 'boostMoy', 'supersonique', 'air', 'miraculeux', 'aeriennes', 'degagements'];
       return { m, n: g.length, win: g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null,
-        a: Object.fromEntries(keys.map((k) => [k, avg(g.map((x) => Number(x[k])).filter(Number.isFinite))])), trend: spark(g.slice().reverse().map((x) => Number(x.score))), last: g.slice(0, 8) };
+        a: Object.fromEntries(keys.map((k) => [k, avg(g.map((x) => (x as any)[k]).filter((v) => v !== null && v !== undefined && Number.isFinite(Number(v))).map(Number))])), trend: spark(g.slice().reverse().map((x) => Number(x.score))), last: g.slice(0, 8), feed: rlFeedTotals(g) };
     });
     replays = matches.length ? await rows(`SELECT match_id, replay, status FROM match_replays WHERE match_id IN (${matches.map(() => '?').join(',')})`, ...matches.map((x) => x.id)) : [];
   }
@@ -240,25 +242,28 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
 
           {b.kind === 'manual' && b.r.game === 'rl' && (
             <>
-              <h3 class="st-sub">Parties classées <small>(ballchasing.com, relevé chaque heure)</small></h3>
+              <h3 class="st-sub">Parties <small>(Oni Sync, et replays ballchasing.com) · moyennes sur les 20 dernières</small></h3>
               {b.auto.some((p) => p.n) ? (
                 <div class="st-scroll">
                   <table class="st-table">
-                    <thead><tr><th>Joueur</th><th>Parties</th><th>Tendance</th><th>Victoires</th><th title="Score moyen">Score</th><th>Buts</th><th>Arrêts</th><th title="Précision des tirs">Tirs %</th><th title="Boost ramassé par minute">Boost/min</th><th title="Boost moyen en réserve">Boost moy.</th><th title="Temps passé à 0 boost">Sans boost</th><th title="Temps à vitesse supersonique">Supersonique</th><th title="Temps dans son tiers défensif">Tiers déf.</th><th title="Temps derrière la balle">Derrière balle</th><th>Démos</th></tr></thead>
+                    <thead><tr><th>Joueur</th><th>Parties</th><th>Tendance</th><th>Victoires</th><th title="Score moyen par partie">Score</th><th>Buts</th><th>Passes</th><th>Arrêts</th><th title="Buts / tirs">Tirs %</th><th>Démos</th><th title="Boost moyen en réserve">Boost moy.</th><th title="Part du temps à vitesse supersonique">Supersonique</th><th title="Part du temps ni au sol ni au mur">En l'air</th><th title="Sauvetages miraculeux par partie">Sauvetages</th><th title="Frappes aériennes par partie">Aériennes</th><th title="Dégagements par partie">Dégagements</th></tr></thead>
                     <tbody>
                       {b.auto.map((p) => (
                         <tr>
                           <td class="st-who">{p.m.avatar && <img src={p.m.avatar} alt="" width="26" height="26" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />}<a class="st-name" href={`/equipe/profil/?u=${p.m.id}`}>{p.m.name}</a></td>
                           <td>{p.n || '—'}</td><td set:html={p.trend || '—'} /><td>{pct(p.win)}</td>
-                          <td>{r1(p.a.score, 0)}</td><td>{r1(p.a.buts)}</td><td>{r1(p.a.arrets)}</td><td>{pct(p.a.precision)}</td>
-                          <td>{r1(p.a.bpm, 0)}</td><td>{r1(p.a.boostMoy, 0)}</td><td>{pct(p.a.sansBoost)}</td><td>{pct(p.a.supersonique)}</td>
-                          <td>{pct(p.a.defense)}</td><td>{pct(p.a.derriere)}</td><td>{r1(p.a.demos)}</td>
+                          <td>{r1(p.a.score, 0)}</td><td>{r1(p.a.buts)}</td><td>{r1(p.a.passes)}</td><td>{r1(p.a.arrets)}</td><td>{pct(p.a.precision)}</td><td>{r1(p.a.demos)}</td>
+                          <td>{r1(p.a.boostMoy, 0)}</td><td>{pct(p.a.supersonique)}</td><td>{pct(p.a.air)}</td>
+                          <td>{r1(p.a.miraculeux)}</td><td>{r1(p.a.aeriennes)}</td><td>{r1(p.a.degagements)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              ) : <p class="eq-note">Pas encore de partie trouvée. Les joueurs relient leur pseudo Rocket League dans <a href="/equipe/joueurs/">Joueurs</a> ; il faut que leurs replays soient sur ballchasing.com (envoi des fichiers .replay sur le site), ou colle les liens des replays ci-dessous après un match.</p>}
+              ) : <p class="eq-note">Pas encore de partie. Chaque joueur relie son pseudo Rocket League dans <a href="/equipe/joueurs/">Joueurs</a>, puis lance <a href={`/equipe/rl/${b.r.slug ? `?r=${b.r.slug}` : ''}`}>Oni Sync</a> (Tracker RL) avant de jouer : chaque partie terminée arrive ici toute seule.</p>}
+              {b.auto.filter((p) => p.feed?.length).map((p) => (
+                <p class="st-feed"><strong>{p.m.name}</strong> · {p.feed!.slice(0, 8).map(([k, v]) => `${k} ${v}`).join(' · ')}</p>
+              ))}
               {b.auto.filter((p) => p.last.length).map((p) => (
                 <details class="st-games">
                   <summary>Parties de {p.m.name}</summary>
@@ -266,8 +271,8 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                     {p.last.map((g) => (
                       <li class:list={{ 'is-win': g.win }}>
                         <strong>{g.win ? 'Victoire' : 'Défaite'} {g.us}-{g.them}</strong>
-                        <span>{g.score} pts</span><span>{g.buts} buts · {g.passes} passes · {g.arrets} arrêts</span><span>{g.bpm} boost/min</span><span>{g.supersonique} % supersonique</span>
-                        <small>{g.playlist} · {fmtD.format(new Date(g.at))} · <a href={g.link} rel="noopener" target="_blank">replay</a></small>
+                        <span>{g.score} pts</span><span>{g.buts} buts · {g.passes ?? 0} passes · {g.arrets ?? 0} arrêts</span>{g.boostMoy != null && <span>boost moyen {Math.round(g.boostMoy)}</span>}{g.supersonique != null && <span>{g.supersonique} % supersonique</span>}
+                        <small>{g.playlist ?? 'Partie'} · {fmtD.format(new Date(g.at))}{g.link ? <> · <a href={g.link} rel="noopener" target="_blank">replay</a></> : ' · Oni Sync'}</small>
                       </li>
                     ))}
                   </ul>
@@ -370,4 +375,6 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
   .st-entry label:first-of-type { grid-column: span 2; }
   .st-entry :is(input, select) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .35rem .5rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 400 .95rem var(--font-body); }
   .st-entry .btn { justify-self: start; }
+  .st-feed { margin: .4rem 0 0; font-size: var(--step--1, .85rem); color: var(--muted); }
+  .st-feed strong { color: var(--ink); }
 </style>

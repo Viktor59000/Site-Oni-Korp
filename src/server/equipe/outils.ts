@@ -62,14 +62,14 @@ export async function teamUser(cookies: AstroCookies) {
 /** Roster choisi dans la navigation (?r=slug) : on filtre dessus, sinon tous ceux de la personne. */
 /**
  * Roster de travail d'un outil d'équipe : toujours UN seul (décision du 07/10 : pas de mélange entre rosters).
- * Celui de l'adresse (?r=), sinon le dernier ouvert (cookie oni_r), sinon le premier. `keep` limite aux rosters
+ * Celui de l'adresse (?r=), sinon le dernier ouvert (cookie oni_r), sinon le premier des miens, sinon le premier. `keep` limite aux rosters
  * concernés par l'outil (ex. le drafter : rosters LoL). Le choix est retenu pour la prochaine visite.
  */
 export function scope<T extends { id: number; slug: string; game?: string }>(rosters: T[], url: URL, cookies?: AstroCookies, keep?: (r: T) => boolean, owner?: number | null) {
   const pool = keep ? rosters.filter(keep) : rosters;
   // Lien direct vers un élément (tableau, doc, VOD…) sans ?r= : on ouvre le roster auquel il appartient
   const asked = pool.find((x) => x.slug === url.searchParams.get('r')) ?? (owner ? pool.find((x) => Number(x.id) === Number(owner)) : undefined);
-  const one = asked ?? pool.find((x) => x.slug === cookies?.get('oni_r')?.value) ?? pool[0];
+  const one = asked ?? pool.find((x) => x.slug === cookies?.get('oni_r')?.value) ?? pool.find((x) => (x as { mine?: boolean }).mine) ?? pool[0];
   if (asked && cookies) cookies.set('oni_r', asked.slug, { path: '/', maxAge: 365 * 86400, sameSite: 'lax', secure: url.protocol === 'https:' });
   return { active: one?.slug ?? null, list: one ? [one] : [] };
 }

@@ -6,6 +6,7 @@ import { canLead, teamUser } from './outils';
 import { access } from './access';
 import { rows } from '../db';
 import { links, TIERS_FR, valoIcons, valoTierFr } from './stats';
+import { rlNorm } from './rl-stats';
 import { avg, pct, r1, spark, SHARED_CSS } from './ui';
 
 export const prerender = false;
@@ -39,7 +40,7 @@ const riot = acc('riot');
 const lolRank = riot ? await cache(`lol:${riot.region ?? 'euw'}:${riot.ident.toLowerCase()}`) : null;
 const valoRank = riot ? await cache(`valo:${riot.ident.toLowerCase()}`) : null;
 const osuSt = acc('osu') ? await cache(`osu:${acc('osu')!.ident.toLowerCase()}`) : null;
-const lol = games('lol'), valo = games('valo'), rl = games('rl'), osu = games('osu');
+const lol = games('lol'), valo = games('valo'), rl = games('rl').map(rlNorm), osu = games('osu');
 const win = (g: any[]) => (g.length ? (g.filter((x) => x.win).length / g.length) * 100 : null);
 const valoIcon = await valoIcons();
 const lolTier = lolRank && lolRank.tier !== 'UNRANKED' ? lolRank.tier : null;
@@ -62,13 +63,14 @@ const cards = [
       ['Impact', [['ACS', r1(avg(valo.map((x) => x.acs)), 0)], ['ADR', r1(avg(valo.map((x) => x.adr)), 0)], ['First bloods', r1(avg(valo.map((x) => x.fb)))]]],
       ['Visée', [['Headshots', pct(avg(valo.map((x) => x.hs).filter((v: number | null) => v !== null)))]]],
     ] } : null,
-  rl.length ? { key: 'rl', title: 'Rocket League', rank: null, sub: null, emblem: null,
+  // Rocket League : parties d'Oni Sync (ou replays ballchasing) ; le jeu ne publie pas le rang, la carte montre la forme
+  rl.length || acc('rl') ? { key: 'rl', title: 'Rocket League', rank: rl.length ? `${pct(win(rl))} de victoires` : 'Pas encore de partie', sub: rl.length ? `sur les ${rl.length} dernières parties` : 'Lance Oni Sync (Tracker RL) avant de jouer', emblem: null,
     trend: spark(rl.slice().reverse().map((x) => x.score), { w: 140, h: 36 }),
-    groups: [
-      ['Résultats', [['Parties', String(rl.length)], ['Victoires', pct(win(rl))], ['Score moyen', r1(avg(rl.map((x) => x.score)), 0)]]],
-      ['Placement', [['Derrière la balle', pct(avg(rl.map((x) => x.derriere)))], ['Supersonique', pct(avg(rl.map((x) => x.supersonique)))]]],
-      ['Boost', [['Boost / min', r1(avg(rl.map((x) => x.bpm)), 0)]]],
-    ] } : null,
+    groups: rl.length ? [
+      ['Par partie', [['Score', r1(avg(rl.map((x) => x.score)), 0)], ['Buts', r1(avg(rl.map((x) => x.buts)))], ['Passes', r1(avg(rl.map((x) => x.passes).filter((v) => v != null)))], ['Arrêts', r1(avg(rl.map((x) => x.arrets).filter((v) => v != null)))]]],
+      ['Jeu', [['Tirs transformés', pct(avg(rl.map((x) => x.precision).filter((v) => v != null)))], ['Démos', r1(avg(rl.map((x) => x.demos).filter((v) => v != null)))]]],
+      ['Mouvement', [['Boost moyen', r1(avg(rl.map((x) => x.boostMoy).filter((v) => v != null)), 0)], ['Supersonique', pct(avg(rl.map((x) => x.supersonique).filter((v) => v != null)))], ['En l’air', pct(avg(rl.map((x) => x.air).filter((v) => v != null)))]]],
+    ] : [] } : null,
   osu.length || osuSt ? { key: 'osu', title: 'osu!',
     rank: osuSt?.rank ? `#${osuSt.rank.toLocaleString('fr-FR')}` : osuSt ? 'Pas encore classé' : null, sub: osuSt?.pp ? `${osuSt.pp.toLocaleString('fr-FR')} pp` : null, emblem: null,
     trend: spark(hist.filter((h) => h.game === 'osu').map((h) => JSON.parse(h.value).rank), { w: 140, h: 36, invert: true }),
