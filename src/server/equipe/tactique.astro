@@ -30,7 +30,13 @@ const current = boardId ? all.find((b) => Number(b.id) === boardId) : null;
 const initial = current ? (await rows<{ state: string; updated_at: number }>('SELECT state, updated_at FROM boards WHERE id = ?', current.id))[0] : null;
 // Fond d'une carte Valorant connu dès le HTML (sinon l'image n'arrive qu'après deux appels du navigateur) ; liste gardée 6 h
 const bgName = (() => { try { return JSON.parse(initial?.state ?? '{}').bg ?? current?.map; } catch { return current?.map; } })() as string | undefined;
-const bgSrc = bgName && !/^(blanc|grille|Terrain|Faille|https?:)/.test(bgName) ? (await valoMaps()).find((m) => m.name === bgName)?.icon : undefined;
+// Terrain RL et Faille (forme de base) aussi : l'image part avec la page au lieu d'attendre le JavaScript
+// Faille : même choix d'image que tactique.client.ts (riftUrl), selon l'âme et la forme de la fosse, ou le rendu réaliste
+const look = (() => { try { return JSON.parse(initial?.state ?? '{}').look; } catch { return undefined; } })();
+const rift = (bg: string) => { const [, t0 = 'base', n0 = '1'] = bg.split(':'); const t = ['base', 'ocean', 'cloud', 'infernal', 'mountain', 'hextech'].includes(t0) ? t0 : 'base', n = ['1', '2', '3'].includes(n0) ? n0 : '1';
+  return look === 'img' ? '/img/lol/faille-image.webp' : `/img/lol/vmap-${t === 'mountain' ? 'mountain' : 'normal'}-${({ 1: 'hunting', 2: 'seeing', 3: 'territorial' } as Record<string, string>)[t === 'infernal' ? '1' : n]}.svg`; };
+const bgSrc = bgName === 'Terrain' ? '/img/rl/terrain.svg' : bgName && (bgName === 'Faille' || bgName.startsWith('Faille:')) ? rift(bgName)
+  : bgName && !/^(blanc|grille|Terrain|Faille|https?:)/.test(bgName) ? (await valoMaps()).find((m) => m.name === bgName)?.icon : undefined;
 // Liste des tableaux : un aperçu du fond de chaque tableau, et des modèles pour démarrer en un clic
 const team = usable[0] ?? null;
 const vmaps = team?.game === 'valo' || list.some((b) => !/^(blanc|grille|Terrain|Faille|https?:)/.test(b.map)) ? (await valoMaps()).filter((m) => m.competitive) : [];
@@ -357,12 +363,15 @@ const PINGS = KIT.pings;
   .wb-svg :global(.wb-vision.is-ward) { fill: rgb(255 210 63 / .22); stroke: #ffd23f; }
   .wb-svg :global(.wb-vision.is-controle) { fill: rgb(255 79 163 / .22); stroke: #ff4fa3; }
   /* Tours (carrés) et inhibiteurs (losanges) ; détruits : estompés et barrés */
-  .wb-items :global(.wb-struct) { width: 14px; height: 14px; padding: 0; border: 1.5px solid #fff; cursor: pointer; }
-  .wb-items :global(.wb-struct.is-t100) { background-color: #2f6bff; }
-  .wb-items :global(.wb-struct.is-t200) { background-color: #e5251f; }
-  .wb-items :global(.wb-struct.is-inhib) { width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg); }
-  .wb-items :global(.wb-struct.is-down) { opacity: .35; background-image: linear-gradient(45deg, transparent 43%, #fff 43%, #fff 57%, transparent 57%); }
-  .wb-items :global(.wb-struct:hover) { outline: 2px solid #fff; outline-offset: 2px; }
+  /* Tours et inhibiteurs : zone cliquable de 24 px (taille minimale au doigt), le carré visible reste petit */
+  .wb-items :global(.wb-struct) { width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+  .wb-items :global(.wb-struct::before) { content: ''; position: absolute; inset: 5px; border: 1.5px solid #fff; background-color: var(--c); }
+  .wb-items :global(.wb-struct.is-t100) { --c: #2f6bff; }
+  .wb-items :global(.wb-struct.is-t200) { --c: #e5251f; }
+  .wb-items :global(.wb-struct.is-inhib) { transform: translate(-50%, -50%) rotate(45deg); }
+  .wb-items :global(.wb-struct.is-down) { opacity: .35; }
+  .wb-items :global(.wb-struct.is-down::before) { background-image: linear-gradient(45deg, transparent 43%, #fff 43%, #fff 57%, transparent 57%); }
+  .wb-items :global(.wb-struct:hover::before) { outline: 2px solid #fff; outline-offset: 2px; }
   .wb-tower-btns { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem; }
   .wb-tower-btns button { padding: .3rem .55rem; border: 1px solid var(--line); background: none; color: var(--ink); font: 500 .78rem var(--font-body); cursor: pointer; }
   .wb-tower-btns button:hover { border-color: var(--ink); }

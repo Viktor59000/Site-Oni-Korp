@@ -225,7 +225,8 @@ if (root) {
     const towersOn = isRift(state.bg) && state.towers !== false;
     $('[data-towers-panel]').hidden = !isRift(state.bg);
     $<HTMLInputElement>('[data-towers-show]').checked = state.towers !== false;
-    const towersHtml = towersOn ? STRUCT.map(([k, team, x, y, kind]) => `<button type="button" class="wb-struct is-${kind} is-t${team}${(f.down ?? []).includes(k) ? ' is-down' : ''}" data-struct="${k}" style="left:${x / MAPW * 100}%;top:${(1 - y / MAPW) * 100}%" aria-label="${kind === 'inhib' ? 'Inhibiteur' : 'Tour'} ${team === 100 ? 'bleu' : 'rouge'}${(f.down ?? []).includes(k) ? ' (détruit)' : ''}"></button>`).join('') : '';
+    // Repères cliquables (souris, doigt) mais pas des boutons : trop serrés sur mobile pour des cibles de 24 px ; au clavier, les boutons « tours » du panneau
+    const towersHtml = towersOn ? STRUCT.map(([k, team, x, y, kind]) => `<span class="wb-struct is-${kind} is-t${team}${(f.down ?? []).includes(k) ? ' is-down' : ''}" data-struct="${k}" style="left:${x / MAPW * 100}%;top:${(1 - y / MAPW) * 100}%" role="img" aria-label="${kind === 'inhib' ? 'Inhibiteur' : 'Tour'} ${team === 100 ? 'bleu' : 'rouge'}${(f.down ?? []).includes(k) ? ' (détruit)' : ''}" title="${kind === 'inhib' ? 'Inhibiteur' : 'Tour'} : clic pour détruire ou reconstruire"></span>`).join('') : '';
     $('[data-items]').innerHTML = towersHtml + f.items.filter((it) => ['tok', 'ping', 'note', 'text'].includes(it.type)).map((it) => {
       const s = `left:${it.x * 100}%;top:${it.y * 100}%`, isSel = sel === it.id ? ' is-sel' : '';
       if (it.type === 'note') return `<div class="wb-note${isSel}" data-id="${esc(it.id)}" style="${s};--c:${esc(it.color)}">${esc(it.label)}</div>`;
