@@ -114,6 +114,7 @@ Les formulaires fonctionnent donc sans JavaScript. Exceptions, qui ont leur prop
 | `/api/equipe/tableau` | tableau blanc partagé (lecture « depuis », écriture de l'état complet) |
 | `/api/equipe/agenda.ics` | agenda perso (lien secret, sans connexion) |
 | `/api/rl/oni-sync`, `/api/rl/sync` | téléchargement d'Oni Sync, réception des parties RL |
+| `/api/rl/replay` | réception des replays sauvegardés (Oni Sync v6), mis en file pour le bot (`rl-replay.ts`) |
 
 Les tables propres au site sont créées par `ensureTables()` (`outils.ts`) au premier appel : pas de migration à lancer.
 
@@ -132,4 +133,4 @@ Les tables propres au site sont créées par `ensureTables()` (`outils.ts`) au p
 
 Les rangs et parties viennent du bot, qui interroge les API des jeux (Riot pour LoL, HenrikDev pour Valorant, osu! API, ballchasing pour RL) avec **ses** clés, et range tout dans `perf` (une ligne par partie), `stats_cache` (rang actuel, profil) et `rank_history` (un point par jour). Inside lit seulement.
 
-Rocket League est à part : aucune API publique ne donne les parties. Les joueurs lancent **Oni Sync** (un `.cmd` personnel téléchargé dans Tracker), qui lit l'API Stats locale du jeu et envoie chaque partie terminée au site. Le script envoie les messages bruts du jeu et tout le décodage est dans `rl-sync.ts` : on corrige là sans redistribuer le script.
+Rocket League est à part : aucune API publique ne donne les parties. Les joueurs lancent **Oni Sync** (un `.cmd` personnel téléchargé dans Tracker), qui lit l'API Stats locale du jeu et envoie chaque partie terminée au site. Le script envoie les messages bruts du jeu et tout le décodage est dans `rl-sync.ts` : on corrige là sans redistribuer le script. Depuis la v6, Oni Sync envoie aussi les replays que le joueur sauvegarde (dossier `Demos`/`DemosEpic`, jamais pendant une partie) : le site les met dans `rl_replays`, Oni Bot les passe à ballchasing avec la clé du club (lien non listé, un groupe « Oni Korp · pseudo » par joueur), puis fusionne positionnement, boost, lien et rang dans la partie d'Oni Sync du même `match_guid`. Le Tracker affiche ces mesures dans « Analyse des replays ».
