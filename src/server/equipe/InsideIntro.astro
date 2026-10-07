@@ -5,13 +5,16 @@
 interface Props { connected: boolean; erreur?: string | null }
 const { connected, erreur = null } = Astro.props;
 
+// Captures refaites avec scripts/captures-inside.mjs (base de démonstration)
 const TOOLS = [
-  { img: 'accueil-roster', tag: 'Accueil', title: 'Ce qui compte, dès l’ouverture', text: 'La prochaine échéance avec réponse en un clic, ta semaine, la forme de chacun et les premiers pas pour les nouveaux. Chaque roster a sa page.' },
-  { img: 'tableau-lol', tag: 'Tableau blanc', title: 'La strat se construit à plusieurs, en direct', text: 'Cartes de League of Legends, Valorant et Rocket League, pions, champions, flèches, zones et post-it. Les étapes s’enchaînent en mode présentation pour la revue d’avant-match.' },
+  { img: 'mon-espace', tag: 'Mon espace', title: 'Ta page, avant d’entrer dans ton roster', text: 'Ta prochaine séance ou ton prochain match avec réponse en un clic, ce que tu as à faire, tes objectifs, tes comptes de jeu et ton Elo d’inhouse. Puis tu entres dans ton roster.' },
+  { img: 'accueil-roster', tag: 'Ton roster', title: 'Chaque équipe a son espace, sans mélange', text: 'Semaine, matchs, progrès, préparation : tout ce qui appartient à une équipe reste dans son roster. Le capitaine voit ce qui demande une action.' },
+  { img: 'tableau-rl', tag: 'Tableau blanc', title: 'La strat se construit à plusieurs, en direct', text: 'Terrain de Rocket League avec ses boosts, Faille de l’invocateur, cartes de Valorant : pions, flèches, zones et post-it, glissés à la souris ou au doigt. Les étapes s’enchaînent en mode présentation.' },
   { img: 'drafter-lol', tag: 'Drafter LoL', title: 'Des drafts prêtes avant d’entrer en jeu', text: 'L’ordre de tournoi, le fearless, les forces et faiblesses de chaque pick, les contres et les synergies, gardés pour tout le roster.' },
-  { img: 'stats', tag: 'Stats', title: 'La progression, sans rien saisir', text: 'Rang, tendance et chiffres des 20 dernières parties classées de chaque joueur, relevés automatiquement une fois les comptes reliés.' },
+  { img: 'stats', tag: 'Stats', title: 'La progression, sans rien saisir', text: 'Rang, tendance et chiffres de chaque joueur, relevés automatiquement une fois les comptes reliés. En Rocket League, Oni Sync envoie chaque partie terminée.' },
   { img: 'avant-match', tag: 'Avant-match', title: 'Tout le match au même endroit', text: 'Compo, adversaire, fiche de scouting, checklist, puis notes de match et VOD pour le débrief.' },
-  { img: 'contenu', tag: 'Contenu', title: 'Le pôle contenu suit le rythme des matchs', text: 'Annonces, visuels de résultat et clips se créent tout seuls autour de chaque match. Chacun prend sa tâche, le staff valide.' },
+  { img: 'contenu', tag: 'Contenu', title: 'Le pôle contenu suit le rythme des matchs', text: 'Annonces, visuels de résultat et clips se créent tout seuls autour de chaque match, avec une fiche de cast prête pour l’antenne. Chacun prend sa tâche, le staff valide.' },
+  { img: 'communaute', tag: 'Communauté', title: 'Personne n’arrive sans qu’on lui parle', text: 'Les arrivées, la soirée inhouse du jeudi, les tournois communautaires et la modération, pour l’accueil, les organisateurs et les modérateurs.' },
 ];
 ---
 <div class="ii">
