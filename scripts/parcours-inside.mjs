@@ -2,7 +2,7 @@
 // et signale les erreurs serveur et les affichages cassés (NaN %, undefined, [object Object]). npm run dev:demo d'abord.
 //   node scripts/parcours-inside.mjs
 const B = 'http://localhost:4330';
-const pages = ['', 'planning/', 'calendrier/', 'match/', 'tournois/', 'notes/', 'vod/', 'scouting/', 'stats/', 'objectifs/', 'tactique/', 'lol/', 'tracker-lol/', 'valo/', 'osu/', 'rl/', 'joueurs/', 'setup/', 'docs/', 'profil/', 'guide/', 'vue/', 'contenu/', 'communaute/', 'packs/', 'pools/', 'compos/'];
+const pages = ['', 'planning/', 'calendrier/', 'match/', 'tournois/', 'notes/', 'vod/', 'scouting/', 'stats/', 'objectifs/', 'tactique/', 'lol/', 'tracker-lol/', 'tracker-valo/', 'valo/', 'osu/', 'rl/', 'joueurs/', 'setup/', 'docs/', 'profil/', 'guide/', 'vue/', 'contenu/', 'communaute/', 'packs/', 'pools/', 'compos/'];
 const rosters = ['', 'gamma', 'lol-academy', 'valo-main', 'osu-squad'];
 const extra = ['profil/?u=2', 'profil/?u=3', 'profil/?u=999', 'docs/?d=1', 'docs/?d=999', 'scouting/?o=1', 'scouting/?o=999', 'vod/?v=1', 'vod/?v=999', 'tactique/?b=1', 'tactique/?b=2', 'tactique/?b=3', 'tactique/?b=999', 'match/?m=1', 'match/?m=3', 'match/?m=999',
   'planning/?sem=cur', 'calendrier/?mois=2026-11', 'calendrier/?mois=xx', 'rl/?j=2', 'rl/?j=999', 'osu/?niveau=tout', 'lol/?d=1', 'valo/?map=Ascent', 'contenu/?erreur=tache', 'planning/?intro', 'stats/?j=2'];

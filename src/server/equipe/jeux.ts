@@ -52,7 +52,7 @@ export const JEUX: Record<GameKey, Jeu> = {
     },
   },
   valo: {
-    label: 'Valorant', code: 'VAL', color: '#ff4655', account: ['riot', 'ton Riot ID'], tool: ['valo', 'Lineups', '/equipe/valo/'], more: [['compos', 'Compos et agents', '/equipe/compos/']],
+    label: 'Valorant', code: 'VAL', color: '#ff4655', account: ['riot', 'ton Riot ID'], tool: ['valo', 'Lineups', '/equipe/valo/'], more: [['valo-tracker', 'Tracker', '/equipe/tracker-valo/'], ['compos', 'Compos et agents', '/equipe/compos/']],
     board: { map: '', kit: { players: ['1', '2', '3', '4', '5'], ally: { name: 'Nous', color: '#2f6bff' }, enemy: { name: 'Eux', color: '#e5251f' }, pings: [
       { key: 'spike', sym: 'S', label: 'Spike', bg: '#e8e8e8', fg: '#c81e19' }, { key: 'info', sym: 'i', label: 'Info (caméra, drone, flèche)', bg: '#22c3d6', fg: '#111' },
       { key: 'entree', sym: '➜', label: 'Point d’entrée', bg: '#2fbf71', fg: '#111' }, DANGER, CHECK] } },
