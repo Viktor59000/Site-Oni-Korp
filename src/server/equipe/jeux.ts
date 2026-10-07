@@ -41,7 +41,7 @@ export const JEUX: Record<GameKey, Jeu> = {
     },
   },
   lol: {
-    label: 'League of Legends', code: 'LoL', color: '#0f8a9b', account: ['riot', 'ton Riot ID'], tool: ['lol', 'Drafter', '/equipe/lol/'], more: [['pools', 'Pools de champions', '/equipe/pools/']],
+    label: 'League of Legends', code: 'LoL', color: '#0f8a9b', account: ['riot', 'ton Riot ID'], tool: ['lol', 'Drafter', '/equipe/lol/'], more: [['lol-tracker', 'Tracker', '/equipe/tracker-lol/'], ['pools', 'Pools de champions', '/equipe/pools/']],
     board: { map: 'Faille', kit: { players: ['T', 'J', 'M', 'B', 'S'], ally: { name: 'Bleu', color: '#2f6bff' }, enemy: { name: 'Rouge', color: '#e5251f' }, pings: [
       { key: 'ward', sym: '◉', label: 'Balise (portée)', bg: '#ffd23f', fg: '#111' }, { key: 'controle', sym: '◉', label: 'Balise de contrôle (portée)', bg: '#ff4fa3', fg: '#111' },
       { key: 'dragon', sym: 'Dr', label: 'Dragon', bg: '#ff8a1f', fg: '#111' }, { key: 'nashor', sym: 'N', label: 'Nashor', bg: '#8b5cf6', fg: '#fff' }, DANGER, CHECK] } },

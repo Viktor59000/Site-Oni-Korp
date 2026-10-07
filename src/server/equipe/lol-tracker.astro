@@ -1,0 +1,329 @@
+---
+// Tracker League of Legends : l'analyse complète des parties classées de chaque joueur, relevées par Oni Bot (API Riot :
+// partie, bloc « challenges », chronologie minute par minute). Par joueur : ce qui ressort (forces et points à travailler,
+// comparés au roster et à ses 10 parties précédentes), phase de lane, combat, vision, objectifs, jungle, pool de champions,
+// matchups, dernières parties ; puis le roster côte à côte. Stats reste la vue d'ensemble du roster.
+import Qg from './Qg.astro';
+import { rosterMembers, scope, teamUser } from './outils';
+import { rows } from '../db';
+import { avg, ddragon, pct, r1, spark } from './ui';
+import { TIERS_FR } from './stats';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'lol');
+const lolRosters = sc.list.filter((r) => r.game === 'lol');
+
+const byId = new Map<string, { id: string; name: string; avatar: string | null }>();
+for (const r of lolRosters) for (const m of await rosterMembers(String(r.role_id))) byId.set(m.id, m);
+if (!byId.has(user.id)) byId.set(user.id, { id: user.id, name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar });
+const people = [...byId.values()];
+const ids = people.map((p) => p.id);
+const inIds = ids.map(() => '?').join(',');
+const accounts = new Map((await rows<{ user_id: string; ident: string; region: string | null }>(`SELECT user_id, ident, region FROM accounts WHERE game = 'riot' AND user_id IN (${inIds})`, ...ids)).map((a) => [String(a.user_id), a]));
+type G = Record<string, any> & { win: boolean; at: number; champ: string };
+const perf = await rows<{ id: string; user_id: string; data: string; at: number }>(`SELECT id, user_id, data, at FROM perf WHERE game = 'lol' AND user_id IN (${inIds}) ORDER BY at DESC LIMIT 3000`, ...ids);
+const games = new Map<string, G[]>(ids.map((id) => [id, []]));
+for (const p of perf) { try { games.get(String(p.user_id))?.push({ ...JSON.parse(p.data), at: Number(p.at), id: p.id }); } catch {} }
+
+const wanted = Astro.url.searchParams.get('j');
+const focus = people.find((p) => p.id === wanted) ?? people.find((p) => p.id === user.id)!;
+const all = games.get(focus.id) ?? [];
+const g = all.slice(0, 20);
+const prev = all.slice(10, 20), last10 = all.slice(0, 10);
+const acc = accounts.get(focus.id);
+const rank = acc ? JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `lol:${acc.region ?? 'euw'}:${acc.ident.toLowerCase()}`))[0]?.value ?? 'null') : null;
+const hist = await rows<{ value: string }>(`SELECT value FROM rank_history WHERE user_id = ? AND game = 'lol' ORDER BY day`, focus.id).catch(() => []);
+const v = await ddragon();
+const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${c}.png`;
+const ROLE: Record<string, string> = { TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support' };
+const fmtD = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+// Mesures : clé, libellé, décimales, sens (1 = plus c'est haut mieux c'est, -1 = l'inverse, 0 = neutre), unité, aide
+type M = [string, string, number, 1 | -1 | 0, string, string];
+const kda = (l: G[]) => { const d = l.reduce((s, x) => s + (x.d ?? 0), 0); return l.length ? l.reduce((s, x) => s + (x.k ?? 0) + (x.a ?? 0), 0) / Math.max(1, d) : null; };
+const val = (l: G[], k: string) => (k === 'kda' ? kda(l) : k === 'win' ? (l.length ? (l.filter((x) => x.win).length / l.length) * 100 : null) : k === 'fb' ? avg(l.filter((x) => x.fb !== undefined).map((x) => x.fb * 100)) : avg(l.map((x) => x[k])));
+const GROUPS: { id: string; title: string; lead: string; keys: M[]; only?: string }[] = [
+  { id: 'lane', title: 'Phase de lane', lead: 'Les 15 premières minutes, face à l’adversaire du même poste', keys: [
+    ['cs10', 'CS à 10 min', 0, 1, '', 'sbires et monstres tués à 10 minutes'], ['csMin', 'CS par minute', 1, 1, '', 'sur toute la partie'],
+    ['gd10', 'Or à 10 min', 0, 1, 'or', 'écart d’or avec ton adversaire direct'], ['gd15', 'Or à 15 min', 0, 1, 'or', 'écart d’or avec ton adversaire direct'],
+    ['xpd15', 'XP à 15 min', 0, 1, 'xp', 'écart d’expérience'], ['csd15', 'CS d’écart à 15', 0, 1, '', 'sbires de plus que lui'],
+    ['plaques', 'Plaques de tour', 1, 1, '', 'prises avant 14 minutes'], ['morts15', 'Morts avant 15 min', 1, -1, '', 'à faire baisser'],
+  ] },
+  { id: 'combat', title: 'Combat', lead: 'Ce que tu apportes dans les fights', keys: [
+    ['kda', 'KDA', 2, 1, '', '(kills + assists) / morts'], ['kp', 'Participation aux kills', 0, 1, '%', 'part des kills de l’équipe'],
+    ['dpm', 'Dégâts par minute', 0, 1, '', 'aux champions'], ['dmgShare', 'Part des dégâts', 0, 1, '%', 'de l’équipe'],
+    ['dmgTaken', 'Dégâts encaissés', 0, 0, '%', 'part de l’équipe : haut pour un tank, bas pour un carry'], ['solo', 'Solo kills', 1, 1, '', 'par partie'],
+    ['fb', 'First blood', 0, 1, '%', 'parties où tu participes au premier kill'], ['goldShare', 'Part de l’or', 0, 0, '%', 'de l’équipe'],
+  ] },
+  { id: 'vision', title: 'Vision', lead: 'Voir et priver l’adversaire de vision', keys: [
+    ['vspm', 'Vision par minute', 2, 1, '', 'score de vision'], ['balises', 'Balises posées', 1, 1, '', 'par partie'],
+    ['detruites', 'Balises détruites', 1, 1, '', 'par partie'], ['pinks', 'Balises de contrôle', 1, 1, '', 'pinks posées par partie'],
+    ['visionAdv', 'Avantage de vision', 0, 1, '%', 'face à ton adversaire direct'],
+  ] },
+  { id: 'obj', title: 'Objectifs', lead: 'Participation aux objectifs de la carte', keys: [
+    ['dragons', 'Dragons', 1, 1, '', 'participations par partie'], ['herauts', 'Hérauts', 1, 1, '', 'par partie'], ['larves', 'Larves du Néant', 1, 1, '', 'par partie'],
+    ['barons', 'Nashor', 1, 1, '', 'par partie'], ['tours', 'Tours', 1, 1, '', 'participations par partie'], ['vols', 'Objectifs volés', 1, 1, '', 'par partie'],
+  ] },
+  { id: 'jgl', title: 'Jungle', lead: 'Pour les parties jouées en jungle', only: 'JUNGLE', keys: [
+    ['jgl10', 'Camps avant 10 min', 0, 1, '', 'monstres de jungle'], ['crabes', 'Carapateurs', 1, 1, '', 'par partie'], ['jglAdverse', 'Camps adverses', 1, 1, '', 'volés chez l’adversaire'],
+  ] },
+];
+// Écarts face à l'adversaire (signés) : comparés en valeur, pas en pourcentage
+const SIGNED: Record<string, number> = { gd10: 500, gd15: 500, xpd15: 400, csd15: 10, csd10: 8, visionAdv: 25 };
+const fmt = (m: M, x: number | null) => {
+  if (x === null) return '—';
+  if (m[0] === 'visionAdv') return `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(Math.round(x))} %`;
+  if (m[4] === '%') return pct(x);
+  if (m[4] === 'or' || m[4] === 'xp') return `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(Math.round(x)).toLocaleString('fr-FR')}`;
+  if (m[0] === 'csd15') return `${x > 0 ? '+' : x < 0 ? '−' : ''}${r1(Math.abs(x), m[2])}`;
+  return r1(x, m[2]);
+};
+// Roster : moyenne des autres joueurs (20 dernières de chacun)
+const others = people.filter((p) => p.id !== focus.id).map((p) => (games.get(p.id) ?? []).slice(0, 20)).filter((l) => l.length);
+const rosterVal = (k: string) => avg(others.map((l) => val(l, k)).filter((x): x is number => x !== null));
+const rel = (a: number | null, b: number | null) => (a === null || b === null || b === 0 ? null : (a - b) / Math.abs(b));
+
+// Ce qui ressort : écart au roster (ou à ses 10 parties précédentes s'il est seul), sur les mesures qui se jugent
+const judged = GROUPS.flatMap((gr) => gr.keys.filter((m) => m[3] !== 0 && !gr.only).map((m) => ({ m, group: gr.title })));
+const scored = judged.map(({ m, group }) => {
+  const me = val(g, m[0]);
+  const ref = others.length ? rosterVal(m[0]) : prev.length >= 5 ? val(prev, m[0]) : null;
+  const d = SIGNED[m[0]] ? (me !== null ? (me - (ref ?? 0)) / SIGNED[m[0]] : null) : rel(me, ref);
+  return { m, group, me, ref, d: d === null ? null : d * m[3] };
+}).filter((x) => x.d !== null && x.me !== null && Math.abs(x.d) >= 0.1);
+const strengths = scored.filter((x) => x.d! > 0).sort((a, b) => b.d! - a.d!).slice(0, 3);
+const weak = scored.filter((x) => x.d! < 0).sort((a, b) => a.d! - b.d!).slice(0, 3);
+const refLabel = others.length ? 'vs roster' : 'vs tes 10 parties d’avant';
+
+// Pool, matchups, rôles
+const byKey = (l: G[], key: (x: G) => string | null) => { const m = new Map<string, G[]>(); for (const x of l) { const k = key(x); if (k) m.set(k, [...(m.get(k) ?? []), x]); } return m; };
+const pool = [...byKey(all.slice(0, 100), (x) => x.champ)].map(([c, l]) => ({ c, n: l.length, win: val(l, 'win'), kda: kda(l), cs: val(l, 'csMin'), gd15: val(l, 'gd15'), last: l[0].at })).sort((a, b) => b.n - a.n).slice(0, 10);
+const matchups = [...byKey(all.slice(0, 100), (x) => x.vs ?? null)].map(([c, l]) => ({ c, n: l.length, win: val(l, 'win'), gd15: val(l, 'gd15') })).filter((x) => x.n >= 2).sort((a, b) => b.n - a.n).slice(0, 8);
+const roles = [...byKey(all.slice(0, 50), (x) => x.pos ?? x.role ?? null)].map(([r, l]) => ({ r, n: l.length, win: val(l, 'win') })).sort((a, b) => b.n - a.n);
+const mainRole = roles[0]?.r ?? null;
+const winRate = val(g, 'win');
+let streak = 0; for (const x of all) { if (x.win === all[0]?.win) streak++; else break; }
+const rankText = (r: any) => (!r ? null : r.tier === 'UNRANKED' ? 'Non classé' : `${TIERS_FR[r.tier] ?? r.tier} ${['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(r.tier) ? '' : r.rank} · ${r.lp} LP`);
+const roster = await Promise.all(people.map(async (p) => {
+  const l = (games.get(p.id) ?? []).slice(0, 20); const a = accounts.get(p.id);
+  const rk = a ? JSON.parse((await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', `lol:${a.region ?? 'euw'}:${a.ident.toLowerCase()}`))[0]?.value ?? 'null') : null;
+  return { p, n: l.length, rk, win: val(l, 'win'), kda: kda(l), cs: val(l, 'csMin'), gd15: val(l, 'gd15'), vspm: val(l, 'vspm'), kp: val(l, 'kp') };
+}));
+const initial = (s: string) => s.slice(0, 1).toUpperCase();
+const link = (j: string) => `/equipe/tracker-lol/?${sc.active ? `r=${sc.active}&` : ''}j=${j}`;
+const fresh = g.filter((x) => x.v === 2).length;
+---
+<Qg title="Tracker LoL · Inside" heading="Tracker League of Legends" lead="Tes parties classées analysées : lane, combat, vision, objectifs, champions. Relevé automatique toutes les 30 minutes." current="lol-tracker" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  <div class="rl">
+    {people.length > 1 && (
+      <nav class="rl-who" aria-label="Joueur">
+        {people.map((p) => (
+          <a href={link(p.id)} aria-current={p.id === focus.id ? 'true' : undefined}>
+            {p.avatar ? <img src={p.avatar} alt="" width="28" height="28" loading="lazy" /> : <span>{initial(p.name)}</span>}
+            {p.name}<small>{(games.get(p.id) ?? []).length || ''}</small>
+          </a>
+        ))}
+      </nav>
+    )}
+
+    <section class="rl-head" aria-label="Résumé">
+      <div class="rl-id">
+        {focus.avatar ? <img src={focus.avatar} alt="" width="64" height="64" /> : <span>{initial(focus.name)}</span>}
+        <div><h2>{focus.name}</h2><p>{acc ? acc.ident : 'Riot ID pas encore relié'}{mainRole ? ` · ${ROLE[mainRole] ?? mainRole}` : ''} · {all.length} partie{all.length > 1 ? 's' : ''} classée{all.length > 1 ? 's' : ''}</p></div>
+      </div>
+      {rank && (
+        <ul class="rl-ranks">
+          <li><small>Solo/Duo</small><b>{rankText(rank)}</b>{rank.wins !== undefined ? <span>{rank.wins} V · {rank.losses} D</span> : null}</li>
+          {hist.length > 1 && <li><small>Évolution</small><Fragment set:html={spark(hist.map((h) => JSON.parse(h.value).score), { w: 140, h: 34 })} /></li>}
+        </ul>
+      )}
+    </section>
+
+    {!acc && <p class="rl-warn">{focus.id === user.id ? <>Relie ton Riot ID (avec le #TAG) dans <a href={`/equipe/joueurs/${sc.active ? `?r=${sc.active}` : ''}`}>Joueurs</a> : tes parties classées arrivent ensuite toutes seules.</> : `${focus.name} n’a pas encore relié son Riot ID.`}</p>}
+
+    {!all.length ? (
+      acc ? <p class="rl-empty">Aucune partie classée relevée pour l’instant : le relevé passe toutes les 30 minutes.</p> : null
+    ) : (
+      <>
+        <section class="rl-grid">
+          <article class="rl-card">
+            <p class="rl-tag">Forme · 20 dernières</p>
+            <p class="rl-big">{pct(winRate)} <small>de victoires</small></p>
+            <div class="rl-form" aria-label="Résultats, du plus récent au plus ancien">
+              {g.map((x) => <span class:list={[x.win ? 'is-w' : 'is-l']} title={`${x.win ? 'Victoire' : 'Défaite'} · ${x.champ}`}>{x.win ? 'V' : 'D'}</span>)}
+            </div>
+            <p class="rl-note">{streak > 1 ? `Série en cours : ${streak} ${all[0].win ? 'victoires' : 'défaites'}` : 'Pas de série en cours'}</p>
+          </article>
+          <article class="rl-card">
+            <p class="rl-tag">Postes joués</p>
+            <ul class="lt-roles">{roles.slice(0, 3).map((x) => <li><b>{ROLE[x.r] ?? x.r}</b><span>{x.n} partie{x.n > 1 ? 's' : ''} · {pct(x.win)}</span></li>)}</ul>
+          </article>
+          <article class="rl-card">
+            <p class="rl-tag">Or à 15 min, partie par partie</p>
+            <Fragment set:html={spark(g.slice().reverse().map((x) => Number(x.gd15 ?? 0)), { w: 260, h: 60 })} />
+            <p class="rl-note">Moyenne {fmt(GROUPS[0].keys[3], val(g, 'gd15'))} face à l’adversaire direct</p>
+          </article>
+        </section>
+
+        {(strengths.length > 0 || weak.length > 0) && (
+          <section class="lt-insight" aria-labelledby="lt-ins">
+            <h3 id="lt-ins" class="rl-h">Ce qui ressort <small>20 dernières parties, {refLabel}</small></h3>
+            <div class="lt-cols">
+              <div>
+                <p class="rl-tag">Points forts</p>
+                {strengths.length ? <ul>{strengths.map((x) => <li><b>{x.m[1]}</b> : {fmt(x.m, x.me)} <span>({x.group.toLowerCase()}, {x.ref !== null ? `${fmt(x.m, x.ref)} ${refLabel}` : ''})</span></li>)}</ul> : <p class="rl-note">Rien qui se détache pour l’instant.</p>}
+              </div>
+              <div>
+                <p class="rl-tag">À travailler</p>
+                {weak.length ? <ul>{weak.map((x) => <li><b>{x.m[1]}</b> : {fmt(x.m, x.me)} <span>({x.group.toLowerCase()}, {x.ref !== null ? `${fmt(x.m, x.ref)} ${refLabel}` : ''})</span></li>)}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
+              </div>
+            </div>
+          </section>
+        )}
+        {fresh < g.length && <p class="rl-note">{g.length - fresh} partie{g.length - fresh > 1 ? 's' : ''} ancienne{g.length - fresh > 1 ? 's' : ''} sans le détail complet : le bot les complète au fil des relevés (5 par passage).</p>}
+
+        {GROUPS.filter((gr) => !gr.only || mainRole === gr.only).map((gr) => {
+          const list = gr.only ? g.filter((x) => (x.pos ?? x.role) === gr.only) : g;
+          return (
+            <section aria-labelledby={`lt-${gr.id}`}>
+              <h3 id={`lt-${gr.id}`} class="rl-h">{gr.title} <small>{gr.lead}</small></h3>
+              <div class="rl-avgs">
+                {gr.keys.map((m) => {
+                  const x = val(list, m[0]), team = rosterVal(m[0]), d = rel(x, team), before = prev.length >= 5 ? val(prev, m[0]) : null, now = val(last10, m[0]);
+                  const trend = now !== null && before !== null && before !== 0 ? (now - before) / Math.abs(before) : null;
+                  return (
+                    <div class="rl-avg" title={m[5]}>
+                      <small>{m[1]}</small>
+                      <b>{fmt(m, x)}</b>
+                      {d !== null && Math.abs(d) >= 0.05 && !SIGNED[m[0]]
+                        ? <span class:list={[m[3] === 0 ? 'is-flat' : (d > 0) === (m[3] === 1) ? 'is-up' : 'is-down']}>{d > 0 ? '▲' : '▼'} {Math.round(Math.abs(d) * 100)} % vs roster</span>
+                        : trend !== null && Math.abs(trend) >= 0.1 ? <span class:list={[m[3] === 0 ? 'is-flat' : (trend > 0) === (m[3] === 1) ? 'is-up' : 'is-down']}>{trend > 0 ? '▲' : '▼'} sur les 10 dernières</span>
+                        : <span class="is-flat">{m[5]}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+
+        <section aria-labelledby="lt-pool">
+          <h3 id="lt-pool" class="rl-h">Pool de champions <small>100 dernières parties classées</small></h3>
+          <div class="rl-scroll">
+            <table class="rl-table">
+              <thead><tr><th>Champion</th><th>Parties</th><th>Victoires</th><th>KDA</th><th>CS/min</th><th>Or à 15</th><th>Dernière</th></tr></thead>
+              <tbody>{pool.map((x) => <tr><td class="lt-champ"><img src={champIcon(x.c)} alt="" width="26" height="26" loading="lazy" />{x.c}</td><td>{x.n}</td><td>{pct(x.win)}</td><td>{r1(x.kda, 2)}</td><td>{r1(x.cs)}</td><td>{fmt(GROUPS[0].keys[3], x.gd15)}</td><td>{fmtD.format(new Date(x.last))}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+
+        {matchups.length > 0 && (
+          <section aria-labelledby="lt-vs">
+            <h3 id="lt-vs" class="rl-h">Face à <small>adversaires directs rencontrés au moins 2 fois</small></h3>
+            <ul class="rl-mates">{matchups.map((x) => <li class="lt-champ"><img src={champIcon(x.c)} alt="" width="26" height="26" loading="lazy" /><b>{x.c}</b><span>{x.n} parties · {pct(x.win)} · or à 15 : {fmt(GROUPS[0].keys[3], x.gd15)}</span></li>)}</ul>
+          </section>
+        )}
+
+        <section aria-labelledby="lt-last">
+          <h3 id="lt-last" class="rl-h">Dernières parties</h3>
+          <div class="rl-scroll">
+            <table class="rl-table">
+              <thead><tr><th>Quand</th><th>Champion</th><th>Contre</th><th>Résultat</th><th>KDA</th><th>CS/min</th><th>Or à 15</th><th>Vision/min</th><th>KP</th><th>Dégâts</th><th>Durée</th></tr></thead>
+              <tbody>
+                {all.slice(0, 25).map((x) => (
+                  <tr>
+                    <td>{fmtD.format(new Date(x.at))}</td>
+                    <td class="lt-champ"><img src={champIcon(x.champ)} alt="" width="22" height="22" loading="lazy" />{x.champ}</td>
+                    <td>{x.vs ?? '—'}</td>
+                    <td><span class:list={['rl-res', x.win ? 'is-w' : 'is-l']}>{x.win ? 'V' : 'D'}</span></td>
+                    <td>{x.k}/{x.d}/{x.a}</td><td>{x.csMin !== undefined ? r1(x.csMin) : '—'}</td><td>{fmt(GROUPS[0].keys[3], x.gd15 ?? null)}</td><td>{r1(x.vspm ?? x.visionMin ?? null, 2)}</td><td>{x.kp !== undefined ? `${x.kp} %` : '—'}</td><td>{x.dmgShare !== undefined ? `${x.dmgShare} %` : '—'}</td><td>{x.min} min</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </>
+    )}
+
+    {people.length > 1 && (
+      <section aria-labelledby="lt-roster">
+        <h3 id="lt-roster" class="rl-h">Le roster <small>20 dernières parties classées de chacun</small></h3>
+        <div class="rl-scroll">
+          <table class="rl-table">
+            <thead><tr><th>Joueur</th><th>Rang</th><th>Parties</th><th>Victoires</th><th>KDA</th><th>CS/min</th><th>Or à 15</th><th>Vision/min</th><th>KP</th></tr></thead>
+            <tbody>
+              {roster.map((x) => (
+                <tr>
+                  <td><a href={link(x.p.id)}>{x.p.name}</a></td><td>{rankText(x.rk) ?? '—'}</td>
+                  <td>{x.n}</td><td>{pct(x.win)}</td><td>{r1(x.kda, 2)}</td><td>{r1(x.cs)}</td><td>{fmt(GROUPS[0].keys[3], x.gd15)}</td><td>{r1(x.vspm, 2)}</td><td>{pct(x.kp)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+  </div>
+</Qg>
+
+<style>
+  .rl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.25rem; }
+  .rl-tag { margin: 0; font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-accent-text, #b3241e); }
+  .rl h2 { margin: .25rem 0 .5rem; font: 600 1.4rem/1.2 var(--qg-title, sans-serif); }
+  .rl p { margin: 0; }
+  .rl-note { color: var(--qg-muted, #514c46); font-size: .875rem; }
+  .rl-warn { color: var(--qg-accent-text, #b3241e); font-weight: 600; }
+  .rl-ok { color: var(--ok, #1d7a49); font-weight: 600; }
+  .rl-who { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .rl-who a { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .7rem .3rem .3rem; border: 1px solid var(--qg-rule-strong, #7d776f); color: inherit; text-decoration: none; font-weight: 600; font-size: .9rem; }
+  .rl-who a[aria-current] { background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); border-color: var(--qg-ink, #141210); }
+  .rl-who img, .rl-who span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-rule, #d8d3ca); }
+  .rl-who small { font: 500 .72rem var(--qg-mono, monospace); opacity: .7; }
+  .rl-sync { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; padding: 1.25rem; border: var(--rule, 2px) solid var(--qg-ink, #141210); border-left: 6px solid #1450d6; }
+  .rl-sync ol { margin: .75rem 0; padding-left: 1.2rem; display: grid; gap: .4rem; line-height: 1.5; }
+  .rl-sync__act { display: grid; gap: .5rem; justify-items: stretch; }
+  .rl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+  .rl-id { display: flex; gap: 1rem; align-items: center; }
+  .rl-id img, .rl-id > span { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #1450d6; color: #fff; font: 700 1.6rem var(--qg-title, sans-serif); }
+  .rl-id h2 { margin: 0; }
+  .rl-id p { color: var(--qg-muted, #514c46); font-size: .9rem; }
+  .rl-ranks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .rl-ranks li { display: grid; padding: .5rem .8rem; border: 1px solid var(--qg-rule-strong, #7d776f); min-width: 9rem; }
+  .rl-ranks small, .rl-avg small { font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); }
+  .rl-ranks span { font-size: .8rem; color: var(--qg-muted, #514c46); }
+  .rl-empty { padding: 1.5rem; border: 1px dashed var(--qg-rule-strong, #7d776f); color: var(--qg-muted, #514c46); }
+  .rl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+  .rl-card { display: grid; gap: .5rem; align-content: start; padding: 1rem; border: 1px solid var(--qg-rule-strong, #7d776f); }
+  .rl-big { font: 600 2rem/1 var(--qg-title, sans-serif); }
+  .rl-big small { font: 400 .85rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); }
+  .rl-form { display: flex; flex-wrap: wrap; gap: 3px; }
+  .rl-form span, .rl-res { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .3rem; font: 600 .72rem var(--qg-mono, monospace); color: #fff; }
+  /* Pastilles V / D : texte blanc, verts et rouges assez foncés pour un contraste de 4,5:1 dans les deux thèmes */
+  .is-w { background: #17703f; } .is-l { background: #c81e19; }
+  .rl-card :global(.spark) { width: 100%; height: 60px; }
+  .rl-h { margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: var(--rule, 2px) solid var(--qg-ink, #141210); font: 600 1.1rem var(--qg-title, sans-serif); }
+  .rl-h small { font: 400 .8rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); margin-left: .5rem; }
+  .rl-auto { margin: .75rem 0; } .rl-auto summary { cursor: pointer; font-weight: 600; } .rl-auto ol { margin: .5rem 0; padding-left: 1.2rem; }
+  .rl-avgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
+  .rl-avg { display: grid; gap: .15rem; padding: .75rem; border: 1px solid var(--qg-rule, #d8d3ca); }
+  .rl-avg b { font: 600 1.5rem var(--qg-title, sans-serif); font-variant-numeric: tabular-nums; }
+  .rl-avg span { font-size: .78rem; } .rl-avg .is-up { color: var(--ok, #1d7a49); } .rl-avg .is-down { color: var(--danger, #b3241e); } .rl-avg .is-flat { color: var(--qg-muted, #514c46); }
+  .rl-scroll { overflow-x: auto; }
+  .rl-table { width: 100%; border-collapse: collapse; font-size: .88rem; white-space: nowrap; }
+  .rl-table th { text-align: left; font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); padding: .45rem .55rem; border-bottom: 1px solid var(--qg-rule-strong, #7d776f); }
+  .rl-table td { padding: .5rem .55rem; border-bottom: 1px solid var(--qg-rule, #d8d3ca); font-variant-numeric: tabular-nums; }
+  .rl-table a { color: inherit; font-weight: 600; }
+  .rl-mates { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+  .rl-mates li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--qg-rule, #d8d3ca); }
+  .rl-mates span { color: var(--qg-muted, #514c46); font-size: .9rem; }
+  @media (max-width: 700px) { .rl-sync { grid-template-columns: minmax(0, 1fr); } }
+  .lt-roles, .lt-insight ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+  .lt-roles li { display: flex; justify-content: space-between; gap: .5rem; } .lt-roles span, .lt-insight li span { color: var(--qg-muted, #514c46); font-size: .85rem; }
+  .lt-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+  .lt-insight > .lt-cols > div { padding: .9rem 1rem; border: 1px solid var(--qg-rule, #d8d3ca); }
+  .lt-champ { display: flex; align-items: center; gap: .45rem; } .lt-champ img { border-radius: 4px; flex: none; }
+</style>

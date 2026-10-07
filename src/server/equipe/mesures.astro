@@ -122,7 +122,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
 
           {b.kind === 'lol' && (
             <>
-              <p class="eq-note">20 dernières parties classées de chaque joueur, relevées automatiquement toutes les 30 minutes. Courbe : évolution du rang sur 90 jours.</p>
+              <p class="eq-note">20 dernières parties classées de chaque joueur, relevées automatiquement toutes les 30 minutes. Courbe : évolution du rang sur 90 jours. Analyse détaillée (lane, vision, objectifs, champions) : <a href={`/equipe/tracker-lol/?r=${b.r.slug}`}>Tracker LoL</a>.</p>
               <div class="st-scroll">
                 <table class="st-table">
                   <thead><tr><th>Joueur</th><th>Rang</th><th>Tendance</th><th>Parties</th><th>Victoires</th><th>KDA</th><th>CS/min</th><th>Vision/min</th><th>KP</th><th>Dégâts</th><th title="Sbires et monstres tués à 10 minutes">CS à 10</th><th title="Écart d’or à 15 minutes face à l’adversaire du même poste">Or à 15</th><th>Champions</th></tr></thead>

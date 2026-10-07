@@ -51,6 +51,7 @@ const api = {
       route('/equipe/rl', './src/server/equipe/rl.astro');
       route('/equipe/packs', './src/server/equipe/packs.astro');
       route('/equipe/pools', './src/server/equipe/pools.astro');
+      route('/equipe/tracker-lol', './src/server/equipe/lol-tracker.astro');
       route('/equipe/compos', './src/server/equipe/compos.astro');
       route('/api/rl/oni-sync', './src/server/equipe/rl-sync.ts');
       route('/api/rl/sync', './src/server/equipe/rl-sync.ts');
