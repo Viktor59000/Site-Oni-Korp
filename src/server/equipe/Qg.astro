@@ -10,10 +10,10 @@ import { JEUX } from './jeux';
 
 interface Props {
   title: string; heading?: string; lead?: string; current?: string;
-  rosters?: RosterRow[]; staff?: boolean; contenu?: boolean; active?: string | null;
+  rosters?: RosterRow[]; staff?: boolean; contenu?: boolean; communaute?: boolean; active?: string | null;
   user?: { name: string; avatar: string | null } | null; bare?: boolean;
 }
-const { title, heading = title, lead, current = '', rosters = [], staff = false, contenu = false, active = null, user = null, bare = false } = Astro.props;
+const { title, heading = title, lead, current = '', rosters = [], staff = false, contenu = false, communaute = false, active = null, user = null, bare = false } = Astro.props;
 // Pôle contenu sans roster : seulement l'espace Contenu
 const onlyContent = contenu && !rosters.length;
 // Propriétés des jeux (couleur, nom, outil dédié, tableau blanc) : jeux.ts
@@ -57,13 +57,14 @@ const currentLabel = section?.label ?? heading;
     <header class="qg-top">
       {!bare && <button class="qg-icon qg-fold" type="button" data-qg-fold aria-label="Replier le menu" title="Replier / déplier le menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>}
       <a class="qg-brand" href={`/equipe/${q}`} aria-label="Inside, accueil de l'espace équipe"><img src="/img/oni-logo.svg" alt="" width="28" height="28" /><span><b translate="no">Oni Korp</b> Inside</span></a>
-      {!bare && (rosters.length > 0 || contenu) && (
+      {!bare && (rosters.length > 0 || contenu || communaute) && (
         <details class="qg-switch">
-          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : current === 'contenu' ? 'Contenu' : 'Mon espace'}<span class="qg-caret" aria-hidden="true"></span></summary>
+          <summary><span class="qg-dot" aria-hidden="true"></span>{activeRoster ? activeRoster.name : current === 'vue' ? "Vue d'ensemble" : current === 'contenu' ? 'Contenu' : current === 'communaute' ? 'Communauté' : 'Mon espace'}<span class="qg-caret" aria-hidden="true"></span></summary>
           <div class="qg-menu">
             <a href="/equipe/" aria-current={current === 'espace' ? 'page' : undefined}>Mon espace</a>
             {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
             {contenu && <a href="/equipe/contenu/" aria-current={current === 'contenu' ? 'page' : undefined}>Contenu</a>}
+            {communaute && <a href="/equipe/communaute/" aria-current={current === 'communaute' ? 'page' : undefined}>Communauté</a>}
             {rosters.some((r) => r.mine) && <p>Mes rosters</p>}
             {rosters.filter((r) => r.mine).map((r) => <a href={switchTo(r)} style={`--g:${GAMES[r.game]?.color}`} class="qg-menu__team" aria-current={r.slug === activeRoster?.slug ? 'page' : undefined}>{r.name}<small>{GAMES[r.game]?.label}</small></a>)}
             {rosters.some((r) => !r.mine) && <p>Suivis en encadrement</p>}
@@ -106,9 +107,10 @@ const currentLabel = section?.label ?? heading;
                 {rosters.filter((r) => r.mine).map((r) => <a href={`/equipe/?r=${r.slug}`} style={`--g:${GAMES[r.game]?.color}`} class="qg-nav__team">{r.name}</a>)}
                 {rosters.some((r) => !r.mine) && <p class="qg-nav__roster">Suivis en encadrement</p>}
                 {rosters.filter((r) => !r.mine).map((r) => <a href={`/equipe/?r=${r.slug}`} style={`--g:${GAMES[r.game]?.color}`} class="qg-nav__team is-other">{r.name}</a>)}
-                {(staff || contenu) && <p class="qg-nav__roster">Encadrement</p>}
+                {(staff || contenu || communaute) && <p class="qg-nav__roster">Encadrement</p>}
                 {staff && <a href="/equipe/vue/" aria-current={current === 'vue' ? 'page' : undefined}>Vue d'ensemble</a>}
                 {contenu && <a href="/equipe/contenu/" aria-current={current === 'contenu' ? 'page' : undefined}>Contenu</a>}
+                {communaute && <a href="/equipe/communaute/" aria-current={current === 'communaute' ? 'page' : undefined}>Communauté</a>}
               </>
             )}
           </nav>

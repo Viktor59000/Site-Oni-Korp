@@ -14,7 +14,7 @@ Colonne « écrit » : qui crée les lignes. « Lit » : qui s'en sert.
 
 | Table | Contenu | Écrit | Lit |
 |---|---|---|---|
-| `guild_members` | id, pseudo, avatar, rôles (JSON) de chaque membre | bot (miroir) | site (accès, noms, avatars) |
+| `guild_members` | id, pseudo, avatar, rôles (JSON), date d'arrivée (`joined_at`) de chaque membre | bot (miroir) | site (accès, noms, avatars) |
 | `guild_roles` | id, nom, couleur, position, permission admin | bot (miroir) | site (`access.ts`) |
 | `user_keys` | sel du lien d'agenda, version de session (déconnexion partout) | site | site |
 | `left_roles` | rôles d'un membre parti, rendus s'il revient | bot | bot |
@@ -34,8 +34,8 @@ Colonne « écrit » : qui crée les lignes. « Lit » : qui s'en sert.
 | `matches` | matchs et scrims (adversaire, format, date, score, événement Discord) | bot (`/match`) | les deux |
 | `match_notes` | notes de match des joueurs | site | site, bot |
 | `match_stats`, `match_replays` | stats par joueur d'un match, replays à importer | bot | site |
-| `goals` | objectifs (joueur ou roster, échéance, progression) | site | site, bot |
-| `docs` | docs du roster | site | site |
+| `goals` | objectifs (joueur ou roster, échéance, progression, `private` : visible du joueur et de l'encadrement) | site | site, bot |
+| `docs` | docs du roster, du jeu ou du club (`level`, `game` ; `roster_id` nul hors roster) | site | site |
 | `drafts` | drafts LoL sauvegardés | site | site |
 | `lineups` | lineups Valorant (position, impact, vidéo) | site | site |
 | `boards` | tableaux blancs (état complet en JSON) | site | site |

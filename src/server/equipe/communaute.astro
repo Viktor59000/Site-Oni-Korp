@@ -1,0 +1,164 @@
+---
+// Espace Communauté (07/10, ANALYSE-CLUB.md 5.6) : pour l'Accueil, l'Organisateur, les Modérateurs et l'encadrement.
+// - Arrivées : les nouveaux des 14 derniers jours, leurs jeux, s'ils ont validé le règlement (accueil) ;
+// - Événements : prochaine soirée inhouse, parties jouées, tournois communautaires (organisateur) ;
+// - Modération : tickets ouverts, avertissements et sanctions des 30 derniers jours (modérateurs et encadrement seulement).
+// Aucune donnée de roster ici : ni stratégies, ni notes, ni objectifs.
+import Qg from './Qg.astro';
+import { teamUser } from './outils';
+import { rows } from '../db';
+import { JEUX } from './jeux';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me } = t;
+if (!me.community) return Astro.redirect('/equipe/');
+const canModerate = me.staff || me.mod;
+const now = Date.now(), DAY = 86400_000;
+const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
+const fmtL = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+const q = <T,>(p: Promise<T[]>) => p.catch(() => [] as T[]);
+
+const roles = await q(rows<{ id: string; name: string }>('SELECT id, name FROM guild_roles'));
+const roleName = new Map(roles.map((r) => [r.id, r.name]));
+const gameRole = new Map(Object.entries(JEUX).map(([k, j]) => [j.label, k]));
+
+// Arrivées (date d'arrivée relevée par le miroir d'Oni Bot depuis le 07/10)
+const arrivals = (await q(rows<{ id: string; name: string; avatar: string | null; roles: string; joined_at: number }>(
+  'SELECT id, name, avatar, roles, joined_at FROM guild_members WHERE joined_at > ? ORDER BY joined_at DESC LIMIT 40', now - 14 * DAY))).map((m) => {
+  const names = (JSON.parse(m.roles) as string[]).map((r) => roleName.get(r) ?? '');
+  return { ...m, games: names.map((n) => gameRole.get(n)).filter(Boolean) as string[], valid: names.includes('Membre'), recent: now - Number(m.joined_at) < 2 * DAY };
+});
+const [metric] = await q(rows<{ value: string }>(`SELECT value FROM metrics WHERE key = 'discord_actifs_7j' ORDER BY day DESC LIMIT 1`));
+const [members] = await q(rows<{ value: string }>(`SELECT value FROM metrics WHERE key = 'discord_membres' ORDER BY day DESC LIMIT 1`));
+
+// Événements : soirée inhouse du jeudi 21 h (décision du 06/10), parties des 30 derniers jours, tournois communautaires
+const nextThursday = (() => {
+  const d = new Date(now);
+  for (let i = 0; i < 8; i++) {
+    const c = new Date(d.getTime() + i * DAY);
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(c).map((x) => [x.type, x.value]));
+    if (p.weekday === 'Thu' && (i > 0 || Number(p.hour) < 22)) return c;
+  }
+  return null;
+})();
+// Une partie compte quand un vainqueur a été désigné
+const ihPlayed = await q(rows<{ mode: string; team1: string; team2: string }>('SELECT mode, team1, team2 FROM inhouse_matches WHERE winner IS NOT NULL AND COALESCE(ended_at, created_at) > ?', now - 30 * DAY));
+const ihPlayers = new Set(ihPlayed.flatMap((m) => { try { return [...JSON.parse(m.team1), ...JSON.parse(m.team2)]; } catch { return []; } })).size;
+const byMode = Object.entries(ihPlayed.reduce<Record<string, number>>((o, m) => ({ ...o, [m.mode]: (o[m.mode] ?? 0) + 1 }), {}));
+const tournaments = await q(rows<{ id: number; name: string; game: string; starts_at: number | null; status: string; size: number | null; max: number | null }>(
+  `SELECT id, name, game, starts_at, status, size, max FROM tournaments WHERE status NOT IN ('annule', 'annulé', 'termine', 'terminé') ORDER BY starts_at`));
+
+// Modération (modérateurs et encadrement)
+const mod = canModerate ? {
+  tickets: await q(rows<{ thread_id: string; kind: string; opened_at: number; name: string | null }>(
+    `SELECT t.thread_id, t.kind, t.opened_at, g.name FROM tickets t LEFT JOIN guild_members g ON g.id = t.user_id WHERE t.closed_at IS NULL AND t.kind NOT IN ('joueur', 'staff') ORDER BY t.opened_at`)),
+  warnings: await q(rows<{ name: string | null; reason: string; at: number }>(`SELECT g.name, w.reason, w.at FROM warnings w LEFT JOIN guild_members g ON g.id = w.user_id WHERE w.at > ? ORDER BY w.at DESC LIMIT 20`, now - 30 * DAY)),
+  sanctions: await q(rows<{ name: string | null; kind: string; reason: string; at: number }>(`SELECT g.name, s.kind, s.reason, s.at FROM sanctions s LEFT JOIN guild_members g ON g.id = s.user_id WHERE s.at > ? ORDER BY s.at DESC LIMIT 20`, now - 30 * DAY)),
+} : null;
+const guildId = process.env.DISCORD_GUILD_ID ?? '';
+const KIND: Record<string, string> = { avertissement: 'Avertissement', timeout: 'Exclusion temporaire', exclusion: 'Exclusion temporaire', ban: 'Bannissement', kick: 'Expulsion' };
+---
+<Qg title="Communauté · Inside" heading="Communauté" lead="Les arrivées, les soirées et la modération : ce qui fait vivre le serveur au quotidien." current="communaute" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute active={null} user={{ name: me.member?.name ?? t.user.name, avatar: me.member?.avatar ?? t.user.avatar }}>
+  <div class="cm">
+    <ul class="cm-kpis">
+      <li><b>{members?.value ?? '—'}</b><span>membres sur Discord</span></li>
+      <li><b>{metric?.value ?? '—'}</b><span>actifs à l’écrit sur 7 jours</span></li>
+      <li><b>{arrivals.length}</b><span>arrivée{arrivals.length > 1 ? 's' : ''} sur 14 jours</span></li>
+      <li><b>{ihPlayed.length}</b><span>inhouse{ihPlayed.length > 1 ? 's' : ''} sur 30 jours{ihPlayers ? ` · ${ihPlayers} joueurs` : ''}</span></li>
+    </ul>
+
+    <section class="cm-block" aria-labelledby="cm-arr">
+      <h2 id="cm-arr">Arrivées</h2>
+      <p class="cm-lead">Un mot de bienvenue dans les 48 h change tout : propose un vocal, une soirée inhouse, ou le salon du jeu choisi.</p>
+      {arrivals.length ? (
+        <ul class="cm-list">
+          {arrivals.map((m) => (
+            <li class:list={{ 'is-new': m.recent }}>
+              {m.avatar ? <img src={m.avatar} alt="" width="32" height="32" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" /> : <span class="cm-av">{m.name.slice(0, 1)}</span>}
+              <span class="cm-who"><strong>{m.name}</strong><small>arrivé le {fmt.format(new Date(Number(m.joined_at)))}{m.valid ? '' : ' · règlement pas encore validé'}</small></span>
+              <span class="cm-games">{m.games.length ? m.games.map((g) => <i style={`--g:${JEUX[g as keyof typeof JEUX].color}`}>{JEUX[g as keyof typeof JEUX].code}</i>) : <small>aucun jeu choisi</small>}</span>
+              {guildId && <a href={`https://discord.com/users/${m.id}`} rel="noopener" target="_blank">Profil Discord</a>}
+            </li>
+          ))}
+        </ul>
+      ) : <p class="eq-note">Aucune arrivée relevée sur 14 jours (les dates d’arrivée sont suivies depuis le 7 octobre 2026).</p>}
+    </section>
+
+    <section class="cm-block" aria-labelledby="cm-ev">
+      <h2 id="cm-ev">Événements</h2>
+      <div class="cm-grid">
+        <div class="cm-card">
+          <p class="cm-tag">Soirée inhouse</p>
+          <p class="cm-big">{nextThursday ? `${fmtL.format(nextThursday)}, 21 h` : 'Jeudi, 21 h'}</p>
+          <p class="cm-small">Annonce à 17 h (rôle « Notif inhouses »), files ouvertes à 20 h 55 dans le salon inhouse.</p>
+        </div>
+        <div class="cm-card">
+          <p class="cm-tag">Inhouses sur 30 jours</p>
+          {byMode.length ? <ul class="cm-kv">{byMode.map(([k, n]) => <li><span>{k}</span><b>{n}</b></li>)}</ul> : <p class="cm-small">Aucune partie jouée. Une soirée réussie, c’est 6 à 10 joueurs : relancez les nouveaux arrivés.</p>}
+          <a class="cm-more" href="/inhouses/">Classement public</a>
+        </div>
+        <div class="cm-card">
+          <p class="cm-tag">Tournois communautaires</p>
+          {tournaments.length ? <ul class="cm-kv">{tournaments.map((x) => <li><span>{x.name}{x.game && JEUX[x.game as keyof typeof JEUX] ? ` · ${JEUX[x.game as keyof typeof JEUX].code}` : ''}</span><b>{x.starts_at ? fmt.format(new Date(Number(x.starts_at))) : x.status}</b></li>)}</ul> : <p class="cm-small">Aucun tournoi en cours. Ils se créent sur Discord avec <code>/tournoi</code>.</p>}
+        </div>
+      </div>
+    </section>
+
+    {mod && (
+      <section class="cm-block" aria-labelledby="cm-mod">
+        <h2 id="cm-mod">Modération</h2>
+        <p class="cm-lead">Visible des modérateurs et de l’encadrement seulement. Les décisions se prennent sur Discord (<code>/avertir</code>, <code>/historique</code>, tickets).</p>
+        <div class="cm-grid">
+          <div class="cm-card">
+            <p class="cm-tag">Tickets ouverts · {mod.tickets.length}</p>
+            {mod.tickets.length ? <ul class="cm-kv">{mod.tickets.map((x) => <li><span>{x.name ?? 'un membre'} · {x.kind}</span>{guildId ? <a href={`https://discord.com/channels/${guildId}/${x.thread_id}`} rel="noopener" target="_blank">{fmt.format(new Date(Number(x.opened_at)))}</a> : <b>{fmt.format(new Date(Number(x.opened_at)))}</b>}</li>)}</ul> : <p class="cm-small">Aucun ticket en attente.</p>}
+          </div>
+          <div class="cm-card">
+            <p class="cm-tag">Avertissements · 30 jours</p>
+            {mod.warnings.length ? <ul class="cm-kv">{mod.warnings.map((x) => <li><span>{x.name ?? 'un membre'} · {x.reason}</span><b>{fmt.format(new Date(Number(x.at)))}</b></li>)}</ul> : <p class="cm-small">Aucun.</p>}
+          </div>
+          <div class="cm-card">
+            <p class="cm-tag">Sanctions · 30 jours</p>
+            {mod.sanctions.length ? <ul class="cm-kv">{mod.sanctions.map((x) => <li><span>{x.name ?? 'un membre'} · {KIND[x.kind] ?? x.kind}{x.reason ? ` · ${x.reason}` : ''}</span><b>{fmt.format(new Date(Number(x.at)))}</b></li>)}</ul> : <p class="cm-small">Aucune.</p>}
+          </div>
+        </div>
+      </section>
+    )}
+  </div>
+</Qg>
+
+<style>
+  .cm { display: grid; gap: 2.25rem; }
+  .cm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; border: 1px solid var(--qg-rule); background: var(--qg-rule); }
+  .cm-kpis li { display: grid; gap: .2rem; padding: 1rem; background: var(--qg-paper); }
+  .cm-kpis b { font-size: 1.6rem; line-height: 1; }
+  .cm-kpis span { color: var(--qg-muted); font-size: var(--text-sm); }
+  .cm-block { display: grid; gap: .75rem; }
+  .cm-block h2 { margin: 0; font-family: var(--font-body); font-size: 1rem; font-weight: 700; }
+  .cm-lead { margin: 0; color: var(--qg-muted); font-size: var(--text-sm); max-width: 48rem; }
+  .cm-list { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+  .cm-list li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: .75rem; align-items: center; padding: .55rem .75rem; background: var(--qg-surface); border-left: 4px solid transparent; }
+  .cm-list li.is-new { border-left-color: var(--qg-accent, #e5251f); }
+  .cm-list img, .cm-av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-sunk, rgb(0 0 0 / .1)); font-weight: 700; }
+  .cm-who { display: grid; gap: .1rem; min-width: 0; }
+  .cm-who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cm-who small, .cm-games small { color: var(--qg-muted); }
+  .cm-games { display: flex; gap: .3rem; }
+  .cm-games i { font-style: normal; font: 600 .7rem / 1 var(--qg-mono, ui-monospace, monospace); padding: .25rem .4rem; border: 1px solid var(--g); color: var(--qg-ink); }
+  .cm-list a { font-size: var(--text-sm); color: var(--qg-ink); }
+  .cm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+  .cm-card { display: grid; gap: .5rem; align-content: start; padding: 1rem; border: 1px solid var(--qg-rule); }
+  .cm-tag { margin: 0; font: 600 .72rem / 1.2 var(--qg-mono, ui-monospace, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-muted); }
+  .cm-big { margin: 0; font-weight: 700; font-size: 1.15rem; }
+  .cm-big::first-letter { text-transform: uppercase; }
+  .cm-small { margin: 0; color: var(--qg-muted); font-size: var(--text-sm); }
+  .cm-kv { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+  .cm-kv li { display: flex; gap: .75rem; justify-content: space-between; align-items: baseline; }
+  .cm-kv span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .cm-kv a { color: var(--qg-ink); white-space: nowrap; }
+  .cm-more { justify-self: start; font-weight: 700; font-size: var(--text-sm); color: var(--qg-ink); }
+  .eq-note { color: var(--qg-muted); font-size: var(--text-sm); margin: 0; }
+  @media (max-width: 640px) { .cm-list li { grid-template-columns: 32px minmax(0, 1fr); } .cm-games, .cm-list a { grid-column: 2; } }
+</style>

@@ -6,6 +6,7 @@
 // - Capitaine : gère ses propres rosters (planning, compo, objectifs, épingles), sans être encadrement.
 // - Analyste : suit les rosters dont il a le rôle, sans compter comme joueur.
 // - Pôle contenu (casteur, graphiste, monteur, CM, créateur, marketing) : l'espace Contenu, sans les rosters.
+// - Communauté (Accueil, Organisateur, Modérateur ; décision du 07/10) : l'espace Communauté (arrivées, événements, modération), sans les rosters.
 import { rows } from '../db';
 
 export const STAFF_ROLES = ['Admin', 'Fondateur', 'Manager', 'Coach'];
@@ -15,6 +16,7 @@ export const GAME_LEAD_ROLES: Record<string, string> = {
 };
 export const CAPTAIN_ROLE = 'Capitaine';
 export const ANALYST_ROLE = 'Analyste';
+export const COMMUNITY_ROLES = ['Accueil', 'Organisateur'];
 export const CONTENT_ROLES = ['Casteur', 'Graphiste', 'Monteur vidéo', 'Community manager', 'Créateur de contenu', 'Responsable marketing'];
 export interface RosterRow { id: number; slug: string; name: string; game: string; role_id: string; voice_id: string; /** la personne a le rôle du roster (sinon elle le voit comme encadrement) */ mine?: boolean }
 
@@ -48,6 +50,7 @@ export async function access(userId: string) {
     rosterIds: mine.map((r) => Number(r.id)), // rosters dont il a le rôle (joueur, analyste)
     lead, games, captain, analyst, content,
     mod: !staff && has(MOD_ROLE), // Modérateur sans autre rôle d'encadrement
+    community: staff || has(MOD_ROLE) || COMMUNITY_ROLES.some(has), // espace Communauté
   };
 }
 export type Access = Awaited<ReturnType<typeof access>>;

@@ -27,7 +27,7 @@ const rosterName = (id: number) => sc.list.find((r) => Number(r.id) === Number(i
 const urgent = (c: C) => c.status === 'repere' && c.signup_by && Number(c.signup_by) > now && Number(c.signup_by) - now < 3 * DAY;
 const missed = (c: C) => c.status === 'repere' && c.signup_by && Number(c.signup_by) < now;
 ---
-<Qg title="Tournois · Inside" heading="Tournois" lead="Les compétitions qu'on vise : quand s'inscrire, à quel niveau, et ce qu'on en a tiré." current="tournois" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+<Qg title="Tournois · Inside" heading="Tournois" lead="Les compétitions qu'on vise : quand s'inscrire, à quel niveau, et ce qu'on en a tiré." current="tournois" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
   <section class="tn">
     {list.length ? (
       <ul class="tn-list">

@@ -17,8 +17,6 @@ const asked = me.rosters.find((r) => r.slug === Astro.url.searchParams.get('r'))
 if (asked) scope(me.rosters, Astro.url, Astro.cookies); // retient le roster ouvert pour les outils
 // Pôle contenu sans roster : son espace, c'est Contenu
 if (!me.rosters.length && me.content.length) return Astro.redirect('/equipe/contenu/');
-// Modérateur sans roster : son espace, c'est la vue d'ensemble
-if (!me.rosters.length && me.mod) return Astro.redirect('/equipe/vue/');
 const roster = asked ?? null;
 
 // Pas d'illustration dans Inside : chaque pôle se reconnaît à sa couleur et à son sigle
@@ -167,7 +165,7 @@ if (!roster) {
 ---
 <Qg title={roster ? `${roster.name} · Inside` : 'Mon espace · Inside'} heading={roster ? roster.name : `Salut ${me.member?.name ?? user.name}`}
   lead={roster ? undefined : 'Ce qui t’attend dans tes rosters et ce que tu as à faire. Entre dans un roster pour ses outils.'}
-  current={roster ? 'accueil' : 'espace'} rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} active={roster?.slug ?? null} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  current={roster ? 'accueil' : 'espace'} rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={roster?.slug ?? null} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
 
   {!roster && espace && (
     <div class="me">
@@ -230,6 +228,48 @@ if (!roster) {
         </section>
       </div>
 
+      <section aria-labelledby="me-rosters-h">
+        <h2 id="me-rosters-h" class="me-h">Mes espaces</h2>
+        <ul class="ac-pick">
+          {espace.cards.map(({ r, next: n, members, team }) => {
+            const gg = GAME[r.game] ?? { label: r.game, code: r.game.toUpperCase(), color: '#e5251f' };
+            return (
+              <li>
+                <a class="ac-pick__card" href={`/equipe/?r=${r.slug}`} style={`--g:${gg.color}`}>
+                  <b class="ac-pick__code" aria-hidden="true" translate="no">{gg.code}</b>
+                  <span>{r.name}</span>
+                  <small>{gg.label} · {members} joueur{members > 1 ? 's' : ''}{team ? ` · ${team} objectif${team > 1 ? 's' : ''} d’équipe` : ''}</small>
+                  <small class="ac-pick__next">{n ? `${n.type === 'match' ? 'Match' : 'Séance'} ${inDays(n.at)}` : 'Rien de prévu'}</small>
+                </a>
+              </li>
+            );
+          })}
+          {me.staff && (
+            <li><a class="ac-pick__card ac-pick__card--vue" href="/equipe/vue/"><span>Vue d’ensemble</span><small>Santé des rosters, alertes, candidatures</small></a></li>
+          )}
+          {me.community && (
+            <li><a class="ac-pick__card" href="/equipe/communaute/" style="--g:#c9a227"><b class="ac-pick__code" aria-hidden="true">COM</b><span>Communauté</span><small>Arrivées, soirées, modération</small></a></li>
+          )}
+          {me.content.length > 0 && !me.staff && (
+            <li><a class="ac-pick__card" href="/equipe/contenu/" style="--g:#8b5cf6"><b class="ac-pick__code" aria-hidden="true">CTN</b><span>Contenu</span><small>Tâches, calendrier éditorial, indicateurs</small></a></li>
+          )}
+          {!me.staff && me.games.map((g) => GAME[g] && (
+            <li><a class="ac-pick__card" href={`/equipe/vue/?jeu=${g}`} style={`--g:${GAME[g].color}`}><b class="ac-pick__code" aria-hidden="true" translate="no">{GAME[g].code}</b><span>Espace {GAME[g].label}</span><small>Rosters, recrutement, essais du jeu</small></a></li>
+          ))}
+        </ul>
+        {!espace.cards.length && <p class="ac-empty">Tu n’es dans aucun roster pour l’instant.</p>}
+      </section>
+
+      {me.rosters.some((r) => !r.mine) && (
+        <section aria-labelledby="me-others-h">
+          <h2 id="me-others-h" class="me-h">Suivis en encadrement</h2>
+          <p class="me-note">Tu n’es pas dans ces rosters : tu les vois parce que tu fais partie de l’encadrement. Leurs séances et tâches ne s’ajoutent pas aux tiennes.</p>
+          <ul class="me-others">
+            {me.rosters.filter((r) => !r.mine).map((r) => <li style={`--g:${GAME[r.game]?.color ?? '#e5251f'}`}><a href={`/equipe/?r=${r.slug}`}><strong>{r.name}</strong><small>{GAME[r.game]?.label ?? r.game}</small></a></li>)}
+          </ul>
+        </section>
+      )}
+
       <section class="qg-card ac-card me-acc" aria-labelledby="me-acc-h">
         <h2 id="me-acc-h">Mes comptes et inhouses</h2>
         <div class="me-acc__grid">
@@ -252,42 +292,6 @@ if (!roster) {
           </div>
         </div>
       </section>
-
-      <section aria-labelledby="me-rosters-h">
-        <h2 id="me-rosters-h" class="me-h">Mes rosters</h2>
-        <ul class="ac-pick">
-          {espace.cards.map(({ r, next: n, members, team }) => {
-            const gg = GAME[r.game] ?? { label: r.game, code: r.game.toUpperCase(), color: '#e5251f' };
-            return (
-              <li>
-                <a class="ac-pick__card" href={`/equipe/?r=${r.slug}`} style={`--g:${gg.color}`}>
-                  <b class="ac-pick__code" aria-hidden="true" translate="no">{gg.code}</b>
-                  <span>{r.name}</span>
-                  <small>{gg.label} · {members} joueur{members > 1 ? 's' : ''}{team ? ` · ${team} objectif${team > 1 ? 's' : ''} d’équipe` : ''}</small>
-                  <small class="ac-pick__next">{n ? `${n.type === 'match' ? 'Match' : 'Séance'} ${inDays(n.at)}` : 'Rien de prévu'}</small>
-                </a>
-              </li>
-            );
-          })}
-          {me.staff && (
-            <li><a class="ac-pick__card ac-pick__card--vue" href="/equipe/vue/"><span>Vue d’ensemble</span><small>Santé des rosters, alertes, candidatures</small></a></li>
-          )}
-          {!me.staff && me.games.map((g) => GAME[g] && (
-            <li><a class="ac-pick__card" href={`/equipe/vue/?jeu=${g}`} style={`--g:${GAME[g].color}`}><b class="ac-pick__code" aria-hidden="true" translate="no">{GAME[g].code}</b><span>Espace {GAME[g].label}</span><small>Rosters, recrutement, essais du jeu</small></a></li>
-          ))}
-        </ul>
-        {!espace.cards.length && <p class="ac-empty">Tu n’as le rôle d’aucun roster.</p>}
-      </section>
-
-      {me.rosters.some((r) => !r.mine) && (
-        <section aria-labelledby="me-others-h">
-          <h2 id="me-others-h" class="me-h">Suivis en encadrement</h2>
-          <p class="me-note">Tu n’es pas dans ces rosters : tu les vois parce que tu fais partie de l’encadrement. Leurs séances et tâches ne s’ajoutent pas aux tiennes.</p>
-          <ul class="me-others">
-            {me.rosters.filter((r) => !r.mine).map((r) => <li style={`--g:${GAME[r.game]?.color ?? '#e5251f'}`}><a href={`/equipe/?r=${r.slug}`}><strong>{r.name}</strong><small>{GAME[r.game]?.label ?? r.game}</small></a></li>)}
-          </ul>
-        </section>
-      )}
     </div>
   )}
 
