@@ -9,7 +9,7 @@ import type { APIRoute } from 'astro';
 import { sameOrigin } from '../session';
 import { exec, rows } from '../db';
 import { teamUser } from './outils';
-import { ONI_SYNC_PS, ONI_SYNC_VERSION } from './oni-sync-script';
+import { ONI_ICON, ONI_SYNC_PS, ONI_SYNC_VERSION } from './oni-sync-script';
 
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 const norm = (s: string) => String(s ?? '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, '');
@@ -48,7 +48,7 @@ export const GET: APIRoute = async ({ cookies, url }) => {
   const token = await tokenFor(t.user.id);
   const [acc] = await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE user_id = ? AND game = 'rl'`, t.user.id);
   const api = `${url.origin}/api/rl/sync`;
-  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION)
+  const ps = ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION).replace('__ICON__', ONI_ICON)
     .replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
   // La fenêtre de commande se ferme aussitôt : Oni Sync tourne caché, avec son icône près de l'horloge
   const cmd = [
@@ -120,6 +120,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const winner = num(pick(en, 'WinnerTeamNum', 'Winner', 'winner'));
   const goals = num(pick(me, 'Goals', 'goals')) ?? 0, shots = num(pick(me, 'Shots', 'shots')) ?? 0;
   const nameOf = (p: any) => String(pick(p, 'Name', 'name') ?? '');
+  // Stats en plus (Oni Sync v3) : événements du jeu comptés pour moi, et moyennes relevées chaque seconde
+  const ext = body.extra ?? {};
+  const feedKey = Object.keys(ext.feed ?? {}).find((k) => norm(k) === norm(acc.ident));
+  const feed: Record<string, number> = feedKey ? Object.fromEntries(Object.entries(ext.feed[feedKey]).map(([k, v]) => [String(k).slice(0, 40), Number(v) || 0]).slice(0, 60)) : {};
+  const sn = Number(ext.samples?.n) || 0;
+  const avg = (k: string) => (sn && Number.isFinite(Number(ext.samples?.sum?.[k])) ? Math.round((Number(ext.samples.sum[k]) / sn) * 10) / 10 : null);
+  const share = (k: string) => (sn ? Math.round(((Number(ext.samples?.yes?.[k]) || 0) / sn) * 1000) / 10 : null);
+  const moy = sn >= 30 ? { secondes: sn, boost: avg('Boost'), vitesse: avg('Speed'), supersonique: share('bSupersonic'), sol: share('bOnGround'), mur: share('bOnWall'), boostUtilise: share('bBoosting') } : null;
   const row = {
     src: 'sync', win: winner !== null && team !== null ? winner === team : us > them, us, them,
     playlist: pick(game, 'Playlist', 'PlaylistName', 'Mode') ?? null, map: pick(game, 'Arena', 'ArenaName', 'Map') ?? null,
@@ -128,6 +136,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     tirs: shots, precision: shots ? Math.round((goals / shots) * 1000) / 10 : null, touches: num(pick(me, 'Touches', 'touches')), demos: num(pick(me, 'Demos', 'demos')),
     mates: players.filter((p) => p !== me && num(pick(p, 'TeamNum', 'Team', 'team')) === team).map(nameOf),
     rivals: players.filter((p) => num(pick(p, 'TeamNum', 'Team', 'team')) === other).map(nameOf),
+    ...(Object.keys(feed).length ? { feed } : {}), ...(moy ? { moy } : {}),
   };
   const guid = String(pick(en, 'MatchGuid', 'MatchGUID', 'Guid') ?? pick(st, 'MatchGuid', 'MatchGUID') ?? `${players.map(nameOf).sort().join('|')}:${us}-${them}:${Math.floor(Date.now() / 600_000)}`);
   await exec('INSERT OR IGNORE INTO perf (id, user_id, game, at, data) VALUES (?,?,?,?,?)', `rl:sync:${guid.slice(0, 80)}:${uid}`, uid, 'rl', Date.now(), JSON.stringify(row));

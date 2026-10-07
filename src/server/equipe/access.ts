@@ -16,7 +16,7 @@ export const GAME_LEAD_ROLES: Record<string, string> = {
 export const CAPTAIN_ROLE = 'Capitaine';
 export const ANALYST_ROLE = 'Analyste';
 export const CONTENT_ROLES = ['Casteur', 'Graphiste', 'Monteur vidéo', 'Community manager', 'Créateur de contenu', 'Responsable marketing'];
-export interface RosterRow { id: number; slug: string; name: string; game: string; role_id: string; voice_id: string }
+export interface RosterRow { id: number; slug: string; name: string; game: string; role_id: string; voice_id: string; /** la personne a le rôle du roster (sinon elle le voit comme encadrement) */ mine?: boolean }
 
 // Rôles du serveur (id → nom, administrateur), relus au plus toutes les 5 minutes
 let rolesCache: { at: number; v: Promise<{ id: string; name: string; admin: number }[]> } | null = null;
@@ -44,7 +44,7 @@ export async function access(userId: string) {
   const visible = staff ? all : all.filter((r) => mine.includes(r) || ofGames.includes(r));
   const lead = staff ? all.map((r) => Number(r.id)) : [...new Set([...ofGames, ...(captain ? mine : [])].map((r) => Number(r.id)))];
   return {
-    member: m ?? null, staff, rosters: visible,
+    member: m ?? null, staff, rosters: visible.map((r) => ({ ...r, mine: mine.includes(r) })),
     rosterIds: mine.map((r) => Number(r.id)), // rosters dont il a le rôle (joueur, analyste)
     lead, games, captain, analyst, content,
     mod: !staff && has(MOD_ROLE), // Modérateur sans autre rôle d'encadrement
