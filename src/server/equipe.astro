@@ -5,7 +5,7 @@
 import { currentSession, icsKey, userKeys } from './session';
 import { rows, weekKey } from './db';
 import { access, canLead } from './equipe/access';
-import { CHOICES, encode, loadDispos } from './equipe/dispos';
+import { CHOICES, HOURS, encode, loadDispos } from './equipe/dispos';
 import { kindLabel } from './ics';
 import Qg from './equipe/Qg.astro';
 import { scope } from './equipe/outils';
@@ -265,10 +265,42 @@ const noAccess = !user || !!(me?.member && !me.staff && !me.rosters.length && !m
                   <th scope="row" colspan="2">Jouable ?</th>
                   {s.dispos.verdicts.map((v) => <td class:list={['dp-verdict', { 'is-ok': v.ok }]}><strong>{v.ok ? `✓ ${v.label}` : v.label}</strong>{v.detail && <small>{v.detail}</small>}</td>)}
                 </tr>
+                <tr class="dp-prog-row">
+                  <th scope="row" colspan="2">Programme</th>
+                  {s.dispos.plans.map((pl, d) => (
+                    <td class:list={['dp-prog', { 'is-todo': !pl && s.dispos.verdicts[d].ok, 'is-off': pl?.kind === 'OFF' }]}>
+                      {pl ? <strong>{pl.kind}</strong> : s.dispos.verdicts[d].ok ? <strong>À programmer</strong> : <span>—</span>}
+                      {pl?.start && <small>{pl.start.replace(':', 'h')}</small>}
+                    </td>
+                  ))}
+                </tr>
               </tfoot>
             </table>
           </div>
-          <p class="eq-note">Un jour est jouable quand assez de joueurs sont dispo et que chaque poste titulaire renseigné est couvert. L'heure indiquée est celle où le dernier joueur nécessaire arrive.</p>
+          <p class="eq-note">Un jour est jouable quand assez de joueurs sont dispo et que chaque poste titulaire renseigné est couvert. L'heure indiquée est celle où le dernier joueur nécessaire arrive. « À programmer » : tout le monde est là, reste à décider ce qu'on fait.</p>
+          {me && canLead(me, s.r.id) && (
+            <form method="post" action="/api/equipe/dispos" class="dp-prog-form">
+              <input type="hidden" name="roster" value={s.r.id} /><input type="hidden" name="week" value={week} />
+              <input type="hidden" name="slug" value={s.r.slug} /><input type="hidden" name="sem" value={sem} />
+              <p class="dp-label">Programme de la semaine <small>(capitaine, coach, staff)</small></p>
+              <div class="dp-days">
+                {weekDays.map((day, d) => (
+                  <label class:list={['dp-day', { 'is-oui': s.dispos.verdicts[d].ok }]}>
+                    <span>{fDayShort.format(day)}{s.dispos.verdicts[d].ok ? ' ✓' : ''}</span>
+                    <select name={`p${d}`} aria-label={`Programme du ${fDayShort.format(day)}`}>
+                      <option value="">—</option>
+                      {[...new Set([...s.dispos.programmes, ...(s.dispos.plans[d] ? [s.dispos.plans[d]!.kind] : [])])].map((k) => <option value={k} selected={s.dispos.plans[d]?.kind === k}>{k}</option>)}
+                    </select>
+                    <select name={`h${d}`} aria-label={`Heure du ${fDayShort.format(day)}`}>
+                      <option value="">Heure</option>
+                      {HOURS.map((h) => <option value={h} selected={s.dispos.plans[d]?.start === h}>{h.replace(':', 'h')}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <div class="dp-actions"><button class="btn" name="action" value="programme">Enregistrer le programme</button></div>
+            </form>
+          )}
 
           {me!.staff && (
             <>
@@ -426,6 +458,13 @@ const noAccess = !user || !!(me?.member && !me.staff && !me.rosters.length && !m
   .dp-verdict { border-top: 2px solid var(--ink); vertical-align: top; }
   .dp-verdict strong { display: block; font: 600 1rem/1.1 var(--qg-title, sans-serif); }
   .dp-verdict small { display: block; margin-top: .15rem; font-size: .6875rem; color: var(--muted); }
+  .dp-prog { vertical-align: top; }
+  .dp-prog strong { display: block; font: 600 .875rem/1.15 var(--qg-title, sans-serif); }
+  .dp-prog small { display: block; font-size: .6875rem; color: var(--muted); }
+  .dp-prog.is-todo strong { color: var(--team); }
+  .dp-prog.is-off strong, .dp-prog span { color: var(--muted); }
+  .dp-prog-form { margin-top: 1rem; }
+  .dp-prog-form .dp-day select + select { margin-top: .25rem; }
   .dp-verdict.is-ok strong { color: var(--ok); }
   @media (max-width: 700px) { .dp-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .eq-plan { margin: .5rem 0; }
