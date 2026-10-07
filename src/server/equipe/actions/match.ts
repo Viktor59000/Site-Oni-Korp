@@ -84,16 +84,19 @@ export const actions: Record<string, Action> = {
     const name = clip(f.get('name'), 80);
     if (!name) return redirect(back);
     await exec(`CREATE TABLE IF NOT EXISTS opponents (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, players TEXT, style TEXT, forces TEXT, faiblesses TEXT, plan TEXT, links TEXT, author TEXT, updated_at INTEGER)`).catch(() => {});
+    for (const c of ['niveau TEXT', 'contact TEXT', 'soirs TEXT', 'statut TEXT']) await exec(`ALTER TABLE opponents ADD COLUMN ${c}`).catch(() => {});
+    // Annuaire des scrims (07/10) : niveau, contact, soirs habituels, statut (à contacter, contacté, partenaire, pas intéressé)
+    const extra = [clip(f.get('niveau'), 80), clip(f.get('contact'), 200), clip(f.get('soirs'), 120), ['a-contacter', 'contacte', 'partenaire', 'non'].includes(clip(f.get('statut'), 15)) ? clip(f.get('statut'), 15) : ''];
     const qs = back.includes('?') ? `&${back.split('?')[1]}` : '';
     if (id) {
       const [o] = await rows<{ roster_id: number }>('SELECT roster_id FROM opponents WHERE id = ?', id);
       if (!o || !canRoster(Number(o.roster_id))) return redirect(back);
-      await exec('UPDATE opponents SET name = ?, players = ?, style = ?, forces = ?, faiblesses = ?, plan = ?, links = ?, author = ?, updated_at = ? WHERE id = ?', name, ...fields, user.id, Date.now(), id);
+      await exec('UPDATE opponents SET name = ?, players = ?, style = ?, forces = ?, faiblesses = ?, plan = ?, links = ?, author = ?, updated_at = ?, niveau = ?, contact = ?, soirs = ?, statut = ? WHERE id = ?', name, ...fields, user.id, Date.now(), ...extra, id);
       return redirect(`/equipe/scouting/?o=${id}${qs}`);
     }
     const roster = Number(f.get('roster'));
     if (!canRoster(roster)) return redirect(back);
-    const [n] = await rows<{ id: number }>('INSERT INTO opponents (roster_id, name, players, style, forces, faiblesses, plan, links, author, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id', roster, name, ...fields, user.id, Date.now());
+    const [n] = await rows<{ id: number }>('INSERT INTO opponents (roster_id, name, players, style, forces, faiblesses, plan, links, author, updated_at, niveau, contact, soirs, statut) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id', roster, name, ...fields, user.id, Date.now(), ...extra);
     return redirect(n ? `/equipe/scouting/?o=${n.id}${qs}` : back);
   },
   'compo': async ({ f, me, back, redirect }) => {

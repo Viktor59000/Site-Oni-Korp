@@ -2,8 +2,9 @@
 // Scouting : une fiche par équipe adverse. Historique contre nous (automatique, d'après les matchs et scrims du roster),
 // joueurs, style de jeu, forces, faiblesses, notre plan, liens (op.gg, tracker, chaîne), VOD et tableaux qui les mentionnent.
 import Qg from './Qg.astro';
-import { ownerOf, scope, teamUser } from './outils';
-import { exec, rows } from '../db';
+import { ownerOf, rosterMembers, scope, teamUser } from './outils';
+import { loadDispos } from './dispos';
+import { exec, rows, weekKey } from '../db';
 import { md } from './ui';
 import { jeu } from './jeux';
 
@@ -12,11 +13,12 @@ const t = await teamUser(Astro.cookies);
 if (!t) return Astro.redirect('/equipe/');
 const { me } = t;
 await exec(`CREATE TABLE IF NOT EXISTS opponents (id INTEGER PRIMARY KEY, roster_id INTEGER, name TEXT, players TEXT, style TEXT, forces TEXT, faiblesses TEXT, plan TEXT, links TEXT, author TEXT, updated_at INTEGER)`).catch(() => {});
+for (const c of ['niveau TEXT', 'contact TEXT', 'soirs TEXT', 'statut TEXT']) await exec(`ALTER TABLE opponents ADD COLUMN ${c}`).catch(() => {});
 const sc = scope(me.rosters, Astro.url, Astro.cookies, undefined, await ownerOf(Astro.url, 'opponents', 'o'));
 const q = sc.active ? `r=${sc.active}` : '';
 const listUrl = `/equipe/scouting/${q ? `?${q}` : ''}`;
 const ids = sc.list.map((r) => r.id);
-type O = { id: number; roster_id: number; name: string; players: string; style: string; forces: string; faiblesses: string; plan: string; links: string; author: string; updated_at: number };
+type O = { id: number; roster_id: number; name: string; players: string; style: string; forces: string; faiblesses: string; plan: string; links: string; author: string; updated_at: number; niveau?: string | null; contact?: string | null; soirs?: string | null; statut?: string | null };
 const fiches = ids.length ? await rows<O>(`SELECT * FROM opponents WHERE roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY updated_at DESC`, ...ids) : [];
 type M = { id: number; opponent: string; at: number; kind: string | null; score_us: number | null; score_them: number | null; roster_id: number; format: string };
 const matches = ids.length ? await rows<M>(`SELECT id, opponent, at, kind, score_us, score_them, roster_id, format FROM matches WHERE cancelled = 0 AND roster_id IN (${ids.map(() => '?').join(',')}) ORDER BY at DESC`, ...ids) : [];
@@ -44,6 +46,34 @@ const J = jeu(sc.list[0]?.game);
 // Profils des joueurs adverses : un lien par pseudo de la liste « Joueurs », vers le tracker du jeu
 const profiles = (players: string) => !J?.scouting.profile ? [] : players.split(/\n+/).map((l) => l.replace(/^[-*•\s]+/, '').split(/\s+·\s+|\s+-\s+|,/)[0].trim()).filter((p) => p && p.length <= 40)
   .map((p) => ({ p, url: J.scouting.profile!(p) })).filter((x): x is { p: string; url: string } => !!x.url).slice(0, 10);
+// Annuaire des scrims : les équipes avec un statut, et le message « Proposer un scrim » avec nos prochains soirs jouables
+const STATUTS: Record<string, string> = { 'a-contacter': 'À contacter', contacte: 'Contacté', partenaire: 'Partenaire de scrim', non: 'Pas intéressé' };
+const annuaire = fiches.filter((f) => f.statut && f.statut !== 'non').sort((a, b) => ['partenaire', 'contacte', 'a-contacter'].indexOf(String(a.statut)) - ['partenaire', 'contacte', 'a-contacter'].indexOf(String(b.statut)));
+const r0 = sc.list[0] ?? null;
+const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+let soirs: string[] = [];
+if (r0 && annuaire.length) {
+  const members = await rosterMembers(String(r0.role_id));
+  for (const next of [false, true]) {
+    const wk = weekKey(next);
+    const d = await loadDispos(Number(r0.id), r0.game, wk, members, t.user.id);
+    d.verdicts.forEach((v, i) => {
+      const date = new Date(`${wk}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + i);
+      if (date.getTime() < Date.now() - 12 * 3600_000 || soirs.length >= 4) return;
+      const pl = d.plans[i];
+      if (pl && /scrim/i.test(pl.kind)) soirs.push(`${DAYS[i]} ${date.getUTCDate()}${pl.start ? ` à ${pl.start.replace(':', 'h')}` : ''}`);
+      else if (v.ok && !pl) soirs.push(`${DAYS[i]} ${date.getUTCDate()}${/Dès (\d+:\d+)/.test(v.label) ? ` dès ${v.label.split(' ')[1].replace(':', 'h')}` : ''}`);
+    });
+  }
+}
+const GAME_LABEL: Record<string, string> = { rl: 'Rocket League', lol: 'League of Legends', valo: 'Valorant', osu: 'osu!' };
+const proposal = (o: O) => [
+  `Salut ${o.name} ! Ici Oni Korp, roster ${r0?.name ?? ''} (${GAME_LABEL[r0?.game ?? ''] ?? ''}).`,
+  `On cherche des scrims réguliers${o.niveau ? ` à votre niveau (${o.niveau})` : ''}.`,
+  soirs.length ? `On est dispo ${soirs.join(', ')}. Un de ces soirs vous irait ?` : 'Quels soirs vous arrangent cette semaine ?',
+  'Format au choix (BO3 ou série de parties), lobby chez vous ou chez nous. Bonne journée !',
+].join(' ');
+
 const SECTIONS: [keyof O, string, string][] = [
   ['players', 'Joueurs et rôles', J?.scouting.players ?? '- Pseudo · rôle · ce qu\'il faut savoir'], ['style', 'Style de jeu', J?.scouting.style ?? 'Leurs habitudes, leurs strats favorites'],
   ['forces', 'Forces', '- …'], ['faiblesses', 'Faiblesses', '- …'], ['plan', 'Notre plan', J?.scouting.plan ?? 'Ce qu\'on fait contre eux'],
@@ -57,6 +87,14 @@ const SECTIONS: [keyof O, string, string][] = [
         <div class="sc-row">
           <label>Équipe adverse<input name="name" required maxlength="80" value={current.name} /></label>
           {!current.id && <label>Roster<select name="roster">{sc.list.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>}
+        </div>
+        <div class="sc-row">
+          <label>Niveau <small>(rang moyen, ligue)</small><input name="niveau" maxlength="80" value={current.niveau ?? ''} placeholder="Champion 2, Ligue 11 RBRS…" /></label>
+          <label>Statut pour les scrims<select name="statut">{[['', '—'], ...Object.entries(STATUTS)].map(([v, l]) => <option value={v} selected={(current.statut ?? '') === v}>{l}</option>)}</select></label>
+        </div>
+        <div class="sc-row">
+          <label>Contact <small>(Discord du manager, X, serveur)</small><input name="contact" maxlength="200" value={current.contact ?? ''} /></label>
+          <label>Soirs habituels<input name="soirs" maxlength="120" value={current.soirs ?? ''} placeholder="mar et jeu après 21 h" /></label>
         </div>
         {SECTIONS.map(([k, label, ph]) => <label>{label}<textarea name={k} rows="4" maxlength="4000" placeholder={ph}>{current[k]}</textarea></label>)}
         <label>Liens <small>({J?.scouting.links ?? 'tracker, Twitch, site… un par ligne'})</small><textarea name="links" rows="3" maxlength="2000">{current.links}</textarea></label>
@@ -94,6 +132,27 @@ const SECTIONS: [keyof O, string, string][] = [
     ) : (
       <div class="sc">
         {ids.length > 0 && <a class="btn" href={`/equipe/scouting/?o=nouveau${q ? `&${q}` : ''}`}>Nouvelle fiche</a>}
+        {annuaire.length > 0 && (
+          <section class="sc-scrims" aria-labelledby="sc-scrims-h">
+            <h2 id="sc-scrims-h" class="sc-h">Scrims <small>{annuaire.length} équipe{annuaire.length > 1 ? 's' : ''} · {soirs.length ? `nos prochains soirs : ${soirs.join(', ')}` : 'remplissez vos dispos pour proposer des soirs'}</small></h2>
+            <div class="sc-scroll">
+              <table class="sc-table">
+                <thead><tr><th>Équipe</th><th>Niveau</th><th>Statut</th><th>Contact</th><th>Soirs</th><th>Bilan</th><th>Proposer</th></tr></thead>
+                <tbody>
+                  {annuaire.map((o) => { const r = record(vsOf(o.name)); const last = vsOf(o.name)[0]; return (
+                    <tr>
+                      <td><a href={`/equipe/scouting/?o=${o.id}${q ? `&${q}` : ''}`}>{o.name}</a></td><td>{o.niveau || '—'}</td>
+                      <td><span class:list={['sc-st', `is-${o.statut}`]}>{STATUTS[String(o.statut)]}</span></td>
+                      <td>{o.contact || '—'}</td><td>{o.soirs || '—'}</td>
+                      <td>{r.n ? `${r.w} V · ${r.l} D${last ? ` · dernier le ${fmt.format(new Date(Number(last.at)))}` : ''}` : '—'}</td>
+                      <td><details class="sc-prop"><summary>Message</summary><textarea readonly rows="5" aria-label={`Message pour ${o.name}`}>{proposal(o)}</textarea><button type="button" class="sc-copy">Copier</button></details></td>
+                    </tr>
+                  ); })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
         {suggestions.length > 0 && <p class="sc-sugg">Déjà affrontés, sans fiche : {suggestions.map((n) => <a href={`/equipe/scouting/?o=nouveau&nom=${encodeURIComponent(n)}${q ? `&${q}` : ''}`}>{n}</a>)}</p>}
         {fiches.length ? (
           <ul class="sc-list">
@@ -109,6 +168,13 @@ const SECTIONS: [keyof O, string, string][] = [
       </div>
     )}
 </Qg>
+<script>
+  // Copier le message de proposition de scrim
+  for (const b of document.querySelectorAll<HTMLButtonElement>('.sc-copy')) b.addEventListener('click', async () => {
+    const t = b.parentElement?.querySelector('textarea'); if (!t) return;
+    try { await navigator.clipboard.writeText(t.value); b.textContent = 'Copié'; } catch { t.select(); }
+  });
+</script>
 
 <style>
   .eq-mini { padding-block: 2.5rem 1.5rem; }
@@ -117,6 +183,12 @@ const SECTIONS: [keyof O, string, string][] = [
   .sc { display: grid; gap: 1.5rem; justify-items: start; }
   .sc-sugg { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; color: var(--muted); font-size: var(--step--1); margin: 0; }
   .sc-sugg a { padding: .25rem .6rem; border: 1.5px dashed var(--line); color: var(--ink); font-weight: 700; text-decoration: none; }
+  .sc-scrims { width: 100%; margin-bottom: 1.25rem; }
+  .sc-h { font-size: 1.2rem; margin: 0 0 .5rem; } .sc-h small { font-size: .8rem; color: var(--muted); font-weight: 400; margin-left: .4rem; }
+  .sc-scroll { overflow-x: auto; } .sc-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .sc-table th, .sc-table td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .sc-st { font-size: .78rem; padding: .1rem .4rem; border: 1px solid var(--line); white-space: nowrap; } .sc-st.is-partenaire { border-color: var(--ok); color: var(--ok); }
+  .sc-prop textarea { width: min(26rem, 70vw); font: inherit; font-size: .82rem; margin-top: .35rem; } .sc-copy { font: inherit; font-size: .8rem; margin-top: .25rem; cursor: pointer; }
   .sc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: 1rem; width: 100%; }
   .sc-list a { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); border-top: 3px solid var(--ink); color: inherit; text-decoration: none; height: 100%; box-sizing: border-box; }
   .sc-list a:hover { border-color: var(--ink); }
