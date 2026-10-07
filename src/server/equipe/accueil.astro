@@ -285,7 +285,7 @@ if (!roster) {
         </ul>
         {(() => {
           // Un Tracker par jeu de mes rosters (RL : son outil principal)
-          const TRACKER: Record<string, string> = { rl: '/equipe/rl/', lol: '/equipe/tracker-lol/', valo: '/equipe/tracker-valo/', osu: '/equipe/tracker-osu/' };
+          const TRACKER: Record<string, string> = { rl: '/equipe/rl/', lol: '/equipe/tracker-lol/', valo: '/equipe/tracker-valo/' };
           const seen = new Set<string>();
           const list = espace.cards.map((c) => c.r).filter((r) => TRACKER[r.game] && !seen.has(r.game) && seen.add(r.game));
           return list.length ? <p class="me-trackers">Mes Trackers : {list.map((r, k) => <>{k ? ' · ' : ''}<a href={`${TRACKER[r.game]}?r=${r.slug}`}>{GAME[r.game]?.label ?? r.game}</a></>)}</p> : null;
