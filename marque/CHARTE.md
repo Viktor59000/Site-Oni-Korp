@@ -1,5 +1,7 @@
 # Oni Korp — charte du logo (v2, octobre 2026)
 
+> Version publique et fichiers à jour : https://oni-korp.vercel.app/marque/ (fichiers dans `site/public/marque/`).
+
 ## Le logo
 
 Le blason **est** le mot ONI : le **N** dessine le blason d'un seul trait en créneau (jambage gauche, barre haute, jambage central, fond, jambage droit), le **O** est logé dans la partie gauche, le **I** dans la partie droite. Les cornes coiffent les deux coins hauts.
@@ -26,10 +28,11 @@ Redessin 2026 : même idée et même silhouette que le logo d'origine, reconstru
 
 | Nom | HEX | RGB | Usage |
 |---|---|---|---|
-| Vermillon Oni | `#E5251F` | 229, 37, 31 | couleur principale du logo et de la marque |
+| Vermillon | `#E5251F` | 229, 37, 31 | couleur principale du logo et de la marque (remplace l'ancien rouge laque #C22E28, octobre 2026) |
 | Rouge texte | `#B3241E` | 179, 36, 30 | texte rouge sur fond clair (contraste) |
 | Noir | `#000000` | 0, 0, 0 | fonds, logo une couleur |
-| Os | `#EDEBE7` | 237, 235, 231 | fonds clairs |
+| Washi | `#F3F1EC` | 243, 241, 236 | fonds clairs (surfaces du site, papier des illustrations) |
+| Os | `#EDEBE7` | 237, 235, 231 | sections claires du site (`--bone`) |
 | Blanc | `#FFFFFF` | 255, 255, 255 | logo sur fond rouge ou sombre |
 
 Pas de dégradé, pas d'ombre, pas de contour : le logo est toujours en **une seule couleur pleine**.
