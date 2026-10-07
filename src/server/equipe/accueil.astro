@@ -4,6 +4,7 @@
 //   mes rosters pour entrer dedans, mes objectifs rangés par roster ; l'encadrement y trouve ses raccourcis ;
 // - avec ?r= : l'accueil du roster (prochaine échéance, réponses en attente, forme, objectifs, ce qui a bougé).
 // Sans accès (non connecté, pas membre d'un roster) : la page Planning gère la connexion et les messages.
+import { fmtMetric, measure, parseMetric } from './mesure-objectif';
 import Qg from './Qg.astro';
 import { canLead, rosterMembers, scope, teamUser } from './outils';
 import { rows, weekKey } from '../db';
@@ -123,7 +124,7 @@ type Rr = (typeof me.rosters)[number];
 type Mine = { roster: Rr; at: number; type: 'seance' | 'match'; id: number; title: string; sub: string; answer: string | null };
 let espace: null | {
   next: Mine[]; todo: { label: string; why: string; href: string; color?: string }[];
-  goals: { roster: Rr; items: { title: string; progress: number; due: number | null }[] }[];
+  goals: { roster: Rr; items: { title: string; progress: number; due: number | null; now?: string | null }[] }[];
   cards: { r: Rr; next: Mine | null; members: number; team: number }[];
   trial: { roster: string; until: number | null; retour: string | null } | null;
   accounts: { game: string; ident: string }[]; elo: { mode: string; rating: number; wins: number; losses: number }[];
@@ -136,7 +137,7 @@ if (!roster) {
   const [tr, mt, goals, accs, setup, guideSeen, dispo, status, members] = await Promise.all([
     ids.length ? rows<{ id: number; roster_id: number; at: number; kind: string; duration: number }>(`SELECT id, roster_id, at, kind, duration FROM trainings WHERE roster_id IN (${inR}) AND cancelled = 0 AND at > ? ORDER BY at LIMIT 12`, ...ids, now - 2 * 3600_000) : [],
     ids.length ? rows<{ id: number; roster_id: number; at: number; opponent: string; format: string; kind: string | null }>(`SELECT id, roster_id, at, opponent, format, kind FROM matches WHERE roster_id IN (${inR}) AND cancelled = 0 AND score_us IS NULL AND at > ? ORDER BY at LIMIT 8`, ...ids, now - 3 * 3600_000) : [],
-    ids.length ? rows<{ roster_id: number; user_id: string | null; title: string; progress: number; due: number | null }>(`SELECT roster_id, user_id, title, progress, due FROM goals WHERE roster_id IN (${inR}) AND status = 'en-cours' AND (user_id = ? OR user_id IS NULL) ORDER BY due IS NULL, due`, ...ids, user.id).catch(() => []) : [],
+    ids.length ? rows<{ roster_id: number; user_id: string | null; title: string; progress: number; due: number | null; metric?: string | null; at?: number }>(`SELECT roster_id, user_id, title, progress, due, metric, at FROM goals WHERE roster_id IN (${inR}) AND status = 'en-cours' AND (user_id = ? OR user_id IS NULL) ORDER BY due IS NULL, due`, ...ids, user.id).catch(() => []) : [],
     rows<{ game: string }>('SELECT game FROM accounts WHERE user_id = ?', user.id).catch(() => []),
     rows('SELECT 1 FROM setups WHERE user_id = ? LIMIT 1', user.id).catch(() => []),
     rows('SELECT 1 FROM meta WHERE key = ?', `guide:${user.id}`).catch(() => []),
@@ -175,7 +176,12 @@ if (!roster) {
   espace = {
     next: all.slice(0, 5),
     todo,
-    goals: R.map((r) => ({ roster: r, items: goals.filter((x) => Number(x.roster_id) === Number(r.id) && x.user_id === user.id).map((x) => ({ title: x.title, progress: Number(x.progress) || 0, due: x.due ? Number(x.due) : null })) })).filter((x) => x.items.length),
+    // Objectifs créés depuis un Tracker : avancement et valeur mesurés sur les parties jouées depuis
+    goals: (await Promise.all(R.map(async (r) => ({ roster: r, items: await Promise.all(goals.filter((x) => Number(x.roster_id) === Number(r.id) && x.user_id === user.id).map(async (x) => {
+      const m = parseMetric(x.metric);
+      const auto = m ? await measure(user.id, Number(x.at ?? 0), m) : null;
+      return { title: x.title, progress: auto ? auto.progress : Number(x.progress) || 0, due: x.due ? Number(x.due) : null, now: auto && m ? (auto.n ? `Actuel : ${fmtMetric(m, auto.cur)} sur ${auto.n} partie${auto.n > 1 ? 's' : ''}${auto.reached ? ' · cible atteinte' : ''}` : 'Mesuré dès tes prochaines parties') : null };
+    })) })))).filter((x) => x.items.length),
     cards: R.map((r, i) => ({ r, next: all.find((x) => x.roster === r) ?? null, members: members[i], team: goals.filter((x) => Number(x.roster_id) === Number(r.id) && !x.user_id).length })),
     accounts: accList, elo, sync: sync[0] ?? null, image: Number(consent[0]?.image) === 1, carnet: carnet[0]?.body ?? '',
     trial: trial ? { roster: byId.get(Number(trial.roster_id))?.name ?? '', until: trial.trial_end ? Number(trial.trial_end) : null, retour: trial.retour } : null,
@@ -238,12 +244,13 @@ if (!roster) {
                 {gr.items.map((x) => (
                   <li>
                     <p><strong>{x.title}</strong>{x.due && <small>avant le {fShort.format(new Date(x.due))}</small>}</p>
+                    {x.now && <small class="me-goal-now">{x.now}</small>}
                     <span class="ac-goals__bar" role="progressbar" aria-label={x.title} aria-valuemin="0" aria-valuemax="100" aria-valuenow={x.progress}><span style={`width:${x.progress}%`}></span></span>
                   </li>
                 ))}
               </ul>
             </div>
-          )) : <p class="ac-empty">Aucun objectif perso en cours. Ils se fixent dans chaque roster, rubrique Progrès.</p>}
+          )) : <p class="ac-empty">Aucun objectif perso en cours. Dans le Tracker de ton jeu, « En faire un objectif » sur un point à travailler : il se mesure ensuite tout seul.</p>}
         </section>
       </div>
 
@@ -276,6 +283,13 @@ if (!roster) {
             <li><a class="ac-pick__card" href={`/equipe/vue/?jeu=${g}`} style={`--g:${GAME[g].color}`}><b class="ac-pick__code" aria-hidden="true" translate="no">{GAME[g].code}</b><span>Espace {GAME[g].label}</span><small>Rosters, recrutement, essais du jeu</small></a></li>
           ))}
         </ul>
+        {(() => {
+          // Un Tracker par jeu de mes rosters (RL : son outil principal)
+          const TRACKER: Record<string, string> = { rl: '/equipe/rl/', lol: '/equipe/tracker-lol/', valo: '/equipe/tracker-valo/', osu: '/equipe/tracker-osu/' };
+          const seen = new Set<string>();
+          const list = espace.cards.map((c) => c.r).filter((r) => TRACKER[r.game] && !seen.has(r.game) && seen.add(r.game));
+          return list.length ? <p class="me-trackers">Mes Trackers : {list.map((r, k) => <>{k ? ' · ' : ''}<a href={`${TRACKER[r.game]}?r=${r.slug}`}>{GAME[r.game]?.label ?? r.game}</a></>)}</p> : null;
+        })()}
         {!espace.cards.length && <p class="ac-empty">Tu n’es dans aucun roster pour l’instant.</p>}
       </section>
 
@@ -602,4 +616,6 @@ if (!roster) {
   /* Vermillon foncé, fixe dans les deux thèmes : le petit texte blanc garde un contraste suffisant (4,5:1) */
   .ac-pick__card--vue { background: #b3241e; }
   .ac-pick__card--vue small { color: #fff; }
+  .me-goal-now { display: block; font-size: .78rem; color: var(--muted); margin: .1rem 0 .25rem; }
+  .me-trackers { margin: .6rem 0 0; font-size: .9rem; }
 </style>
