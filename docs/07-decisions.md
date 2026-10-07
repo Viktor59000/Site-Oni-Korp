@@ -66,3 +66,54 @@ Accord obtenu, à **toujours créditer** dans l'interface : RiftKit / Coach Kire
 - **Réponses du bot aux liens de replays o!rdr** (6 oct. 2026) : carte puis lecteur vidéo relayé par le site. Retiré à la demande de Viktor : peu utile par rapport au lien, et la vidéo (≈ 120 Mo) ne passait que par un relais coûteux en bande passante.
 - **Bannières générées automatiquement pour les réseaux** : refusées, Viktor les fait avec ChatGPT.
 - **Lecteur musique via convertisseur YouTube** : refusé (droits) ; la radio utilise d'autres sources.
+
+## Quand il manque quelque chose : outil ou personne ?
+
+Repris de `notes/archives/strategie/SWOT-ROLES.md` § 8 (6 octobre 2026). Le code cite cette grille (escalade, alertes de la vue d'ensemble, accueil).
+
+**La règle à notre échelle** (une centaine de membres, peu de bénévoles) :
+- **l'outil détecte, rappelle et fait remonter** ;
+- **une personne décide, parle aux gens et tranche.**
+
+Un bot ne règle pas un conflit et ne remplace pas un joueur. En revanche, il peut faire en sorte que personne ne découvre le problème trop tard.
+
+Chaque situation a **un responsable désigné et un suppléant**. Si le responsable ne réagit pas, ça remonte au niveau au-dessus : capitaine → responsable du jeu → direction (Viktor, Yuzu).
+
+| Situation | Ce que l'outil fait (site, bot, Discord) | Qui s'en occupe | Suppléant |
+|---|---|---|---|
+| Un joueur manque pour un match | ✅ Dispos, présences, statut remplaçant, compo, rappel 30 min avant | Capitaine (trouve le remplaçant) | Responsable du jeu |
+| Pas de remplaçant du tout | ✅ Statut remplaçant visible dans Joueurs ; 🛠 alerte « roster sans remplaçant » dans la vue d'ensemble | Responsable du jeu (recrute) | Direction |
+| Candidature sans réponse | ✅ Alerte #staff, rappel à 48 h, vue d'ensemble filtrée par jeu | Responsable du jeu | Accueil, puis direction |
+| Nouveau membre perdu sur le serveur | ✅ Carte de bienvenue, parcours d'arrivée, relances à 3 et 7 jours | Accueil | Modérateur |
+| Match public sans casteur | ✅ Appel aux casteurs, alerte dans la vue | Casteurs | Direction (décide de jouer sans cast) |
+| Visuel ou post pas prêt | ✅ Tâches en retard en rouge dans Contenu ; 🛠 rappel du bot la veille de l'échéance | Community manager / graphiste | Direction |
+| Rien à publier cette semaine | ✅ Calendrier éditorial vide visible, skills Instagram et TikTok | Community manager | Direction |
+| Inscription à un tournoi qui ferme | ✅ Rappels J-2 et J-1 ; 🛠 suivi des tournois (chantier 5) | Manager / responsable du jeu | Direction |
+| Fin d'une période d'essai | ✅ Alerte 3 jours avant, puis alerte « retour à écrire » | Capitaine + coach | Responsable du jeu |
+| Joueur qui décroche (absences répétées) | ✅ Taux de présence ; 🛠 alerte « présence < 50 % sur 30 jours » | Capitaine (en parle d'abord) | Coach, puis responsable du jeu |
+| Désaccord sur la compo ou le temps de jeu | ✅ Stats, notes de match, objectifs pour objectiver ; 🛠 règle écrite épinglée dans Docs | Coach (ou capitaine sans coach) | Responsable du jeu |
+| Conflit entre joueurs, tension en vocal | ✅ Ticket privé « problème avec un membre » | Capitaine (désamorce), puis coach | Direction (médiation) |
+| Comportement toxique, règle enfreinte | ✅ Modération automatique par paliers, journal | Modérateur | Direction |
+| Sanction grave (exclusion, bannissement) | ❌ Jamais automatique | Direction : deux personnes, avec possibilité de recours | — |
+| Plainte contre un membre du staff | ✅ Ticket privé | Direction (Viktor, Yuzu), sans la personne visée | — |
+| Bénévole débordé ou qui disparaît | ✅ Tâches non prises ou en retard visibles ; 🛠 alerte « personne n'a pris ces tâches » | Direction (redistribue, en parle) | — |
+| Bot en panne, clé Riot expirée | ✅ Santé du bot, alertes, contrôles quotidiens | Binôme technique | Direction |
+| Raid ou spam | ✅ Anti-raid, AutoMod | Automatique, puis modérateur | Direction |
+| Partenaire sans nouvelles | 🛠 Indicateurs et bilan de saison (chantier 6) | Responsable marketing | Direction |
+
+✅ = existe déjà · 🛠 = à construire · ❌ = ne doit pas être automatisé
+
+**Le noyau humain minimum** pour que tout ce tableau tienne (6 à 8 personnes, certaines peuvent cumuler) :
+- 1 responsable par jeu actif (RL, LoL, Valorant) ;
+- 1 capitaine par roster ;
+- 1 community manager ;
+- 1 modérateur actif ;
+- 1 personne à l'accueil (peut être le modérateur) ;
+- un binôme technique ;
+- la direction (Viktor, Yuzu).
+
+**Ce que ça ajoute aux chantiers** (petits, à faire au fil de l'eau) :
+- **Escalade automatique** : une alerte qui n'est pas traitée remonte au niveau suivant (capitaine, puis responsable du jeu, puis direction) après un délai.
+- **Rappel du bot pour les tâches de contenu** : la veille de l'échéance, puis le jour même si elle est en retard.
+- **Nouvelles alertes dans la vue d'ensemble** : roster sans remplaçant, présence faible, tâches de contenu que personne n'a prises.
+- **Procédure de médiation et de sanction écrite**, épinglée dans Docs et dans le règlement.

@@ -66,7 +66,7 @@ const missed = (c: C) => c.status === 'repere' && c.signup_by && Number(c.signup
           </li>
         ))}
       </ul>
-    ) : <p class="eq-note">Aucun tournoi suivi pour l'instant.{manage ? ' Ajoute le premier ci-dessous : les pistes repérées sont dans PROSPECTION.md.' : ' L\'encadrement ou le capitaine les ajoute ici.'}</p>}
+    ) : <p class="eq-note">Aucun tournoi suivi pour l'instant.{manage ? ' Ajoute le premier ci-dessous (la direction a la liste des ligues et tournois repérés pour chaque jeu).' : ' L\'encadrement ou le capitaine les ajoute ici.'}</p>}
 
     {manage && (
       <details class="tn-add" open={!list.length || undefined}>

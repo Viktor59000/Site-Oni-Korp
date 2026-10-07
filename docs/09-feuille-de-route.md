@@ -1,6 +1,6 @@
 # 09 · Feuille de route
 
-État au **6 octobre 2026**. Règle de priorité du club : **rien ne passe avant le recrutement** (le manque de bénévoles et de joueurs est le vrai frein). À mettre à jour quand un chantier avance.
+État au **7 octobre 2026** (soir). Règle de priorité du club : **rien ne passe avant le recrutement** (le manque de bénévoles et de joueurs est le vrai frein). À mettre à jour quand un chantier avance.
 
 ## Fait récemment
 
@@ -18,11 +18,13 @@
 - Bilan mensuel du staff (le 1er du mois dans #🔒・staff, `/bilan periode:`).
 - Page de confidentialité complétée (comptes de jeu, Oni Sync, inhouses, sondage, avis, page Staff, modération, sauvegardes) et purges alignées sur ses promesses.
 - Refactorisation sans changement de résultat (bot et site, dont les actions d'Inside rangées par domaine), tests de non-régression, vérification des types (`npm run check`, qui a trouvé deux actions cassées), base de démonstration, cette documentation.
+- Trackers RL, LoL et Valorant avec « Ce qui ressort » et objectifs mesurés automatiquement (7 oct.) ; Tracker osu! retiré le jour même (doublon d'osu!track). Oni Sync v6 (replays et ballchasing), récap du lundi par roster, programme du jour dans le Planning, écoute des scrims (`/ecoute`, Parakeet), annuaire des scrims dans le Scouting, messages programmés du bot, fiche « Quand un service tombe » (10). Factorisation des Trackers (rendu identique vérifié).
 
 ## À vérifier dès que possible
 
-- **Oni Sync en vrai** : la v1 réécrivait la config du jeu avec un BOM, ce qui laissait l'API Stats coupée (corrigé en v2). Les noms des champs envoyés par le jeu restent à vérifier sur une partie réelle ; l'état d'Oni Sync (lancé, connecté au jeu) s'affiche dans le tracker. Les 3 premiers envois sont gardés bruts (`stats_cache`, clé `rl-sync-raw`) : les relire et ajuster le décodage dans `src/server/equipe/rl-sync.ts` si un chiffre manque.
+- **Écoute des scrims** : premier essai en vrai vocal (`/ecoute demarrer`, puis le rapport dans Docs). Testée hors Discord seulement.
 - **Groupes d'inhouse et détection des parties osu!** : à tester sur un vrai inhouse (partie nommée « Oni inhouse #N »).
+- Oni Sync : vérifié en vrai le 7 octobre (v5, partie reçue) ; les replays (v6) restent à voir sur une partie classée sauvegardée.
 
 ## Décisions en attente (Viktor)
 
@@ -33,11 +35,6 @@ Aucune pour l'instant (les dernières sont dans [07 · Décisions](07-decisions.
 
 | Chantier | Où | Note |
 |---|---|---|
-| Docs à trois niveaux : roster, jeu (responsable de jeu), club (fiches de poste, règlement) | Inside | P2 de `ANALYSE-CLUB.md` |
-| Espace jeu pour le responsable de jeu (rosters, candidatures, essais, tournois, talents des inhouses) | Inside | P2 |
-| Espace Communauté (arrivées, événements, modération) pour l'accueil, l'organisateur, les modérateurs | Inside | P2, remplacerait la vue d'ensemble du modérateur |
-| Objectifs individuels privés (le joueur et son encadrement) | Inside | P2 |
-| Mon espace ouvert aux membres sans roster (inhouses, osu!, candidature) | Inside | révision proposée par l'analyse, à valider |
 | Parrain pour chaque nouveau joueur de roster | Bot + Inside | quand un roster aura 3 joueurs ou plus |
 | Avis publiés « Vous avez demandé, on a fait » | Site | au premier avis traité |
 | Objectif d'activité suivi dans les indicateurs | Inside > Contenu | quand le chiffre est fixé |
@@ -45,9 +42,17 @@ Aucune pour l'instant (les dernières sont dans [07 · Décisions](07-decisions.
 | Histoire de 4C Korp dans la frise du club | Site | récit à fournir |
 | Nouveaux visuels du vestiaire, dans le style final | Site | visuels à générer |
 | Panneaux Twitch dans la DA | Réseaux | |
-| Kit presse (présentation, chiffres réels, logos, contacts) | Kit de marque | |
+| Kit presse (présentation, chiffres réels, logos, contacts) | Kit de marque | à J+60 ; chiffres : `discord/bilan-partenaires.mjs` |
+| Rôle « Ancien » pour les anciens joueurs | Discord, bot | P3 du plan d'action |
 | Pistes de DA « négatif » (diagonale, couleurs inversées) et « bande dessinée » | Visuels | idées gardées |
 | Guide osu! de Yasunaii dans l'outil osu! | Inside | avec son accord |
+
+## Restes de l'audit de lancement (6 oct.)
+
+Repris de `notes/archives/audits/AUDIT-LANCEMENT.md` :
+- À faire par Viktor : remplir la règle AutoMod « pseudos » (vide), fermer les anciens Google Forms, renommer l'application « ASYLUM-BOT » dans le Discord Developer Portal.
+- `discord/lancement.mjs --apply` : rien n'indique qu'il ait été lancé ; vérifier avant de le relancer.
+- Améliorations : style des catégories Discord, le Discord du club dans les données structurées du site, code mort de l'album, image `match-cup`, images en AVIF.
 
 ## Dette technique connue
 

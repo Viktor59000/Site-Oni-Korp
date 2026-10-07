@@ -2,7 +2,7 @@
 
 ## Installer
 
-Prérequis : Node 22 ou plus, Git.
+Prérequis : Node 22 conseillé sur PC (le bot accepte Node 20 ou plus : le serveur Echo-Host s'arrête à la 21), Git.
 
 ```bash
 git clone https://github.com/onikorp/Site-Oni-Korp.git

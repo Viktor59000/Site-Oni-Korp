@@ -21,3 +21,19 @@ Le club tient sur des services gratuits ou presque. Cette fiche dit, pour chacun
 - **Viktor** : clés Riot, osu!, ballchasing, Vercel, panneau Echo-Host.
 - **Yuzu** : a la clé Echo-Host ; peut redémarrer, lire la console, restaurer une sauvegarde.
 - Les clés ne s'écrivent jamais dans un message ni dans le dépôt : uniquement dans les `.env` (bot) et les variables Vercel (site).
+
+## Réinstaller de zéro
+
+Repris de l'ancienne fiche de mise en ligne (`notes/archives/technique/DEPLOIEMENT.md`, 5 octobre 2026). Comptes créés par Viktor ; les jetons ne se collent jamais dans un message, seulement dans les cases indiquées.
+
+1. **Turso** (base) : turso.tech, formule Free, base `oni-korp` en Europe. Créer deux jetons sans expiration : **Read & Write** pour le bot, **Read only** pour le site.
+2. **Vercel** (site) : importer le dépôt `onikorp/Site-Oni-Korp`, projet `oni-korp` (adresse oni-korp.vercel.app), framework Astro. Variables : `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (le jeton **Read only**), `SITE_URL=https://oni-korp.vercel.app`, plus les secrets de session et de connexion Discord du site. Chaque push sur `main` republie.
+3. **GitHub** : dépôt `onikorp/oni-bot` privé ; le `.env` n'est jamais envoyé.
+4. **Echo-Host** (bot, offre Nitro) : œuf « node.js generic ». Onglet **Startup** :
+   - image Docker : la plus récente proposée (Node **21** au plus chez Echo-Host ; le bot demande Node 20 ou plus) ;
+   - dépôt `https://github.com/onikorp/oni-bot.git`, branche `main`, utilisateur GitHub de Viktor, **jeton GitHub en lecture seule** (Fine-grained token, *Resource owner* : onikorp, dépôt oni-bot, *Contents* : Read-only) ;
+   - **Auto Update** activé (chaque redémarrage fait `git pull`) ; fichier principal `dist/index.js` ; arguments Node `--no-warnings` si la case existe ;
+   - si le serveur a été installé avant que le dépôt soit rempli : **Settings → Reinstall Server** (ou `node scripts/echo.mjs reinstaller`).
+   Puis créer `.env` à la racine (onglet Fichiers, ou `node scripts/echo.mjs env` depuis le PC de Viktor) et démarrer : la console doit afficher « Oni Bot en ligne ».
+   **Ne jamais copier le dossier `node_modules` du PC** : les modules natifs (base libsql, rendu des cartes, transcription) s'installent pour Linux sur le serveur.
+5. **Nom de domaine** (plus tard) : `oni-korp.fr` (~7 €/an chez OVH ou Cloudflare), puis Vercel → Settings → Domains et les 2 lignes DNS indiquées. Rien d'autre à changer.
