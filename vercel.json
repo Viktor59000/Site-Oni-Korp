@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "git": { "deploymentEnabled": { "gh-pages": false } },
+  "git": { "deploymentEnabled": { "gh-pages": false, "inside-*": false, "v2": false, "clair": false, "archive-*": false, "*_TEST_*": false, "V2_site_rendu": false } },
   "regions": ["dub1"],
   "headers": [
     {
