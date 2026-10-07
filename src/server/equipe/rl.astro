@@ -67,6 +67,28 @@ const rfmt = (k: string, v: number | null) => (v === null ? '—' : ['bpm', 'vol
 const replays = focus.id === user.id ? await rows<{ status: string; n: number; last: number }>(`SELECT status, COUNT(*) AS n, MAX(at) AS last FROM rl_replays WHERE user_id = ? GROUP BY status`, user.id).catch(() => []) : [];
 const replayCount = (st: string[]) => replays.filter((x) => st.includes(String(x.status))).reduce((a, x) => a + Number(x.n), 0);
 
+// Ce qui ressort (comme les Trackers LoL, Valorant, osu!) : écarts au roster (ou aux 10 parties précédentes s'il est seul),
+// sur les mesures qui se jugent ; « En faire un objectif » enregistre la mesure, suivie ensuite sur les parties
+const JUDGED: [string, string, 1 | -1, string, number][] = [
+  ['score', 'Score', 1, '', 0], ['buts', 'Buts', 1, '', 2], ['passes', 'Passes', 1, '', 2], ['arrets', 'Arrêts', 1, '', 2], ['precision', 'Précision', 1, '%', 0],
+  ['derriere', 'Derrière le ballon', 1, '%', 0], ['bpm', 'Boost par minute', 1, '', 0], ['sansBoost', 'Temps sans boost', -1, '%', 0], ['vole', 'Boost volé', 1, '', 0], ['supersonique', 'Supersonique', 1, '%', 0],
+];
+const prev10 = g.slice(10, 20), mine20 = g.slice(0, 20);
+const insights = JUDGED.map(([k, label, dir, u, d]) => {
+  const me = rmean(mine20, k);
+  const ref = others.length ? avg(others.map((l) => rmean(l, k)).filter((x): x is number => x !== null)) : prev10.length >= 5 ? rmean(prev10, k) : null;
+  const rel = me === null || ref === null || ref === 0 ? null : ((me - ref) / Math.abs(ref)) * dir;
+  return { k, label, dir, u, d, me, ref, rel };
+}).filter((x) => x.rel !== null && Math.abs(x.rel) >= 0.1);
+const strengths = insights.filter((x) => x.rel! > 0).sort((a, b) => b.rel! - a.rel!).slice(0, 3);
+const weak = insights.filter((x) => x.rel! < 0).sort((a, b) => a.rel! - b.rel!).slice(0, 3);
+const ifmt = (x: { u: string; d: number }, v: number | null) => (v === null ? '—' : x.u === '%' ? pct(v) : r1(v, x.d));
+const refLabel = others.length ? 'vs roster' : 'vs tes 10 parties d’avant';
+const goalRoster = rlRosters.find((r) => r.mine) ?? rlRosters[0] ?? null;
+const canGoal = !!goalRoster && (focus.id === user.id || me.staff || me.lead.includes(Number(goalRoster.id)));
+const due = new Date(Date.now() + 28 * 86400_000).toISOString().slice(0, 10);
+const here = `${Astro.url.pathname}${Astro.url.search.replace(/[?&]objectif=ok/, '')}`;
+const objectifOk = Astro.url.searchParams.get('objectif') === 'ok';
 const sync = focus.id === user.id ? await syncStatus(user.id) : null;
 const when = (ms: number) => new Date(ms).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const cle = Astro.url.searchParams.get('cle');
@@ -168,6 +190,36 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
             <p class="rl-note">Moyenne {fmt('score', mean(last20, 'score'), 0)} sur les 20 dernières</p>
           </article>
         </section>
+
+        {objectifOk && <p class="rl-ok">Objectif ajouté : retrouve-le dans <a href={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}>Objectifs</a> (mesuré sur tes parties suivantes).</p>}
+        {(strengths.length > 0 || weak.length > 0) && (
+          <section class="lt-insight" aria-labelledby="rl-ins">
+            <h3 id="rl-ins" class="rl-h">Ce qui ressort <small>20 dernières parties, {refLabel}</small></h3>
+            <div class="lt-cols">
+              <div>
+                <p class="rl-tag">Points forts</p>
+                {strengths.length ? <ul>{strengths.map((x) => <li><b>{x.label}</b> : {ifmt(x, x.me)} <span>({ifmt(x, x.ref)} {refLabel})</span></li>)}</ul> : <p class="rl-note">Rien qui se détache pour l’instant.</p>}
+              </div>
+              <div>
+                <p class="rl-tag">À travailler</p>
+                {weak.length ? <ul>{weak.map((x) => (
+                  <li><b>{x.label}</b> : {ifmt(x, x.me)} <span>({ifmt(x, x.ref)} {refLabel})</span>
+                    {canGoal && (
+                      <form method="post" action="/api/equipe/outils" class="lt-goal">
+                        <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goalRoster!.id} /><input type="hidden" name="user" value={focus.id} />
+                        <input type="hidden" name="title" value={`${x.label} : passer de ${ifmt(x, x.me)} à ${ifmt(x, x.ref)}`} />
+                        <input type="hidden" name="detail" value={`Repéré par le Tracker RL le ${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })} sur les 20 dernières parties (${ifmt(x, x.ref)} ${refLabel}).`} />
+                        <input type="hidden" name="metric" value={JSON.stringify({ g: 'rl', k: x.k, s: x.me, t: x.ref, d: x.dir, u: x.u })} />
+                        <input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
+                        <button class="lt-goal__btn">En faire un objectif</button>
+                      </form>
+                    )}
+                  </li>
+                ))}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section aria-labelledby="rl-avg">
           <h3 id="rl-avg" class="rl-h">Moyennes par partie <small>20 dernières, comparées au reste du roster</small></h3>
@@ -310,4 +362,8 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
   .rl-mates li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--qg-rule, #d8d3ca); }
   .rl-mates span { color: var(--qg-muted, #514c46); font-size: .9rem; }
   @media (max-width: 700px) { .rl-sync { grid-template-columns: minmax(0, 1fr); } }
+  .lt-insight ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; } .lt-insight li span { color: var(--qg-muted, #514c46); font-size: .85rem; }
+  .lt-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+  .lt-insight > .lt-cols > div { padding: .9rem 1rem; border: 1px solid var(--qg-rule, #d8d3ca); }
+  .lt-goal { display: inline; margin-left: .4rem; } .lt-goal__btn { font: inherit; font-size: .78rem; padding: .1rem .5rem; border: 1px solid currentColor; background: none; color: var(--ink, currentColor); cursor: pointer; border-radius: 3px; }
 </style>

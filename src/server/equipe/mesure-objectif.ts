@@ -4,12 +4,12 @@
 import { rows } from '../db';
 import { avg } from './ui';
 
-export type Metric = { g: 'lol' | 'valo' | 'osu'; k: string; s: number; t: number; d: 1 | -1; u: string };
+export type Metric = { g: 'lol' | 'valo' | 'osu' | 'rl'; k: string; s: number; t: number; d: 1 | -1; u: string };
 
 export function parseMetric(raw: unknown): Metric | null {
   try {
     const m = JSON.parse(String(raw ?? ''));
-    if (!['lol', 'valo', 'osu'].includes(m?.g) || !/^[a-zA-Z0-9]{1,20}$/.test(m?.k) || !Number.isFinite(m?.s) || !Number.isFinite(m?.t) || ![1, -1].includes(m?.d)) return null;
+    if (!['lol', 'valo', 'osu', 'rl'].includes(m?.g) || !/^[a-zA-Z0-9]{1,20}$/.test(m?.k) || !Number.isFinite(m?.s) || !Number.isFinite(m?.t) || ![1, -1].includes(m?.d)) return null;
     return { g: m.g, k: m.k, s: Number(m.s), t: Number(m.t), d: m.d, u: ['%', 'or', 'xp', ''].includes(m.u) ? m.u : '' };
   } catch { return null; }
 }
