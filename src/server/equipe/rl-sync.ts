@@ -45,7 +45,7 @@ async function tokenFor(userId: string, fresh = false) {
 async function scriptFor(userId: string, token: string, origin: string) {
   const [acc] = await rows<{ ident: string }>(`SELECT ident FROM accounts WHERE user_id = ? AND game = 'rl'`, userId);
   const api = `${origin}/api/rl/sync`;
-  return ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', url.origin).replace('__VERSION__', ONI_SYNC_VERSION).replaceAll('__ICON__', ONI_ICON)
+  return ONI_SYNC_PS.replace('__TOKEN__', token).replace('__API__', api).replace('__SITE__', origin).replace('__VERSION__', ONI_SYNC_VERSION).replaceAll('__ICON__', ONI_ICON)
     .replace('__PSEUDO__', (acc?.ident ?? '').replace(/'/g, "''"));
 }
 

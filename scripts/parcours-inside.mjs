@@ -6,7 +6,7 @@ const pages = ['', 'planning/', 'calendrier/', 'match/', 'tournois/', 'notes/', 
 const rosters = ['', 'gamma', 'lol-academy', 'valo-main', 'osu-squad'];
 const extra = ['profil/?u=2', 'profil/?u=3', 'profil/?u=999', 'docs/?d=1', 'docs/?d=999', 'scouting/?o=1', 'scouting/?o=999', 'vod/?v=1', 'vod/?v=999', 'tactique/?b=1', 'tactique/?b=2', 'tactique/?b=3', 'tactique/?b=999', 'match/?m=1', 'match/?m=3', 'match/?m=999',
   'planning/?sem=cur', 'calendrier/?mois=2026-11', 'calendrier/?mois=xx', 'rl/?j=2', 'rl/?j=999', 'osu/?niveau=tout', 'lol/?d=1', 'valo/?map=Ascent', 'contenu/?erreur=tache', 'planning/?intro', 'stats/?j=2'];
-const urls = [...pages.flatMap((p) => rosters.map((r) => `/equipe/${p}${r ? `${p.includes('?') ? '&' : '?'}r=${r}` : ''}`)), ...extra.map((e) => `/equipe/${e}`), '/sondage/', '/postuler/', '/postuler/?type=staff', '/api/rl/oni-sync', '/api/equipe/outils?type=drafts&roster=2', '/api/equipe/outils?type=lineups&roster=3', '/api/equipe/tableau?id=1&depuis=0'];
+const urls = [...pages.flatMap((p) => rosters.map((r) => `/equipe/${p}${r ? `${p.includes('?') ? '&' : '?'}r=${r}` : ''}`)), ...extra.map((e) => `/equipe/${e}`), '/sondage/', '/api/rl/oni-sync', '/postuler/', '/postuler/?type=staff', '/api/rl/oni-sync', '/api/equipe/outils?type=drafts&roster=2', '/api/equipe/outils?type=lineups&roster=3', '/api/equipe/tableau?id=1&depuis=0'];
 let bad = 0;
 for (const u of urls) {
   const r = await fetch(B + u, { redirect: 'manual' }).catch((e) => ({ status: 0, text: async () => e.message, headers: new Map() }));
