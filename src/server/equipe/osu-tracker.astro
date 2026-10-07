@@ -1,0 +1,319 @@
+---
+// Tracker osu! : la progression de chaque joueur du roster, relevée par Oni Bot (API osu! v2) : rang et pp (historique
+// quotidien), top 100 (précision, difficulté, mods, FC), parties récentes, tops plays du mois, ce qui ressort
+// (comparé au roster) avec « En faire un objectif » (mesuré ensuite sur les parties jouées). Défis et maps : outil osu!.
+import Qg from './Qg.astro';
+import { rosterMembers, scope, teamUser } from './outils';
+import { rows } from '../db';
+import { avg, pct, r1, spark } from './ui';
+
+export const prerender = false;
+const t = await teamUser(Astro.cookies);
+if (!t) return Astro.redirect('/equipe/');
+const { me, user } = t;
+const sc = scope(me.rosters, Astro.url, Astro.cookies, (r) => r.game === 'osu');
+const osuRosters = sc.list.filter((r) => r.game === 'osu');
+
+const byId = new Map<string, { id: string; name: string; avatar: string | null }>();
+for (const r of osuRosters) for (const m of await rosterMembers(String(r.role_id))) byId.set(m.id, m);
+if (!byId.has(user.id)) byId.set(user.id, { id: user.id, name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar });
+const people = [...byId.values()];
+const ids = people.map((p) => p.id);
+const inIds = ids.map(() => '?').join(',');
+const accounts = new Map((await rows<{ user_id: string; ident: string }>(`SELECT user_id, ident FROM accounts WHERE game = 'osu' AND user_id IN (${inIds})`, ...ids)).map((a) => [String(a.user_id), a.ident]));
+const cache = async (k: string) => { const [r] = await rows<{ value: string }>('SELECT value FROM stats_cache WHERE key = ?', k); try { return r ? JSON.parse(r.value) : null; } catch { return null; } };
+type S = { title: string; beatmap?: number; cover?: string | null; stars?: number; pp?: number | null; acc: number; miss: number; combo?: number; rank?: string; mods: string[]; at: number; place?: number; id?: number };
+const recentRows = await rows<{ user_id: string; data: string; at: number }>(`SELECT user_id, data, at FROM perf WHERE game = 'osu' AND user_id IN (${inIds}) ORDER BY at DESC LIMIT 2000`, ...ids);
+const recentOf = new Map<string, S[]>(ids.map((id) => [id, []]));
+for (const r of recentRows) { try { recentOf.get(String(r.user_id))?.push({ ...JSON.parse(r.data), at: Number(r.at) }); } catch {} }
+const log: { uid: string; at: number; pp: number; place: number; title: string }[] = (await cache('osu-tops-log')) ?? [];
+
+const load = async (id: string) => {
+  const ident = accounts.get(id);
+  const st = ident ? await cache(`osu:${ident.toLowerCase()}`) : null;
+  const top: S[] = ident ? ((await cache(`osu-best100:${ident.toLowerCase()}`)) ?? (await cache(`osu-best:${ident.toLowerCase()}`)) ?? []) : [];
+  const hist = (await rows<{ day: string; value: string }>(`SELECT day, value FROM rank_history WHERE user_id = ? AND game = 'osu' ORDER BY day`, id).catch(() => [])).map((h) => ({ day: h.day, ...JSON.parse(h.value) }));
+  return { ident, st, top, hist, recent: recentOf.get(id) ?? [] };
+};
+const wanted = Astro.url.searchParams.get('j');
+const focus = people.find((p) => p.id === wanted) ?? people.find((p) => p.id === user.id)!;
+const f = await load(focus.id);
+
+// Mesures sur un ensemble de scores
+const fc = (l: S[]) => (l.length ? (l.filter((x) => Number(x.miss) === 0).length / l.length) * 100 : null);
+const sRank = (l: S[]) => (l.length ? (l.filter((x) => /^(S|SH|X|XH|SS|SSH)$/.test(String(x.rank))).length / l.length) * 100 : null);
+const TOPKEYS: [string, string, number, 1 | -1 | 0, string, string, (l: S[]) => number | null][] = [
+  ['acc', 'Précision', 2, 1, '%', 'moyenne de ton top 50', (l) => avg(l.slice(0, 50).map((x) => x.acc))],
+  ['stars', 'Difficulté', 2, 1, '★', 'étoiles moyennes de ton top 50 (sans mods)', (l) => avg(l.slice(0, 50).map((x) => x.stars))],
+  ['fc', 'Full combos', 0, 1, '%', 'scores sans raté dans ton top 100', fc],
+  ['miss', 'Ratés', 1, -1, '', 'par score de ton top 100', (l) => avg(l.map((x) => x.miss))],
+  ['pp1', 'Meilleur score', 0, 0, 'pp', 'ton #1', (l) => (l[0]?.pp ?? null)],
+  ['pp50', 'Top 50', 0, 1, 'pp', 'pp moyen de ton top 50', (l) => avg(l.slice(0, 50).map((x) => x.pp))],
+  ['fresh', 'Top récent', 0, 1, '%', 'part de ton top 100 jouée ces 30 jours : signe de progression', (l) => (l.length ? (l.filter((x) => Date.now() - x.at < 30 * 86400_000).length / l.length) * 100 : null)],
+];
+const fmtV = (u: string, d: number, x: number | null) => (x === null ? '—' : u === '%' ? `${r1(x, 1)} %` : u === '★' ? `${r1(x, 2)} ★` : u === 'pp' ? `${Math.round(x).toLocaleString('fr-FR')} pp` : r1(x, d));
+const others = await Promise.all(people.filter((p) => p.id !== focus.id).map((p) => load(p.id)));
+const withTop = others.filter((o) => o.top.length);
+const rosterVal = (fn: (l: S[]) => number | null) => avg(withTop.map((o) => fn(o.top)).filter((x): x is number => x !== null));
+const rel = (a: number | null, b: number | null) => (a === null || b === null || b === 0 ? null : (a - b) / Math.abs(b));
+const scored = TOPKEYS.filter((k) => k[3] !== 0).map((k) => { const mine = k[6](f.top), ref = rosterVal(k[6]), d = rel(mine, ref); return { k, mine, ref, d: d === null ? null : d * k[3] }; })
+  .filter((x) => x.d !== null && x.mine !== null && Math.abs(x.d) >= 0.05);
+const strengths = scored.filter((x) => x.d! > 0).sort((a, b) => b.d! - a.d!).slice(0, 3);
+const weak = scored.filter((x) => x.d! < 0).sort((a, b) => a.d! - b.d!).slice(0, 3);
+
+// Progression (relevés quotidiens)
+const ago = (days: number) => { const day = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10); return [...f.hist].reverse().find((h) => h.day <= day) ?? f.hist[0] ?? null; };
+const h30 = ago(30), h7 = ago(7), hNow = f.hist[f.hist.length - 1] ?? null;
+const gain = (a: any, b: any, k: string) => (a && b && a.day !== b.day ? (b[k] ?? 0) - (a[k] ?? 0) : null);
+const pp30 = gain(h30, hNow, 'pp'), rank30 = h30 && hNow && h30.day !== hNow.day ? (h30.rank ?? 0) - (hNow.rank ?? 0) : null;
+const week = f.recent.filter((x) => Date.now() - x.at < 7 * 86400_000);
+const monthTops = log.filter((x) => x.uid === focus.id && Date.now() - x.at < 30 * 86400_000);
+
+// Mods et difficulté (top 100 + récentes)
+const pool = [...f.top, ...f.recent.filter((x) => !f.top.some((y) => y.id && y.id === (x as any).id))];
+const modKey = (x: S) => (x.mods ?? []).filter((m) => !['CL', 'NF', 'SD', 'PF', 'TD', 'MR', 'RX'].includes(m)).sort().join('') || 'NM';
+const mods = [...pool.reduce((m, x) => m.set(modKey(x), [...(m.get(modKey(x)) ?? []), x]), new Map<string, S[]>())].map(([k, l]) => ({ k, n: l.length, pp: avg(l.map((x) => x.pp)), acc: avg(l.map((x) => x.acc)), stars: avg(l.map((x) => x.stars)), fc: fc(l) })).sort((a, b) => b.n - a.n).slice(0, 8);
+const BUCKETS: [string, number, number][] = [['moins de 4 ★', 0, 4], ['4 à 5 ★', 4, 5], ['5 à 6 ★', 5, 6], ['6 à 7 ★', 6, 7], ['7 ★ et plus', 7, 99]];
+const buckets = BUCKETS.map(([label, a, b]) => { const l = pool.filter((x) => Number(x.stars) >= a && Number(x.stars) < b); return { label, n: l.length, acc: avg(l.map((x) => x.acc)), miss: avg(l.map((x) => x.miss)), fc: fc(l) }; }).filter((x) => x.n);
+
+const roster = await Promise.all(people.map(async (p) => {
+  const o = p.id === focus.id ? f : others.find((x) => x.ident === accounts.get(p.id)) ?? await load(p.id);
+  const a30 = (() => { const day = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10); return [...o.hist].reverse().find((h) => h.day <= day) ?? o.hist[0] ?? null; })(), now = o.hist[o.hist.length - 1] ?? null;
+  return { p, st: o.st, top1: o.top[0]?.pp ?? null, pp30: gain(a30, now, 'pp'), week: o.recent.filter((x) => Date.now() - x.at < 7 * 86400_000).length };
+}));
+const goalRoster = osuRosters.find((r) => r.mine) ?? osuRosters[0] ?? null;
+const canGoal = !!goalRoster && (focus.id === user.id || me.staff || me.lead.includes(Number(goalRoster.id)));
+const due = new Date(Date.now() + 28 * 86400_000).toISOString().slice(0, 10);
+const here = `${Astro.url.pathname}${Astro.url.search.replace(/[?&]objectif=ok/, '')}`;
+const objectifOk = Astro.url.searchParams.get('objectif') === 'ok';
+// Mesure de l'objectif sur les parties jouées ensuite (mêmes définitions, sur les scores récents)
+const GOAL_KEY: Record<string, [string, string]> = { acc: ['acc', '%'], stars: ['stars', ''], fc: ['fc', '%'], miss: ['miss', ''], pp50: ['pp', ''] };
+const fmtD = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const initial = (s: string) => s.slice(0, 1).toUpperCase();
+const link = (j: string) => `/equipe/tracker-osu/?${sc.active ? `r=${sc.active}&` : ''}j=${j}`;
+const nf = (x: number | null | undefined) => (x === null || x === undefined ? '—' : Math.round(x).toLocaleString('fr-FR'));
+---
+<Qg title="Tracker osu! · Inside" heading="Tracker osu!" lead="Ta progression : rang et pp jour après jour, ton top 100 analysé (précision, difficulté, mods, full combos) et tes parties récentes. Relevé automatique toutes les 30 minutes." current="osu-tracker" rosters={me.rosters} staff={me.staff || me.games.length > 0} contenu={me.staff || me.content.length > 0} communaute={me.community} active={sc.active} user={{ name: me.member?.name ?? user.name, avatar: me.member?.avatar ?? user.avatar }}>
+  <div class="rl">
+    {people.length > 1 && (
+      <nav class="rl-who" aria-label="Joueur">
+        {people.map((p) => (
+          <a href={link(p.id)} aria-current={p.id === focus.id ? 'true' : undefined}>
+            {p.avatar ? <img src={p.avatar} alt="" width="28" height="28" loading="lazy" /> : <span>{initial(p.name)}</span>}
+            {p.name}
+          </a>
+        ))}
+      </nav>
+    )}
+
+    <section class="rl-head" aria-label="Résumé">
+      <div class="rl-id">
+        {focus.avatar ? <img src={focus.avatar} alt="" width="64" height="64" /> : <span>{initial(focus.name)}</span>}
+        <div><h2>{focus.name}</h2><p>{f.ident ? <a href={`https://osu.ppy.sh/users/${encodeURIComponent(f.ident)}`} rel="noopener">{f.ident}</a> : 'Pseudo osu! pas encore relié'}{f.st ? ` · ${nf(f.st.plays)} parties · ${nf(f.st.hours)} h de jeu` : ''}</p></div>
+      </div>
+      {f.st && (
+        <ul class="rl-ranks">
+          <li><small>Mondial</small><b>#{nf(f.st.rank)}</b>{f.st.country ? <span>#{nf(f.st.country)} dans son pays</span> : null}</li>
+          <li><small>Performance</small><b>{nf(f.st.pp)} pp</b><span>{r1(f.st.acc, 2)} % de précision</span></li>
+          {f.hist.length > 1 && <li><small>pp au fil des jours</small><Fragment set:html={spark(f.hist.map((h) => h.pp), { w: 140, h: 34 })} /></li>}
+        </ul>
+      )}
+    </section>
+
+    {!f.ident && <p class="rl-warn">{focus.id === user.id ? <>Relie ton pseudo osu! dans <a href={`/equipe/joueurs/${sc.active ? `?r=${sc.active}` : ''}`}>Joueurs</a> : ton rang, ton top 100 et tes parties arrivent ensuite tout seuls.</> : `${focus.name} n’a pas encore relié son pseudo osu!.`}</p>}
+
+    {f.ident && (
+      <>
+        <section class="rl-grid">
+          <article class="rl-card">
+            <p class="rl-tag">Progrès · 30 jours</p>
+            <p class="rl-big">{pp30 === null ? '—' : `${pp30 >= 0 ? '+' : '−'}${nf(Math.abs(pp30))}`} <small>pp</small></p>
+            <p class="rl-note">{rank30 === null ? 'Il faut quelques jours de relevés pour mesurer le progrès.' : rank30 > 0 ? `+${nf(rank30)} places au classement mondial` : rank30 < 0 ? `${nf(Math.abs(rank30))} places perdues` : 'Rang stable'}</p>
+          </article>
+          <article class="rl-card">
+            <p class="rl-tag">Cette semaine</p>
+            <p class="rl-big">{week.length} <small>partie{week.length > 1 ? 's' : ''} relevée{week.length > 1 ? 's' : ''}</small></p>
+            <p class="rl-note">{week.length ? `${r1(avg(week.map((x) => x.acc)), 2)} % de précision, ${r1(avg(week.map((x) => x.stars)), 2)} ★ en moyenne` : 'Le bot relève les parties terminées (pas les abandons) des dernières 24 h, toutes les 30 minutes.'}</p>
+          </article>
+          <article class="rl-card">
+            <p class="rl-tag">Tops plays · 30 jours</p>
+            <p class="rl-big">{monthTops.length} <small>nouveau{monthTops.length > 1 ? 'x' : ''}</small></p>
+            <p class="rl-note">{monthTops.length ? `Le meilleur : ${Math.max(...monthTops.map((x) => x.pp ?? 0))} pp (#${Math.min(...monthTops.map((x) => x.place))} de ton top)` : 'Annoncés dans le salon osu! dès qu’ils arrivent.'}</p>
+          </article>
+        </section>
+
+        {objectifOk && <p class="rl-ok">Objectif ajouté : retrouve-le dans <a href={`/equipe/objectifs/${goalRoster ? `?r=${goalRoster.slug}` : ''}`}>Objectifs</a> (mesuré sur tes parties suivantes).</p>}
+        {(strengths.length > 0 || weak.length > 0) && (
+          <section class="lt-insight" aria-labelledby="ot-ins">
+            <h3 id="ot-ins" class="rl-h">Ce qui ressort <small>ton top 100 comparé à celui du roster</small></h3>
+            <div class="lt-cols">
+              <div>
+                <p class="rl-tag">Points forts</p>
+                {strengths.length ? <ul>{strengths.map((x) => <li><b>{x.k[1]}</b> : {fmtV(x.k[4], x.k[2], x.mine)} <span>({fmtV(x.k[4], x.k[2], x.ref)} vs roster)</span></li>)}</ul> : <p class="rl-note">Rien qui se détache pour l’instant.</p>}
+              </div>
+              <div>
+                <p class="rl-tag">À travailler</p>
+                {weak.length ? <ul>{weak.map((x) => (
+                  <li><b>{x.k[1]}</b> : {fmtV(x.k[4], x.k[2], x.mine)} <span>({fmtV(x.k[4], x.k[2], x.ref)} vs roster)</span>
+                    {canGoal && GOAL_KEY[x.k[0]] && (
+                      <form method="post" action="/api/equipe/outils" class="lt-goal">
+                        <input type="hidden" name="action" value="objectif" /><input type="hidden" name="roster" value={goalRoster!.id} /><input type="hidden" name="user" value={focus.id} />
+                        <input type="hidden" name="title" value={`${x.k[1]} : passer de ${fmtV(x.k[4], x.k[2], x.mine)} à ${fmtV(x.k[4], x.k[2], x.ref)}`} />
+                        <input type="hidden" name="detail" value={`Repéré par le Tracker osu! le ${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })} (top 100 comparé au roster). Mesuré sur les parties jouées ensuite.`} />
+                        <input type="hidden" name="metric" value={JSON.stringify({ g: 'osu', k: GOAL_KEY[x.k[0]][0], s: x.mine, t: x.ref, d: x.k[3], u: GOAL_KEY[x.k[0]][1] })} />
+                        <input type="hidden" name="due" value={due} /><input type="hidden" name="back" value={`${here}${here.includes('?') ? '&' : '?'}objectif=ok`} />
+                        <button class="lt-goal__btn">En faire un objectif</button>
+                      </form>
+                    )}
+                  </li>
+                ))}</ul> : <p class="rl-note">Rien en dessous du roster : bravo.</p>}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {f.top.length > 0 && (
+          <section aria-labelledby="ot-top">
+            <h3 id="ot-top" class="rl-h">Ton top 100 <small>{f.top.length} scores{withTop.length ? ', comparés au roster' : ''}</small></h3>
+            <div class="rl-avgs">
+              {TOPKEYS.map((k) => {
+                const x = k[6](f.top), team = rosterVal(k[6]), d = rel(x, team);
+                return (
+                  <div class="rl-avg" title={k[5]}>
+                    <small>{k[1]}</small><b>{fmtV(k[4], k[2], x)}</b>
+                    {d !== null && Math.abs(d) >= 0.05 ? <span class:list={[k[3] === 0 ? 'is-flat' : (d > 0) === (k[3] === 1) ? 'is-up' : 'is-down']}>{d > 0 ? '▲' : '▼'} {Math.round(Math.abs(d) * 100)} % vs roster</span> : <span class="is-flat">{k[5]}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {buckets.length > 0 && (
+          <section aria-labelledby="ot-diff">
+            <h3 id="ot-diff" class="rl-h">Par difficulté <small>top 100 et parties récentes : où ta précision décroche</small></h3>
+            <div class="rl-scroll">
+              <table class="rl-table">
+                <thead><tr><th>Difficulté</th><th>Scores</th><th>Précision</th><th>Ratés</th><th>Full combos</th></tr></thead>
+                <tbody>{buckets.map((b) => <tr><td>{b.label}</td><td>{b.n}</td><td>{b.acc === null ? '—' : `${r1(b.acc, 2)} %`}</td><td>{r1(b.miss, 1)}</td><td>{pct(b.fc)}</td></tr>)}</tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {mods.length > 0 && (
+          <section aria-labelledby="ot-mods">
+            <h3 id="ot-mods" class="rl-h">Mods <small>ce que tu joues et ce que ça rapporte</small></h3>
+            <div class="rl-scroll">
+              <table class="rl-table">
+                <thead><tr><th>Mods</th><th>Scores</th><th>pp moyen</th><th>Précision</th><th>Étoiles</th><th>Full combos</th></tr></thead>
+                <tbody>{mods.map((m) => <tr><td><b>{m.k}</b></td><td>{m.n}</td><td>{nf(m.pp)}</td><td>{m.acc === null ? '—' : `${r1(m.acc, 2)} %`}</td><td>{r1(m.stars, 2)}</td><td>{pct(m.fc)}</td></tr>)}</tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {f.top.length > 0 && (
+          <section aria-labelledby="ot-best">
+            <h3 id="ot-best" class="rl-h">Meilleurs scores</h3>
+            <div class="rl-scroll">
+              <table class="rl-table">
+                <thead><tr><th>#</th><th>Map</th><th>Mods</th><th>★</th><th>pp</th><th>Précision</th><th>Ratés</th><th>Rang</th><th>Quand</th></tr></thead>
+                <tbody>{f.top.slice(0, 15).map((x, i) => (
+                  <tr><td>{x.place ?? i + 1}</td><td>{x.beatmap ? <a href={`https://osu.ppy.sh/b/${x.beatmap}`} rel="noopener">{x.title}</a> : x.title}</td><td>{(x.mods ?? []).join('') || 'NM'}</td><td>{r1(x.stars ?? null, 2)}</td><td>{nf(x.pp)}</td><td>{r1(x.acc, 2)} %</td><td>{x.miss}</td><td>{x.rank ?? '—'}</td><td>{fmtD.format(new Date(x.at))}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        <section aria-labelledby="ot-last">
+          <h3 id="ot-last" class="rl-h">Parties récentes <small>{f.recent.length ? `${f.recent.length} relevées` : 'rien depuis la mise en route : elles arrivent quand tu joues'}</small></h3>
+          {f.recent.length > 0 && (
+            <div class="rl-scroll">
+              <table class="rl-table">
+                <thead><tr><th>Quand</th><th>Map</th><th>Mods</th><th>★</th><th>pp</th><th>Précision</th><th>Ratés</th><th>Rang</th></tr></thead>
+                <tbody>{f.recent.slice(0, 25).map((x) => (
+                  <tr><td>{fmtD.format(new Date(x.at))}</td><td>{x.title}</td><td>{(x.mods ?? []).join('') || 'NM'}</td><td>{r1(x.stars ?? null, 2)}</td><td>{nf(x.pp)}</td><td>{r1(x.acc, 2)} %</td><td>{x.miss}</td><td>{x.rank ?? '—'}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </>
+    )}
+
+    {people.length > 1 && (
+      <section aria-labelledby="ot-roster">
+        <h3 id="ot-roster" class="rl-h">Le roster</h3>
+        <div class="rl-scroll">
+          <table class="rl-table">
+            <thead><tr><th>Joueur</th><th>Rang mondial</th><th>pp</th><th>Précision</th><th>pp gagnés · 30 j</th><th>Meilleur score</th><th>Parties · 7 j</th></tr></thead>
+            <tbody>{roster.map((x) => (
+              <tr><td><a href={link(x.p.id)}>{x.p.name}</a></td><td>{x.st?.rank ? `#${nf(x.st.rank)}` : '—'}</td><td>{nf(x.st?.pp)}</td><td>{x.st?.acc ? `${r1(x.st.acc, 2)} %` : '—'}</td><td>{x.pp30 === null ? '—' : `${x.pp30 >= 0 ? '+' : '−'}${nf(Math.abs(x.pp30))}`}</td><td>{x.top1 ? `${nf(x.top1)} pp` : '—'}</td><td>{x.week}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </section>
+    )}
+  </div>
+</Qg>
+
+<style>
+  .rl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.25rem; }
+  .rl-tag { margin: 0; font: 500 .72rem var(--qg-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--qg-accent-text, #b3241e); }
+  .rl h2 { margin: .25rem 0 .5rem; font: 600 1.4rem/1.2 var(--qg-title, sans-serif); }
+  .rl p { margin: 0; }
+  .rl-note { color: var(--qg-muted, #514c46); font-size: .875rem; }
+  .rl-warn { color: var(--qg-accent-text, #b3241e); font-weight: 600; }
+  .rl-ok { color: var(--ok, #1d7a49); font-weight: 600; }
+  .rl-who { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .rl-who a { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .7rem .3rem .3rem; border: 1px solid var(--qg-rule-strong, #7d776f); color: inherit; text-decoration: none; font-weight: 600; font-size: .9rem; }
+  .rl-who a[aria-current] { background: var(--qg-ink, #141210); color: var(--qg-raised, #fbfaf7); border-color: var(--qg-ink, #141210); }
+  .rl-who img, .rl-who span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--qg-rule, #d8d3ca); }
+  .rl-who small { font: 500 .72rem var(--qg-mono, monospace); opacity: .7; }
+  .rl-sync { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; padding: 1.25rem; border: var(--rule, 2px) solid var(--qg-ink, #141210); border-left: 6px solid #1450d6; }
+  .rl-sync ol { margin: .75rem 0; padding-left: 1.2rem; display: grid; gap: .4rem; line-height: 1.5; }
+  .rl-sync__act { display: grid; gap: .5rem; justify-items: stretch; }
+  .rl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+  .rl-id { display: flex; gap: 1rem; align-items: center; }
+  .rl-id img, .rl-id > span { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #1450d6; color: #fff; font: 700 1.6rem var(--qg-title, sans-serif); }
+  .rl-id h2 { margin: 0; }
+  .rl-id p { color: var(--qg-muted, #514c46); font-size: .9rem; }
+  .rl-ranks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .rl-ranks li { display: grid; padding: .5rem .8rem; border: 1px solid var(--qg-rule-strong, #7d776f); min-width: 9rem; }
+  .rl-ranks small, .rl-avg small { font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); }
+  .rl-ranks span { font-size: .8rem; color: var(--qg-muted, #514c46); }
+  .rl-empty { padding: 1.5rem; border: 1px dashed var(--qg-rule-strong, #7d776f); color: var(--qg-muted, #514c46); }
+  .rl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+  .rl-card { display: grid; gap: .5rem; align-content: start; padding: 1rem; border: 1px solid var(--qg-rule-strong, #7d776f); }
+  .rl-big { font: 600 2rem/1 var(--qg-title, sans-serif); }
+  .rl-big small { font: 400 .85rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); }
+  .rl-form { display: flex; flex-wrap: wrap; gap: 3px; }
+  .rl-form span, .rl-res { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .3rem; font: 600 .72rem var(--qg-mono, monospace); color: #fff; }
+  /* Pastilles V / D : texte blanc, verts et rouges assez foncés pour un contraste de 4,5:1 dans les deux thèmes */
+  .is-w { background: #17703f; } .is-l { background: #c81e19; }
+  .rl-card :global(.spark) { width: 100%; height: 60px; }
+  .rl-h { margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: var(--rule, 2px) solid var(--qg-ink, #141210); font: 600 1.1rem var(--qg-title, sans-serif); }
+  .rl-h small { font: 400 .8rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); margin-left: .5rem; }
+  .rl-auto { margin: .75rem 0; } .rl-auto summary { cursor: pointer; font-weight: 600; } .rl-auto ol { margin: .5rem 0; padding-left: 1.2rem; }
+  .rl-avgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
+  .rl-avg { display: grid; gap: .15rem; padding: .75rem; border: 1px solid var(--qg-rule, #d8d3ca); }
+  .rl-avg b { font: 600 1.5rem var(--qg-title, sans-serif); font-variant-numeric: tabular-nums; }
+  .rl-avg span { font-size: .78rem; } .rl-avg .is-up { color: var(--ok, #1d7a49); } .rl-avg .is-down { color: var(--danger, #b3241e); } .rl-avg .is-flat { color: var(--qg-muted, #514c46); }
+  .rl-scroll { overflow-x: auto; }
+  .rl-table { width: 100%; border-collapse: collapse; font-size: .88rem; white-space: nowrap; }
+  .rl-table th { text-align: left; font: 500 .7rem var(--qg-mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: var(--qg-muted, #514c46); padding: .45rem .55rem; border-bottom: 1px solid var(--qg-rule-strong, #7d776f); }
+  .rl-table td { padding: .5rem .55rem; border-bottom: 1px solid var(--qg-rule, #d8d3ca); font-variant-numeric: tabular-nums; }
+  .rl-table a { color: inherit; font-weight: 600; }
+  .rl-mates { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+  .rl-mates li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--qg-rule, #d8d3ca); }
+  .rl-mates span { color: var(--qg-muted, #514c46); font-size: .9rem; }
+  @media (max-width: 700px) { .rl-sync { grid-template-columns: minmax(0, 1fr); } }
+  .lt-roles, .lt-insight ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+  .lt-roles li { display: flex; justify-content: space-between; gap: .5rem; } .lt-roles span, .lt-insight li span { color: var(--qg-muted, #514c46); font-size: .85rem; }
+  .lt-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+  .lt-insight > .lt-cols > div { padding: .9rem 1rem; border: 1px solid var(--qg-rule, #d8d3ca); }
+  .lt-champ { display: flex; align-items: center; gap: .45rem; } .lt-champ img { border-radius: 4px; flex: none; }
+  .lt-goal { display: inline; margin-left: .4rem; } .lt-goal__btn { font: inherit; font-size: .78rem; padding: .1rem .5rem; border: 1px solid currentColor; background: none; color: var(--qg-accent, #0f8a9b); cursor: pointer; border-radius: 3px; }
+</style>

@@ -1,15 +1,15 @@
 // Objectifs mesurés automatiquement (07/10) : un objectif créé depuis un Tracker (LoL, Valorant) garde sa mesure
-// (« metric » : jeu, clé, départ, cible, sens, unité). La page Objectifs recalcule la valeur sur les parties jouées
+// (« metric » : jeu, clé, départ, cible, sens, unité). osu! : mesuré sur les parties récentes (précision, étoiles, ratés, FC, pp). La page Objectifs recalcule la valeur sur les parties jouées
 // depuis la création de l'objectif, et l'avancement suit tout seul. Mêmes calculs que les Trackers.
 import { rows } from '../db';
 import { avg } from './ui';
 
-export type Metric = { g: 'lol' | 'valo'; k: string; s: number; t: number; d: 1 | -1; u: string };
+export type Metric = { g: 'lol' | 'valo' | 'osu'; k: string; s: number; t: number; d: 1 | -1; u: string };
 
 export function parseMetric(raw: unknown): Metric | null {
   try {
     const m = JSON.parse(String(raw ?? ''));
-    if (!['lol', 'valo'].includes(m?.g) || !/^[a-zA-Z0-9]{1,20}$/.test(m?.k) || !Number.isFinite(m?.s) || !Number.isFinite(m?.t) || ![1, -1].includes(m?.d)) return null;
+    if (!['lol', 'valo', 'osu'].includes(m?.g) || !/^[a-zA-Z0-9]{1,20}$/.test(m?.k) || !Number.isFinite(m?.s) || !Number.isFinite(m?.t) || ![1, -1].includes(m?.d)) return null;
     return { g: m.g, k: m.k, s: Number(m.s), t: Number(m.t), d: m.d, u: ['%', 'or', 'xp', ''].includes(m.u) ? m.u : '' };
   } catch { return null; }
 }
@@ -21,6 +21,7 @@ const ratio = (a: number, b: number) => (b ? (a / b) * 100 : null);
 /** Valeur d'une mesure sur une liste de parties (même définition que dans les Trackers). */
 export function metricValue(k: string, l: G[]): number | null {
   if (!l.length) return null;
+  if (k === 'fc') return ratio(l.filter((x) => Number(x.miss) === 0).length, l.length);
   if (k === 'win') return ratio(l.filter((x) => x.win).length, l.length);
   if (k === 'kda') return sum(l, 'k') + sum(l, 'a') ? (sum(l, 'k') + sum(l, 'a')) / Math.max(1, sum(l, 'd')) : 0;
   if (k === 'kd') return sum(l, 'k') / Math.max(1, sum(l, 'd'));

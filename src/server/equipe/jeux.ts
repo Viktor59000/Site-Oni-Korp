@@ -63,7 +63,7 @@ export const JEUX: Record<GameKey, Jeu> = {
     },
   },
   osu: {
-    label: 'osu!', code: 'osu!', color: '#ff66aa', account: ['osu', 'ton pseudo osu!'], tool: ['osu', 'Défis et maps', '/equipe/osu/'], board: null,
+    label: 'osu!', code: 'osu!', color: '#ff66aa', account: ['osu', 'ton pseudo osu!'], tool: ['osu', 'Défis et maps', '/equipe/osu/'], more: [['osu-tracker', 'Tracker', '/equipe/tracker-osu/']], board: null,
     scouting: {
       players: '- Pseudo · rang · mods favoris', style: 'Aim, stream, précision, lecture… sur quels types de maps ?',
       plan: 'Picks et bans du mappool, ordre des maps', links: 'Profils osu!, matchs (osu.ppy.sh/community/matches)… un par ligne',
