@@ -462,7 +462,7 @@ if (!roster) {
   .ac { display: grid; gap: var(--space-5, 1.5rem); }
   .ac-hero { position: relative; overflow: hidden; border-radius: 0; background: #0b0c0f; color: #fff; min-height: 18rem; display: grid; align-items: end; isolation: isolate; }
   .ac-hero { border-top: 6px solid var(--g); }
-  .ac-hero__code { position: absolute; top: clamp(1.25rem, 4vw, 2.25rem); right: clamp(1.25rem, 4vw, 2.25rem); font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--g); }
+  .ac-hero__code { position: absolute; top: clamp(1.25rem, 4vw, 2.25rem); right: clamp(1.25rem, 4vw, 2.25rem); font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--g) 65%, #fff); }
   .ac-hero__body { padding: clamp(1.25rem, 4vw, 2.25rem); display: grid; gap: .35rem; max-width: 40rem; }
   .ac-hero__label { margin: 0; font-weight: 700; color: rgb(255 255 255 / .8); }
   .ac-hero__title { margin: 0; font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.05; }
@@ -539,7 +539,8 @@ if (!roster) {
   .me-next .is-first .me-next__title { font-family: var(--font-display); font-size: clamp(1.6rem, 4vw, 2.6rem); line-height: 1.05; }
   .me-next__sub { font-size: var(--text-sm); color: var(--qg-muted); display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
   .me-next .is-first .me-next__sub { color: rgb(255 255 255 / .85); }
-  .me-tag { padding: .1rem .45rem; background: var(--g); color: #fff; font-weight: 700; font-size: .75rem; }
+  /* Fond assombri : le texte blanc garde 4,5:1 quelle que soit la couleur du jeu */
+  .me-tag { padding: .1rem .45rem; background: color-mix(in srgb, var(--g) 62%, #000); color: #fff; font-weight: 700; font-size: .75rem; }
   .me-answer { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
   .me-answer button { min-height: 40px; padding: 0 .9rem; border: 1.5px solid currentColor; background: transparent; color: inherit; font: 700 .85rem var(--font-body); cursor: pointer; }
   .me-answer button.is-on { background: var(--qg-ink); color: var(--qg-paper); border-color: var(--qg-ink); }
@@ -579,7 +580,7 @@ if (!roster) {
   .ac-pick__card { position: relative; display: grid; align-content: end; gap: .15rem; min-height: 10rem; padding: 1rem; border-radius: 0; overflow: hidden; isolation: isolate; color: #fff; text-decoration: none; background: #15181c; }
   .ac-pick__card:not(.ac-pick__card--vue) { background: #0b0c0f; border-top: 6px solid var(--g); transition: background .2s; }
   .ac-pick__card:not(.ac-pick__card--vue):is(:hover, :focus-visible) { background: color-mix(in srgb, var(--g) 22%, #0b0c0f); }
-  .ac-pick__code { position: absolute; top: 1rem; left: 1rem; font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--g); }
+  .ac-pick__code { position: absolute; top: 1rem; left: 1rem; font: 600 .75rem / 1 var(--qg-mono, ui-monospace, monospace); letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--g) 65%, #fff); }
   .ac-pick__card span { font-family: var(--font-display); font-size: 1.5rem; line-height: 1.1; }
   .ac-pick__card small { color: rgb(255 255 255 / .85); }
   /* Vermillon foncé, fixe dans les deux thèmes : le petit texte blanc garde un contraste suffisant (4,5:1) */

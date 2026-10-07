@@ -117,7 +117,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
       {!blocks.length && <p class="eq-note">Aucun roster pour l'instant.</p>}
       {blocks.map((b) => (
         <section class="st-roster">
-          <h2 class="st-h">{b.r.name}</h2>
+          <p class="st-h">{b.r.name}</p>
 
           {b.kind === 'lol' && (
             <>
@@ -203,7 +203,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
 
           {b.kind === 'manual' && b.r.game === 'valo' && (
             <>
-              <h3 class="st-sub">Parties compétitives <small>(relevé automatique)</small></h3>
+              <h2 class="st-sub">Parties compétitives <small>(relevé automatique)</small></h2>
               {b.auto.some((p: any) => p.n || p.rank) ? (
                 <div class="st-scroll">
                   <table class="st-table">
@@ -236,13 +236,13 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                   </ul>
                 </details>
               ))}
-              <h3 class="st-sub">Matchs du roster <small>(saisie)</small></h3>
+              <h2 class="st-sub">Matchs du roster <small>(saisie)</small></h2>
             </>
           )}
 
           {b.kind === 'manual' && b.r.game === 'rl' && (
             <>
-              <h3 class="st-sub">Parties <small>(Oni Sync, et replays ballchasing.com) · moyennes sur les 20 dernières</small></h3>
+              <h2 class="st-sub">Parties <small>(Oni Sync, et replays ballchasing.com) · moyennes sur les 20 dernières</small></h2>
               {b.auto.some((p) => p.n) ? (
                 <div class="st-scroll">
                   <table class="st-table">
@@ -278,7 +278,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
                   </ul>
                 </details>
               ))}
-              <h3 class="st-sub">Matchs du roster</h3>
+              <h2 class="st-sub">Matchs du roster</h2>
               {b.matches.length > 0 && (
                 <form method="post" action="/api/equipe/outils" class="st-replay">
                   <input type="hidden" name="action" value="replay" /><input type="hidden" name="back" value={back} />
@@ -336,7 +336,7 @@ const champIcon = (c: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/i
   .eq-note { color: var(--muted); font-size: var(--step--1); }
   .st { display: grid; gap: 3rem; }
   .st-roster { display: grid; gap: 1rem; }
-  .st-h { font-size: var(--step-1); padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
+  .st-h { font-size: var(--step-1); font-weight: 700; margin: 0; padding-bottom: .5rem; border-bottom: 2px solid var(--ink); }
   .st-scroll { overflow-x: auto; }
   .st-table { width: 100%; border-collapse: collapse; font-size: .9rem; white-space: nowrap; }
   .st-table th { text-align: left; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: .5rem .6rem; border-bottom: 1px solid var(--line); }

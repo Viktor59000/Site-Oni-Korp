@@ -28,7 +28,7 @@ const answers = trainings.length ? await rows<{ training_id: number; status: str
 const matches = ids.length ? await rows<{ id: number; roster_id: number; at: number; opponent: string; kind: string | null; score_us: number | null; score_them: number | null }>(`SELECT id, roster_id, at, opponent, kind, score_us, score_them FROM matches WHERE cancelled = 0 AND roster_id IN (${marks}) AND at BETWEEN ? AND ?`, ...ids, start, end) : [];
 const goals = ids.length ? await rows<{ id: number; roster_id: number; due: number; title: string; user_id: string | null }>(`SELECT id, roster_id, due, title, user_id FROM goals WHERE status = 'en-cours' AND due IS NOT NULL AND roster_id IN (${marks}) AND due BETWEEN ? AND ? AND (user_id IS NULL OR user_id = ? OR ?)`, ...ids, start, end, user.id, me.staff ? 1 : 0).catch(() => []) : [];
 const events: Ev[] = [
-  ...trainings.map((x) => ({ at: Number(x.at), kind: 'seance' as const, title: `${x.kind} · ${x.duration} min`, href: `/equipe/?r=${me.rosters.find((r) => Number(r.id) === Number(x.roster_id))?.slug}#seance-${x.id}`, roster: Number(x.roster_id), mine: answers.find((a) => Number(a.training_id) === Number(x.id))?.status ?? null })),
+  ...trainings.map((x) => ({ at: Number(x.at), kind: 'seance' as const, title: `${x.kind} · ${x.duration} min`, href: `/equipe/planning/?r=${me.rosters.find((r) => Number(r.id) === Number(x.roster_id))?.slug}#seance-${x.id}`, roster: Number(x.roster_id), mine: answers.find((a) => Number(a.training_id) === Number(x.id))?.status ?? null })),
   ...matches.map((x) => ({ at: Number(x.at), kind: ((x.kind ?? '') === 'scrim' ? 'scrim' : 'match') as Ev['kind'], title: `vs ${x.opponent}${x.score_us !== null ? ` ${x.score_us}–${x.score_them}` : ''}`, href: `/equipe/match/?m=${x.id}${q ? `&${q}` : ''}`, roster: Number(x.roster_id) })),
   ...goals.map((x) => ({ at: Number(x.due), kind: 'objectif' as const, title: x.title, href: `/equipe/objectifs/${q ? `?${q}` : ''}`, roster: Number(x.roster_id) })),
 ].sort((a, b) => a.at - b.at);
@@ -119,7 +119,8 @@ const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeri
   .ca-next span::first-letter { text-transform: uppercase; }
   @media (max-width: 760px) {
     .ca-pad, .ca-day { min-height: 3.8rem; }
-    .ca-ev { padding: 0; height: .5rem; font-size: 0; border-left-width: 0; background: var(--g); }
+    /* Barres de couleur, mais 24 px de haut : assez grandes pour le doigt (la liste « À venir » donne le détail) */
+    .ca-ev { padding: 0; height: 1.5rem; flex: none; font-size: 0; border-left-width: 0; background: var(--g); }
     .ca-ev b, .ca-ev time, .ca-ev span { display: none; }
     .ca-legend { margin-left: 0; }
   }
