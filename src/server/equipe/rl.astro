@@ -104,6 +104,16 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
             <li><b>Joue.</b> Chaque partie terminée apparaît ici, en classé comme en privé ou en inhouse.</li>
             <li><b>Pour ton rang et les stats avancées</b> (positionnement, boost, replay en 3D) : clique « Sauvegarder le replay » sur l’écran de fin. Oni Sync envoie le fichier, la partie se complète ici en quelques minutes.</li>
           </ol>
+          <details class="rl-auto">
+            <summary>Tous tes replays sans cliquer (facultatif, avec rockpload)</summary>
+            <p>Rocket League ne sauvegarde pas les replays tout seul. <a href="https://github.com/LEX0RE/rockpload" rel="noopener">rockpload</a> les récupère après chaque partie et les envoie sur ballchasing ; Inside les retrouve ensuite par ton identifiant Epic, dans les 15 minutes.</p>
+            <ol>
+              <li>Connecte-toi sur <a href="https://ballchasing.com/upload" rel="noopener">ballchasing.com/upload</a> (Steam, Epic ou Discord) et copie ta clé d’envoi.</li>
+              <li>Installe rockpload (page « Releases »), connecte ton compte Epic sur la page d’Epic qu’il ouvre, puis colle ta clé ballchasing.</li>
+              <li>Garde Oni Sync lancé : il donne ton identifiant à Inside et les mesures du jeu en direct.</li>
+            </ol>
+            <p class="rl-warn">À savoir : rockpload n’est ni un outil d’Epic ni un outil du club. Il se connecte aux serveurs du jeu à la place du jeu, ce qu’Epic n’autorise pas officiellement. Aucun cas de sanction connu, mais c’est ton compte : à toi de décider. Sans lui, Oni Sync et le replay sauvegardé suffisent.</p>
+          </details>
           <p class="rl-note">Oni Sync lit seulement ce que Rocket League publie lui-même sur ton PC (comme Bakkboard) et les replays que tu sauvegardes : aucune injection, rien d’autre n’est envoyé. Les replays passent par ballchasing.com en lien non listé.</p>
         </div>
         <div class="rl-sync__act">
@@ -286,6 +296,7 @@ const initial = (s: string) => s.slice(0, 1).toUpperCase();
   .rl-card :global(.spark) { width: 100%; height: 60px; }
   .rl-h { margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: var(--rule, 2px) solid var(--qg-ink, #141210); font: 600 1.1rem var(--qg-title, sans-serif); }
   .rl-h small { font: 400 .8rem var(--qg-sans, sans-serif); color: var(--qg-muted, #514c46); margin-left: .5rem; }
+  .rl-auto { margin: .75rem 0; } .rl-auto summary { cursor: pointer; font-weight: 600; } .rl-auto ol { margin: .5rem 0; padding-left: 1.2rem; }
   .rl-avgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
   .rl-avg { display: grid; gap: .15rem; padding: .75rem; border: 1px solid var(--qg-rule, #d8d3ca); }
   .rl-avg b { font: 600 1.5rem var(--qg-title, sans-serif); font-variant-numeric: tabular-nums; }

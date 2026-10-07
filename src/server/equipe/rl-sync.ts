@@ -144,6 +144,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   };
   const guid = String(pick(en, 'MatchGuid', 'MatchGUID', 'Guid') ?? pick(st, 'MatchGuid', 'MatchGUID') ?? `${players.map(nameOf).sort().join('|')}:${us}-${them}:${Math.floor(Date.now() / 600_000)}`);
   await exec('INSERT OR IGNORE INTO perf (id, user_id, game, at, data) VALUES (?,?,?,?,?)', `rl:sync:${guid.slice(0, 80)}:${uid}`, uid, 'rl', Date.now(), JSON.stringify(row));
+  // Identifiant de plateforme (« Epic|<id>|0 ») au format ballchasing (« epic:<id> ») : le bot retrouve ainsi tous les replays
+  // du joueur sur ballchasing, même envoyés par un autre outil (rockpload…), sans dépendre du pseudo
+  const pid = String(pick(me, 'PrimaryId', 'primaryId') ?? '').split('|');
+  if (pid.length >= 2 && pid[0] && pid[1]) await exec(`INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, `rl-pid:${uid}`, `${({ xboxone: 'xbox' } as Record<string, string>)[pid[0].toLowerCase()] ?? pid[0].toLowerCase()}:${pid[1]}`).catch(() => {});
   await exec('UPDATE rl_sync SET last_at = ?, last_error = NULL WHERE user_id = ?', Date.now(), uid);
   return json({ ok: true, message: `${row.win ? 'Victoire' : 'Défaite'} ${us}-${them} · ${goals} but(s), ${row.passes ?? 0} passe(s), ${row.arrets ?? 0} arrêt(s)` });
 };
