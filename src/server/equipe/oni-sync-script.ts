@@ -21,7 +21,7 @@ $Pseudo = '__PSEUDO__'
 $Site = '__SITE__'
 $Version = '__VERSION__'
 
-# ---------- Installation (v4) : jamais de fenêtre de console ----------
+# ---------- Installation (depuis la v4) : jamais de fenêtre de console ----------
 # Oni-Sync.cmd ne sert qu'une fois : il copie le script dans %LOCALAPPDATA%\OniSync, crée le raccourci « Oni Sync »
 # (Bureau et menu Démarrer) puis relance Oni Sync sans console. Le raccourci passe par « conhost --headless » :
 # Windows ne montre aucune fenêtre, même brièvement. ONI_SYNC_HOME : dossier d'essai (tests), au lieu du vrai dossier.
