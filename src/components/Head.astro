@@ -6,7 +6,7 @@ import zen700 from '@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-la
 import { existsSync } from 'node:fs';
 import site from '../data/site.json';
 import og from '../data/og-version.json';
-const { qg = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert." } = Astro.props;
+const { qg = false, noindex = false, title, description = "Oni Korp, club esport français né sur Rocket League en 2021. Rosters Rocket League, League of Legends, Valorant et osu!. Recrutement joueurs et staff ouvert." } = Astro.props;
 // Image d'aperçu propre à la page (?v= change à chaque régénération : Discord et X ne gardent pas l'ancienne en cache)
 // (public/og/<page>.jpg, générée par scripts/og.mjs), sinon celle du club
 const section = Astro.url.pathname.split('/')[1];
@@ -23,6 +23,8 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {qg && <meta name="robots" content="noindex, nofollow" />}
+    {!qg && noindex && <meta name="robots" content="noindex, follow" />}
+    <meta property="og:site_name" content="Oni Korp" />
     <meta name="theme-color" content="#f3f1ec" />
     <script is:inline>
       // Applique le thème avant l'affichage (pas de flash) : choix mémorisé, sinon réglage du système
@@ -61,9 +63,16 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <meta property="og:image" content={`${abs(image)}?v=${og.v}`} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta property="og:image:alt" content={`${fullTitle} : aperçu`} />
+    {/* Données structurées : le site (nom affiché par Google à la place de « Vercel ») et le club */}
     <script type="application/ld+json" set:html={JSON.stringify({
-      '@context': 'https://schema.org', '@type': 'SportsOrganization', name: 'Oni Korp',
-      sport: 'Esport', foundingDate: '2021-07-12', url: abs('/'), logo: abs('/apple-touch-icon.png'),
-      sameAs: [site.discord, 'https://www.twitch.tv/oni_korp', 'https://x.com/Oni_Korp', 'https://www.tiktok.com/@onikorp_', 'https://www.instagram.com/oni_korp/', 'https://www.youtube.com/@OniKorp_Officiel'],
+      '@context': 'https://schema.org',
+      '@graph': [
+        { '@type': 'WebSite', '@id': abs('/#site'), name: 'Oni Korp', alternateName: ['Oni Korp esport', 'ONI KORP'], url: abs('/'), inLanguage: 'fr-FR', publisher: { '@id': abs('/#club') } },
+        {
+          '@type': 'SportsOrganization', '@id': abs('/#club'), name: 'Oni Korp', alternateName: '4C Korp', description: 'Club esport français né sur Rocket League en 2021 : Rocket League, League of Legends, Valorant et osu!.',
+          sport: 'Esport', foundingDate: '2021-07-12', url: abs('/'), logo: abs('/apple-touch-icon.png'),
+          sameAs: [site.discord, 'https://www.twitch.tv/oni_korp', 'https://x.com/Oni_Korp', 'https://www.tiktok.com/@onikorp_', 'https://www.instagram.com/oni_korp/', 'https://www.youtube.com/@OniKorp_Officiel'],
+        },
+      ],
     })} />
   </head>
