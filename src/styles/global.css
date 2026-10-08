@@ -44,6 +44,12 @@
   .nav[data-open] .nav__links a { display: block; padding: .9rem 0; border-bottom: 1px solid var(--line); font-size: 1.15rem; }
   .nav[data-open] .nav__links .nav__mobile-cta { display: block; color: var(--red-text); border-bottom: 0; }
 }
+@media (max-width: 860px) and (prefers-reduced-motion: no-preference) {
+  .nav[data-open] .nav__links { animation: nav-drop .18s var(--ease); transform-origin: top; }
+  .nav.is-closing .nav__links { animation: nav-lift .14s cubic-bezier(.4, 0, 1, 1) forwards; }
+  @keyframes nav-drop { from { opacity: 0; translate: 0 -8px; } }
+  @keyframes nav-lift { to { opacity: 0; translate: 0 -8px; } }
+}
 
 /* ---------- Hero ---------- */
 .hero { position: relative; overflow: hidden; min-height: min(92vh, 860px); min-height: min(92dvh, 860px); display: grid; isolation: isolate; }

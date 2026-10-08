@@ -169,8 +169,26 @@ const currentLabel = section?.label ?? heading;
     const n = document.querySelector<HTMLDetailsElement>('[data-qg-nav]');
     if (n) { const on = !n.hasAttribute('data-shown'); n.toggleAttribute('data-shown', on); n.open = on; if (on) n.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
-  // Panneaux (formulaires) : fermeture par Échap
+  // Panneaux (formulaires) : ils repartent par où ils sont venus (vers la droite) au lieu de disparaître d'un coup.
+  // Fermeture par Échap, par le voile (le résumé) ou par la croix ; un nouvel appui pendant la sortie ne bloque rien.
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
+  const closeDrawer = (d: HTMLDetailsElement) => {
+    const panel = d.querySelector<HTMLElement>('.qg-drawer__panel');
+    if (calm.matches || !panel || d.dataset.closing) { d.open = false; return; }
+    d.dataset.closing = '1';
+    const opts = { duration: 140, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' as const };
+    const out = panel.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(24px)', opacity: 0 }], opts);
+    try { d.querySelector('summary')?.animate([{ opacity: 1 }, { opacity: 0 }], { ...opts, pseudoElement: '::before' }); } catch {}
+    const end = () => { d.open = false; delete d.dataset.closing; panel.getAnimations().forEach((a) => a.cancel()); d.querySelector('summary')?.getAnimations({ subtree: true }).forEach((a) => a.cancel()); };
+    Promise.race([out.finished, new Promise((r) => setTimeout(r, 220))]).then(end, end);
+  };
+  document.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    const d = t.closest<HTMLDetailsElement>('.qg-drawer[open]');
+    if (!d) return;
+    if (t.closest('.qg-close') || t.closest('summary')?.parentElement === d) { e.preventDefault(); e.stopPropagation(); closeDrawer(d); }
+  }, true);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll<HTMLDetailsElement>('.qg-drawer[open]').forEach((d) => (d.open = false));
+    if (e.key === 'Escape') document.querySelectorAll<HTMLDetailsElement>('.qg-drawer[open]').forEach(closeDrawer);
   });
 </script>

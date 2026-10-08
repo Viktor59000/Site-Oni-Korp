@@ -83,13 +83,16 @@ const { total } = Astro.props;
     if (on) idle = window.setTimeout(() => card.style.setProperty('--holo', '0'), 1600);
   };
 
-  // Élan après le lâcher, puis la carte ralentit
+  // Élan après le lâcher, puis la carte ralentit. Vitesse en px par image de 60 Hz, freinage calé sur le temps
+  // écoulé : la carte tourne autant sur un écran 60 Hz que sur un 120 Hz.
   const coast = () => {
     cancelAnimationFrame(spinning);
-    const step = () => {
-      vx *= 0.94; vy *= 0.94;
+    let prev = performance.now();
+    const step = (now: number) => {
+      const f = Math.min(4, (now - prev) / 16.67); prev = now;
+      const k = Math.pow(0.94, f); vx *= k; vy *= k;
       if (Math.hypot(vx, vy) < 0.05) return;
-      turnBy(vx, vy); render(); glow(true);
+      turnBy(vx * f, vy * f); render(); glow(true);
       spinning = requestAnimationFrame(step);
     };
     spinning = requestAnimationFrame(step);
@@ -162,9 +165,15 @@ const { total } = Astro.props;
 
   const close = async () => {
     if (!dlg.open) return;
-    reset();
     const src = cards[index];
-    if (!reduce && src) {
+    if (reduce || !src) reset();
+    else {
+      // La carte repart telle qu'elle est affichée et se remet de face pendant le vol (pas de saut)
+      cancelAnimationFrame(spinning); vx = vy = 0;
+      const shown = card.style.transform || 'none';
+      m = new DOMMatrix(); tilt = new DOMMatrix(); glow(false);
+      card.animate([{ transform: shown }, { transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      render();
       dlg.classList.add('is-closing');
       src.scrollIntoView({ block: 'nearest' });
       src.style.visibility = 'hidden';
@@ -176,10 +185,19 @@ const { total } = Astro.props;
     fly.getAnimations().forEach((a) => a.cancel());
   };
 
-  const go = (step: number) => {
+  // Changer de carte : l'ancienne sort d'un côté, la nouvelle entre de l'autre (même axe, sens cohérent)
+  let turn = 0;
+  const go = async (step: number) => {
     index = (index + step + cards.length) % cards.length;
+    const mine = ++turn;
+    if (!reduce) {
+      fly.getAnimations().forEach((a) => a.cancel());
+      await done(fly.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${-step * 60}px) rotate(${-step * 4}deg)`, opacity: 0 }], { duration: 140, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }), 140);
+      if (mine !== turn) return; // un autre appui a pris la main
+    }
     fill(cards[index]);
     reset();
+    fly.getAnimations().forEach((a) => a.cancel());
     if (!reduce) fly.animate([{ transform: `translateX(${step * 60}px) rotate(${step * 4}deg)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
   };
 
@@ -199,10 +217,13 @@ const { total } = Astro.props;
   dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target === $('.cv__stage')) close(); });
 
   // Glisser : rotation libre dans tous les sens, avec élan. Clic simple : retourner. Survol : légère inclinaison.
+  // La vitesse au lâcher vient des 80 dernières millisecondes de mouvement, pas du seul dernier événement
   let lastX = 0, lastY = 0, moved = 0, dragging = false;
+  let trail: { x: number; y: number; t: number }[] = [];
   card.addEventListener('pointerdown', (e) => {
     cancelAnimationFrame(spinning);
     dragging = true; moved = 0; vx = vy = 0; lastX = e.clientX; lastY = e.clientY;
+    trail = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
     tilt = new DOMMatrix();
     card.setPointerCapture(e.pointerId);
     card.classList.add('is-dragging');
@@ -212,7 +233,8 @@ const { total } = Astro.props;
       const dx = e.clientX - lastX, dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
       moved += Math.hypot(dx, dy);
-      vx = dx; vy = dy;
+      trail.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+      while (trail.length > 2 && e.timeStamp - trail[0].t > 80) trail.shift();
       turnBy(dx, dy); render(); glow(true);
     } else if (e.pointerType === 'mouse' && !reduce) {
       const r = card.getBoundingClientRect();
@@ -226,6 +248,11 @@ const { total } = Astro.props;
     dragging = false;
     card.classList.remove('is-dragging');
     if (moved < 6) { flip(); return; }
+    // px par image de 60 Hz ; si le doigt s'est arrêté avant de lâcher, pas d'élan
+    const a = trail[0], b = trail[trail.length - 1], dt = b.t - a.t;
+    const still = performance.now() - b.t > 60;
+    vx = dt > 0 && !still ? ((b.x - a.x) / dt) * 16.67 : 0;
+    vy = dt > 0 && !still ? ((b.y - a.y) / dt) * 16.67 : 0;
     if (!reduce) coast();
   };
   card.addEventListener('pointerup', release);

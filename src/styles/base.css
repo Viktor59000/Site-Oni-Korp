@@ -6,6 +6,8 @@
 
 :root {
   color-scheme: light;
+  /* Mouvement : deux durées et une courbe pour tout le site (réponse immédiate, déplacement) */
+  --ease: cubic-bezier(.2, 0, 0, 1); --t-fast: .15s; --t-move: .32s;
   --black: #000;
   --lacquer: #e5251f;      /* vermillon Oni : couleur de marque */
   --lacquer-hi: #ff4a3d;   /* survols sur fond noir */
@@ -104,3 +106,10 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn { transition: background-color .2s, color .2s, translate .2s cubic-bezier(.2, 0, 0, 1); }
 .btn:hover { translate: 0 -2px; }
 .btn:active { translate: 0 0; }
+/* Appui : retour immédiat sous le doigt, dès l'enfoncement (le survol n'existe pas au tactile) */
+:is(button, .btn, [role="tab"], summary):not(:disabled, .qg-drawer > summary):active { scale: .97; transition: scale 80ms ease-out; }
+/* Moins de transparence demandée : surfaces pleines, sans flou */
+@media (prefers-reduced-transparency: reduce) {
+  .nav { background: var(--surface) !important; backdrop-filter: none !important; }
+  .cv::backdrop { background: rgb(8 8 8 / .96) !important; backdrop-filter: none !important; }
+}

@@ -45,6 +45,15 @@ Fichier : `src/styles/qg.css` (classe `qg` sur le `body`), polices IBM Plex Sans
 
 La vitrine et Inside ne partagent pas leurs composants visuels : un bouton de la vitrine (vermillon en biais, Dela Gothic) n'a pas la même forme qu'un bouton d'Inside (filet, Plex). Exemple : `components/Avis.astro` a deux variantes, `site` et `inside`.
 
+## Mouvement (vitrine et Inside)
+Règles tirées de l'audit « apple-design » du 8 octobre (`notes/rapports/AUDIT-APPLE-DESIGN.md`) :
+- **Réponse à l'appui, pas au relâcher** : tout bouton s'enfonce légèrement (`scale: .97`) dès qu'on appuie (`base.css`). Le survol n'existe pas au doigt, il ne doit jamais être le seul retour.
+- **Même chemin à l'aller et au retour** : ce qui entre par la droite repart par la droite (tiroirs d'Inside), le menu mobile se replie dans la barre, une carte de l'album y retourne.
+- **Rien ne bloque la main** : une animation en cours peut être rattrapée ou remplacée (carte qu'on fait tourner, appuis rapides sur « suivante »).
+- **Élan mesuré dans le temps** : la vitesse au lâcher vient des 80 dernières ms, et le freinage dépend du temps écoulé, pas du nombre d'images (même rendu en 60 et 120 Hz).
+- **Jetons** : `--ease`, `--t-fast` (150 ms), `--t-move` (320 ms) dans `base.css`, à réutiliser pour toute nouvelle animation.
+- **Préférences du système** : `prefers-reduced-motion` (fondus courts ou rien) et `prefers-reduced-transparency` (barre et voile sans flou).
+
 ## Cartes image du bot
 
 Même famille que la vitrine (washi, encre, vermillon, couleur du pôle, Dela Gothic One + Zen Kaku). Retours qui ont fixé les règles actuelles : pas de kanji ni de trame de points sur les cartes d'inhouse, pas de pastilles arrondies pour les chiffres, photo de profil en grand, un seul bord en biais net entre bandeau et illustration.

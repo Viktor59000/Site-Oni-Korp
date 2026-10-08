@@ -213,7 +213,7 @@ body.qg tbody tr:hover td { background: var(--qg-surface); }
 .qg-drawer__panel label { display: grid; gap: var(--space-1); font: 500 var(--text-2xs) / 1.35 var(--qg-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--qg-muted); }
 .qg-drawer__panel :is(input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea) { width: 100%; box-sizing: border-box; min-height: 40px; padding: .45rem .6rem; text-transform: none; letter-spacing: 0; }
 .qg-drawer__panel .btn { justify-self: start; }
-@media (prefers-reduced-motion: no-preference) { .qg-drawer[open] .qg-drawer__panel { animation: qg-slide .18s var(--ease); } @keyframes qg-slide { from { transform: translateX(24px); opacity: 0; } } }
+@media (prefers-reduced-motion: no-preference) { .qg-drawer[open] .qg-drawer__panel { animation: qg-slide .18s var(--ease); } .qg-drawer[open] > summary::before { animation: qg-fade .18s var(--ease); } @keyframes qg-slide { from { transform: translateX(24px); opacity: 0; } } @keyframes qg-fade { from { opacity: 0; } } }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {

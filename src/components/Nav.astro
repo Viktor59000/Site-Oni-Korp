@@ -43,11 +43,23 @@ const path = '/' + Astro.url.pathname.slice(import.meta.env.BASE_URL.length).rep
   }).catch(() => {}));
   const nav = document.getElementById('nav');
   const btn = nav?.querySelector('.nav__toggle');
-  btn?.addEventListener('click', () => {
-    const open = nav!.toggleAttribute('data-open');
+  // Menu mobile : il se déroule depuis la barre et s'y replie (même chemin) ; un appui à côté ou Échap le ferme
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
+  let shutting = 0;
+  const setMenu = (open: boolean) => {
+    if (!nav || !btn) return;
+    clearTimeout(shutting); nav.classList.remove('is-closing');
     btn.setAttribute('aria-expanded', String(open));
     btn.querySelector('.sr-only')!.textContent = open ? 'Fermer le menu' : 'Ouvrir le menu';
-  });
+    if (open) { nav.setAttribute('data-open', ''); return; }
+    if (!nav.hasAttribute('data-open')) return;
+    if (calm.matches) { nav.removeAttribute('data-open'); return; }
+    nav.classList.add('is-closing');
+    shutting = window.setTimeout(() => { nav.removeAttribute('data-open'); nav.classList.remove('is-closing'); }, 140);
+  };
+  btn?.addEventListener('click', () => setMenu(btn.getAttribute('aria-expanded') !== 'true'));
+  document.addEventListener('click', (e) => { if (nav?.hasAttribute('data-open') && !nav.contains(e.target as Node)) setMenu(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && nav?.hasAttribute('data-open')) { setMenu(false); (btn as HTMLElement | null)?.focus(); } });
 
   // Thème clair / sombre : le choix est mémorisé, sinon on suit le système
   const themeBtn = document.querySelector('.theme-toggle');
