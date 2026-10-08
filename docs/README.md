@@ -19,6 +19,8 @@ Tout ce qu'il faut pour reprendre le projet sans avoir suivi son histoire : comm
 | Ce qui reste à faire | [09 · Feuille de route](09-feuille-de-route.md) |
 | Quand un service tombe | [10 · Secours](10-secours.md) |
 
+> Agents de code (Codex, Claude Code…) : les règles à ne jamais casser sont résumées dans [`AGENTS.md`](../AGENTS.md) à la racine de chaque dépôt.
+
 ## Les trois règles qui évitent 90 % des problèmes
 
 1. **Avant de pousser le site : `VERCEL=1 npm run build`.** Sans `VERCEL=1`, les pages serveur (Inside, API) ne sont pas compilées et une erreur passe inaperçue jusqu'au déploiement raté.
