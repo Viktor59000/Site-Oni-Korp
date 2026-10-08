@@ -24,7 +24,6 @@ const abs = (path) => new URL(path.replace(/^\//, ''), new URL(import.meta.env.B
     <link rel="canonical" href={canonical} />
     {qg && <meta name="robots" content="noindex, nofollow" />}
     {!qg && noindex && <meta name="robots" content="noindex, follow" />}
-    <meta property="og:site_name" content="Oni Korp" />
     <meta name="theme-color" content="#f3f1ec" />
     <script is:inline>
       // Applique le thème avant l'affichage (pas de flash) : choix mémorisé, sinon réglage du système
