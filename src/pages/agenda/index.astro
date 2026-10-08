@@ -191,7 +191,9 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 <style>
   .ag-sub { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1.75rem; }
-  .ag-raw { font-size: var(--step--1); color: var(--muted); }
+  .ag-raw { font-size: var(--step--1); color: var(--muted); display: inline-flex; align-items: center; min-height: 44px; }
+  /* Téléphone : le mois prend la place libre, « Aujourd'hui » passe à la ligne (plus de défilement horizontal) */
+  @media (max-width: 560px) { .cal-nav { flex-wrap: wrap; } .cal-title { min-width: 0; flex: 1; } .cal-today { padding-left: 0; } }
 
   /* Couleurs des jeux (repères du calendrier) */
   :global(.g-rl) { --g: #2f6bff; } :global(.g-lol) { --g: #0f8a9b; } :global(.g-valo) { --g: #ff4655; } :global(.g-osu) { --g: #ff66aa; }
@@ -203,7 +205,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   .cal-today { min-height: 44px; padding: 0 .9rem; border: 0; background: none; color: var(--red-text); font: 700 .9rem var(--font-body); cursor: pointer; }
   .cal-btn:hover { border-color: var(--ink); }
   .cal-filter { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .cal-filter button { min-height: 40px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
+  .cal-filter button { min-height: 44px; padding: 0 .9rem; border: 1.5px solid var(--line); background: none; color: var(--ink); font: 700 .85rem var(--font-body); cursor: pointer; }
   .cal-filter button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 2px solid var(--ink); margin-bottom: 2.5rem; }
@@ -231,7 +233,7 @@ const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   .ag-list :global(.ag-item:target) { background: color-mix(in srgb, var(--g, var(--lacquer)) 10%, transparent); }
   .ag-list :global(.ag-dot) { width: .7rem; height: .7rem; border-radius: 50%; background: var(--g, var(--lacquer)); align-self: start; margin-top: .45rem; }
   .ag-list :global(.ag-vs) { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.15; }
-  .ag-list :global(.ag-vs i), .ag-hist i { font-family: var(--font-body); font-style: normal; font-size: .75em; color: var(--muted); }
+  .ag-list :global(.ag-vs i), .ag-hist i { font-family: var(--font-body); font-style: normal; font-size: max(12px, .75em); color: var(--muted); }
   .ag-list :global(p) { margin: 0; }
   .ag-list :global(.ag-meta) { color: var(--muted); font-size: var(--step--1); margin-top: .25rem; }
   .ag-list :global(.ag-meta::first-letter), .ag-list :global(time) { text-transform: none; }

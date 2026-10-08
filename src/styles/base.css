@@ -68,7 +68,7 @@ p { margin: 0 0 1em; max-width: 62ch; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 
 :focus-visible { outline: 3px solid var(--lacquer-hi); outline-offset: 3px; }
-.skip { position: absolute; left: -999px; top: 0; background: var(--bone); color: var(--black); padding: .5rem 1rem; z-index: 100; }
+.skip { position: absolute; left: -999px; top: 0; display: inline-flex; align-items: center; min-height: 44px; background: var(--bone); color: var(--black); padding: .5rem 1rem; z-index: 100; }
 .skip:focus { left: 1rem; top: 1rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

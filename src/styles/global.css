@@ -16,7 +16,7 @@
 .nav[data-scrolled] { border-bottom-color: var(--line); }
 .nav[data-open]::after { opacity: 0; }
 .nav__inner { display: flex; align-items: center; gap: 2rem; min-height: 68px; }
-.nav__brand { display: flex; align-items: center; gap: .7rem; text-decoration: none; font-family: var(--font-display); font-size: 1.15rem; }
+.nav__brand { display: flex; align-items: center; min-height: 44px; gap: .7rem; text-decoration: none; font-family: var(--font-display); font-size: 1.15rem; }
 .nav__brand img { width: 38px; height: auto; }
 .nav__links { display: flex; gap: 1.75rem; margin-left: auto; }
 .nav__links a { text-decoration: none; color: var(--muted); font-weight: 500; padding-block: .3rem; border-bottom: 2px solid transparent; }
@@ -27,7 +27,7 @@
 /* Bouton de thème : 明 (clair) / 暗 (sombre), l'option active est encrée */
 @font-face { font-family: "Oni Kanji"; src: url(/fonts/oni-kanji.woff2) format("woff2"); font-display: swap; unicode-range: U+660E, U+6697; }
 .theme-toggle {
-  display: inline-flex; padding: 3px; gap: 2px; background: none; cursor: pointer;
+  display: inline-flex; min-height: 44px; padding: 3px; gap: 2px; background: none; cursor: pointer;
   border: 1.5px solid var(--line); border-radius: 0;
   font-family: "Oni Kanji", var(--font-display); font-size: 1.2rem; line-height: 1;
   transition: border-color .2s ease;
@@ -300,11 +300,12 @@ a.game:hover h3 { color: var(--red-text); }
 .rosters-tba { margin-top: 2rem; color: var(--muted); }
 .rosters-tba strong { color: var(--ink); font-weight: 700; }
 
-/* Cibles tactiles confortables (44 px) pour les liens en liste sur mobile */
-@media (max-width: 720px) {
-  .footer li a, .footer__bottom a { display: inline-block; padding-block: .6rem; }
-}
+/* Cibles tactiles confortables (44 px) pour les liens du pied de page au doigt.
+   (L'ancienne règle mobile était écrasée par celle du dessous : « Mentions légales » faisait 34 px.) */
 .footer__bottom a { display: inline-block; padding-block: .35rem; }
+@media (max-width: 720px), (pointer: coarse) {
+  .footer li a, .footer__bottom a { display: inline-flex; align-items: center; min-height: 44px; padding-block: 0; }
+}
 
 @media (max-width: 860px) { .section--brush::before { opacity: .3; } }
 
