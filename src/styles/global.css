@@ -4,8 +4,17 @@
   position: sticky; top: 0; z-index: 50;
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--t-fast) var(--ease);
 }
+/* Bord de défilement : un léger dégradé n'apparaît que lorsque le contenu passe sous la barre */
+.nav::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 14px; pointer-events: none;
+  background: linear-gradient(var(--shadow), transparent); opacity: 0; transition: opacity var(--t-move) var(--ease);
+}
+.nav[data-scrolled]::after { opacity: .35; }
+.nav[data-scrolled] { border-bottom-color: var(--line); }
+.nav[data-open]::after { opacity: 0; }
 .nav__inner { display: flex; align-items: center; gap: 2rem; min-height: 68px; }
 .nav__brand { display: flex; align-items: center; gap: .7rem; text-decoration: none; font-family: var(--font-display); font-size: 1.15rem; }
 .nav__brand img { width: 38px; height: auto; }
@@ -719,7 +728,7 @@ main { counter-reset: page; }
 }
 .pack:not(:disabled) .pack__label { background: var(--lacquer); color: #fff; padding: .45rem 1.2rem; }
 @media (prefers-reduced-motion: no-preference) {
-  .pack:not(:disabled) { animation: pack-idle 3s 4s ease-in-out infinite; }
+  .pack:not(:disabled) { animation: pack-idle 3s 4s ease-in-out 3; /* trois respirations puis repos : pas de boucle sans fin */ }
   @keyframes pack-idle { 50% { translate: 0 -6px; } }
   .pack.is-shaking { animation: pack-shake .55s linear both; }
   @keyframes pack-shake { 20% { rotate: -3deg; } 40% { rotate: 5deg; } 60% { rotate: -4deg; } 80% { rotate: 3deg; } }
@@ -755,7 +764,7 @@ main { counter-reset: page; }
 @media (prefers-reduced-motion: no-preference) {
   .pc { animation: pc-in .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i) * 90ms); }
   @keyframes pc-in { from { opacity: 0; translate: 0 -70px; scale: .7; } }
-  .pc__shine, .sticker.is-holo:hover .sticker__frame::after, .collection__item.is-holo .sticker:hover .sticker__frame::after { animation: holo-sweep 3.5s linear infinite; }
+  .pc__shine, .sticker.is-holo:hover .sticker__frame::after, .collection__item.is-holo .sticker:hover .sticker__frame::after { animation: holo-sweep 3.5s linear 3; }
   @keyframes holo-sweep { to { background-position: 300% 0; } }
 }
 @media (max-width: 720px) {
@@ -822,7 +831,7 @@ main { counter-reset: page; }
 @media (prefers-reduced-motion: no-preference) {
   .sticker[data-rarete="holo"]:hover .sticker__frame::after,
   .sticker[data-rarete="legendaire"]:hover .sticker__frame::after,
-  .pc .sticker[data-rarete] .sticker__frame::after { animation: holo-sweep 3.5s linear infinite; }
+  .pc .sticker[data-rarete] .sticker__frame::after { animation: holo-sweep 3.5s linear 3; }
 }
 
 /* Contenus particuliers */

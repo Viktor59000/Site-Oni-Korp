@@ -58,6 +58,11 @@ const path = '/' + Astro.url.pathname.slice(import.meta.env.BASE_URL.length).rep
     shutting = window.setTimeout(() => { nav.removeAttribute('data-open'); nav.classList.remove('is-closing'); }, 140);
   };
   btn?.addEventListener('click', () => setMenu(btn.getAttribute('aria-expanded') !== 'true'));
+  // Bord de défilement : la barre ne se détache du contenu que lorsqu'il passe dessous
+  let ticking = false;
+  const edge = () => { ticking = false; nav?.toggleAttribute('data-scrolled', window.scrollY > 4); };
+  addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(edge); } }, { passive: true });
+  edge();
   document.addEventListener('click', (e) => { if (nav?.hasAttribute('data-open') && !nav.contains(e.target as Node)) setMenu(false); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && nav?.hasAttribute('data-open')) { setMenu(false); (btn as HTMLElement | null)?.focus(); } });
 
@@ -71,9 +76,10 @@ const path = '/' + Astro.url.pathname.slice(import.meta.env.BASE_URL.length).rep
   syncTheme();
   themeBtn?.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
+    // Fondu de 200 ms entre les deux thèmes (pas d'éblouissement), sauf si l'utilisateur limite les animations
+    const apply = () => { document.documentElement.dataset.theme = next; syncTheme(); };
+    if ('startViewTransition' in document && !calm.matches) (document as any).startViewTransition(apply); else apply();
     try { localStorage.setItem('theme', next); } catch {}
-    syncTheme();
   });
   // Sans choix mémorisé, on suit le système s'il change en cours de visite
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {

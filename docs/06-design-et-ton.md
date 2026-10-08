@@ -52,7 +52,10 @@ Règles tirées de l'audit « apple-design » du 8 octobre (`notes/rapports/AUDI
 - **Rien ne bloque la main** : une animation en cours peut être rattrapée ou remplacée (carte qu'on fait tourner, appuis rapides sur « suivante »).
 - **Élan mesuré dans le temps** : la vitesse au lâcher vient des 80 dernières ms, et le freinage dépend du temps écoulé, pas du nombre d'images (même rendu en 60 et 120 Hz).
 - **Jetons** : `--ease`, `--t-fast` (150 ms), `--t-move` (320 ms) dans `base.css`, à réutiliser pour toute nouvelle animation.
-- **Préférences du système** : `prefers-reduced-motion` (fondus courts ou rien) et `prefers-reduced-transparency` (barre et voile sans flou).
+- **Préférences du système** : `prefers-reduced-motion` (fondus courts ou rien), `prefers-reduced-transparency` (barre et voile sans flou) et `prefers-contrast: more` (textes secondaires plus foncés, filets francs, barre pleine) ; tout est dans `base.css`.
+- **Pas de boucle sans fin** pour un effet décoratif (éclat holo, booster qui respire) : 3 passages puis repos. Seuls les témoins d'état (point « en direct ») clignotent en continu.
+- **Bascule clair / sombre** : fondu de 200 ms (View Transitions) au lieu d'un saut de luminosité.
+- **Barre de navigation** : pas de trait fixe ; un léger dégradé apparaît seulement quand la page défile dessous (`data-scrolled`).
 
 ## Cartes image du bot
 

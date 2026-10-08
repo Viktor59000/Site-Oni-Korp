@@ -109,6 +109,16 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 /* Appui : retour immédiat sous le doigt, dès l'enfoncement (le survol n'existe pas au tactile) */
 :is(button, .btn, [role="tab"], summary):not(:disabled, .qg-drawer > summary):active { scale: .97; transition: scale 80ms ease-out; }
 /* Moins de transparence demandée : surfaces pleines, sans flou */
+/* Bascule clair / sombre : fondu court au lieu d'un saut de luminosité */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease; }
+/* Contraste élevé demandé : textes secondaires plus foncés, filets francs, surfaces pleines */
+@media (prefers-contrast: more) {
+  :root { --muted: #2e2a27; --line: rgb(0 0 0 / .55); --red-text: #8f1a15; }
+  :root[data-theme="dark"] { --muted: #d6d1cb; --line: rgb(255 255 255 / .55); --red-text: #ff6a5e; }
+  .nav { background: var(--surface) !important; backdrop-filter: none !important; border-bottom-color: var(--ink) !important; }
+  .nav::after { display: none; }
+  .cv::backdrop { background: rgb(0 0 0 / .96) !important; backdrop-filter: none !important; }
+}
 @media (prefers-reduced-transparency: reduce) {
   .nav { background: var(--surface) !important; backdrop-filter: none !important; }
   .cv::backdrop { background: rgb(8 8 8 / .96) !important; backdrop-filter: none !important; }
