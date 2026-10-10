@@ -64,6 +64,14 @@ Dessinées en SVG puis rendues en PNG avec resvg (`src/cards.ts`), polices dans 
 
 Avant de changer une carte : `node scripts/preview-cartes.mjs <dossier>` pour la voir, `npm test` pour la non-régression. Toutes les cartes sont visibles d'un coup dans la vitrine des coulisses après chaque nouvelle version.
 
+## Règle de discrétion (10/10/2026)
+
+Des membres se sont plaints d'être relancés sans arrêt (« le bot me harcèle »), et le serveur a perdu 22 membres en une semaine. Depuis la version 2.54.0 :
+- **En message privé, le bot n'envoie que l'essentiel** : une sanction de modération, le retour de fin d'essai, un seul message d'accueil quand une candidature est acceptée (sans relance), la réponse à un son proposé. **Aucune relance privée** : lier ses comptes, remplir ses dispos, choisir ses jeux, tâche en retard, merci.
+- **Ce qui concerne le staff** (arrivées, retards, fins d'essai) va dans #🔒・staff, pas en privé.
+- **Dans les salons** : une annonce par événement, pas la même dans plusieurs salons ; les mentions passent par les rôles « Notif … » choisis par les membres ; les niveaux ne sont annoncés qu'aux paliers.
+- Avant d'ajouter un message automatique, se demander : qui le reçoit, combien de fois par semaine, et est-ce qu'il l'a demandé ?
+
 ## Ajouter une fonction au bot
 
 1. Un fichier `src/modules/<nom>.ts` avec un en-tête qui dit ce qu'il fait, et `export const <nom>: Module = { name, commands?, setup? }`.
